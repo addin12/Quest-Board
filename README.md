@@ -7,6 +7,15 @@
 
 ![Beranda](docs/screenshots/light-home.png)
 
+## What's new in v0.11 (in progress: the big upgrade)
+Each iteration ships with its own quality check (review, typecheck, lint, unit + e2e + axe, and EN/ID light/dark mobile screenshots).
+- **Iteration 1: Git + CI.** The repo is on branch `main`, and GitHub Actions runs every check on each push.
+- **Iteration 2: sharing & calendars.**
+  - WhatsApp, copy-link and native share buttons on games and GM profiles.
+  - Tavern-style link previews (Open Graph images).
+  - **Add to calendar** (Google Calendar or `.ics` with a 1-hour reminder) for booked sessions.
+  - Table and request chats **refresh live** every 20 s.
+
 ## What changed in v0.10 (tavern look + notification popover)
 - **Medieval tavern design:** parchment and ink by day, a candlelit dark-oak room at night.
   - Wooden signboard header and footer with a brass trim.

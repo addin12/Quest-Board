@@ -6,6 +6,8 @@ import { getGmProfile, listGmGames, listGmReviews } from "@/lib/queries";
 import { isOnlineLocation, splitList } from "@/lib/policy";
 import { Avatar, EmptyState, GameCard, Stars, VerifiedBadge } from "@/components/ui";
 import { Icon } from "@/components/icon";
+import { ShareButtons } from "@/components/share-buttons";
+import { siteOrigin } from "@/lib/site";
 
 export async function generateMetadata(props: PageProps<"/gms/[id]">): Promise<Metadata> {
   const { id } = await props.params;
@@ -45,7 +47,10 @@ export default async function GmProfilePage(props: PageProps<"/gms/[id]">) {
             ))}
           </div>
         </div>
-        <Link href={`/hire-a-gm/request?gm=${gm.id}`} className="btn-primary self-start sm:self-center"><Icon name="briefcase" /> {t("hire.requestThisGm")}</Link>
+        <div className="flex flex-col items-start gap-3 sm:items-end">
+          <Link href={`/hire-a-gm/request?gm=${gm.id}`} className="btn-primary"><Icon name="briefcase" /> {t("hire.requestThisGm")}</Link>
+          <ShareButtons url={`${await siteOrigin()}/gms/${gm.id}`} text={t("share.gmText", { name: gm.name })} />
+        </div>
       </header>
 
       <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_340px]">

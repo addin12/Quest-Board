@@ -24,6 +24,7 @@ Requires **Node ≥ 22.13** (developed on 24). No database server or native buil
 | `QUESTBOARD_RATE_LIMIT` | on | Set `off` to disable rate limits (local debugging only) |
 | `QUESTBOARD_ALLOW_RESET` | `false` | Lets `next start` back up and reset a DB that has no migration path. **Never set this in real production** |
 | `QUESTBOARD_ENFORCE_HTTPS` | `false` | Behind TLS: adds HSTS and `upgrade-insecure-requests` |
+| `QUESTBOARD_BASE_URL` | request host | Public origin (e.g. `https://questboard.id`) for share links, `.ics` files and Open Graph tags. **Set it in production**, or links follow the Host header (a warning is logged once) |
 
 There are **no payment or API keys** to configure.
 

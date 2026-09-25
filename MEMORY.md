@@ -5,10 +5,17 @@ This is the decision log. Treat these entries as requirements: they came from th
 ## Current state (v0.10, 2026-09-25)
 - A working MVP plus 11 spec docs, in git (`main`) with GitHub Actions CI (`.github/workflows/ci.yml`). There is no remote yet: push to GitHub to turn CI on.
 - Schema version is **8**. Real migrations live in `web/src/lib/migrations.ts`; v4 is the baseline.
-- 45 unit tests and 39 e2e journeys (including 5 axe accessibility sweeps), all passing.
+- 51 unit tests and 45 e2e journeys (including 5 axe accessibility sweeps), all passing.
 - All IMPROVEMENTS P1 items are done. Next up is P2, which needs product-owner approval.
 
 ## Decision log
+
+### v0.11, 2026-09-25: big upgrade, iterations 1–2 (product owner: "all of it yes, but please every upgrade iteration you get to quality checks for it")
+- **Process rule:** every iteration ends with a QC pass: diff review, typecheck, lint, unit, full e2e + axe, and EN/ID light/dark mobile screenshots. Then a git commit.
+- Iteration 1: git (`main`) + GitHub Actions CI. There's no remote yet. The commit author is the email handle `addinalayubi12`, because the user's real name isn't known.
+- Iteration 2: share buttons + OG images, Add to calendar (Google + .ics), live chat via polling (20 s).
+  - **Absolute URLs** come from `QUESTBOARD_BASE_URL` (required in production) or the request host.
+  - Instagram has no web share intent, so the native share sheet covers it.
 
 ### v0.10, 2026-09-25: medieval tavern theme + bell popover (product owner feedback)
 - **Visual identity is now "medieval tavern"** (supersedes v0.1's "warm, bookish" look).

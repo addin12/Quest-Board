@@ -6,6 +6,7 @@ import { countUnread, listNotifications } from "@/lib/notifications";
 import { describeNotification } from "@/lib/notification-view";
 import { countOpenRequestsForGm } from "@/lib/queries";
 import { getI18n } from "@/lib/i18n/server";
+import { siteOrigin } from "@/lib/site";
 import { logoutAction, setLanguageAction } from "./actions";
 import { Avatar } from "@/components/ui";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -24,8 +25,11 @@ const alegreyaSans = Alegreya_Sans({ variable: "--font-alegreya-sans", subsets: 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
   return {
+    metadataBase: new URL(await siteOrigin()),
     title: { default: t("meta.title"), template: "%s · Quest Board" },
     description: t("meta.description"),
+    openGraph: { siteName: "Quest Board", type: "website", title: t("meta.title"), description: t("meta.description") },
+    twitter: { card: "summary_large_image" },
   };
 }
 

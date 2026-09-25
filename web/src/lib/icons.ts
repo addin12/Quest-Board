@@ -5,6 +5,7 @@
 
 /** Regular-rounded style (`fi-rr-*`). */
 export const REGULAR_ICONS = [
+  "share", "link-alt", "download",
   "bell",
   "search", "dice-d20", "hat-wizard", "calendar-clock", "calendar", "calendar-plus", "users", "user", "user-add",
   "globe", "language", "laptop", "marker", "book-open-cover", "scroll-old", "seedling", "graduation-cap", "clock",
@@ -23,5 +24,9 @@ export const REGULAR_ICONS = [
 /** Solid-rounded style (`fi-sr-*`) for filled accents. */
 export const SOLID_ICONS = ["star", "badge-check", "dice-d20", "check-circle"] as const;
 
+/** Brand logos (`fi-brands-*`), e.g. share targets. */
+export const BRAND_ICONS = ["whatsapp"] as const;
+
 export type RegularIcon = (typeof REGULAR_ICONS)[number];
 export type SolidIcon = (typeof SOLID_ICONS)[number];
+export type BrandIcon = (typeof BRAND_ICONS)[number];

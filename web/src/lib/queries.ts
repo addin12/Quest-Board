@@ -214,7 +214,8 @@ export function getSessionWithGame(sessionId: number) {
       `SELECT s.id, s.starts_at, s.duration_minutes, s.status,
               (SELECT COUNT(*) FROM bookings b WHERE b.session_id = s.id AND b.status = 'confirmed') AS seats_taken,
               g.id AS game_id, g.slug, g.title, g.system, g.price_idr, g.seats_total, g.status AS game_status,
-              g.gm_id, g.cover_hue, g.cover_image, u.name AS gm_name, u.avatar_image AS gm_image
+              g.gm_id, g.cover_hue, g.cover_image, u.name AS gm_name, u.avatar_image AS gm_image,
+              g.summary, g.location_type, g.platform, g.city
          FROM game_sessions s JOIN games g ON g.id = s.game_id JOIN users u ON u.id = g.gm_id
         WHERE s.id = ?`,
     )
@@ -223,6 +224,7 @@ export function getSessionWithGame(sessionId: number) {
         id: number; starts_at: string; duration_minutes: number; status: string; seats_taken: number;
         game_id: number; slug: string; title: string; system: string; price_idr: number; seats_total: number;
         game_status: string; gm_id: number; cover_hue: number; cover_image: string; gm_name: string; gm_image: string;
+        summary: string; location_type: "online" | "in_person"; platform: string; city: string;
       }
     | undefined;
 }

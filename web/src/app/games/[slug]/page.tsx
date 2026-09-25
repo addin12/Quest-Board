@@ -19,11 +19,21 @@ import type { RegularIcon } from "@/lib/icons";
 import { genreIcon, genreLabelKey, isGenre, isStyle, parseCategoryCsv, styleIcon, styleLabelKey, systemSlug } from "@/lib/categories";
 import { LocalTime } from "@/components/local-time";
 import { MessageForm, ReviewForm } from "@/components/forms";
+import { ShareButtons } from "@/components/share-buttons";
+import { CalendarLinks } from "@/components/calendar-links";
+import { AutoRefresh } from "@/components/auto-refresh";
+import { googleCalendarUrl, sessionEvent } from "@/lib/calendar";
+import { siteOrigin } from "@/lib/site";
 
 export async function generateMetadata(props: PageProps<"/games/[slug]">): Promise<Metadata> {
   const { slug } = await props.params;
   const game = getGameBySlug(slug);
-  return game ? { title: game.title, description: game.summary } : {};
+  if (!game) return {};
+  return {
+    title: game.title,
+    description: game.summary,
+    openGraph: { title: game.title, description: game.summary, type: "website", url: `/games/${game.slug}` },
+  };
 }
 
 export default async function GamePage(props: PageProps<"/games/[slug]">) {
@@ -41,6 +51,8 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
   const reviewable = user ? canReview(game.id, user.id) : false;
   const messages = member ? listMessages(game.id) : [];
   const now = new Date();
+  const origin = await siteOrigin();
+  const gameUrl = `${origin}/games/${game.slug}`;
   const levelKey = game.experience_level === "beginner" ? "level.beginner" : game.experience_level === "experienced" ? "level.experienced" : "level.any";
 
   return (
@@ -65,6 +77,9 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
               <Stars rating={game.avg_rating} count={game.review_count} t={t} size="lg" />
               {isOwner && <Link href={`/gm/games/${game.id}`} className="btn-secondary py-1!"><Icon name="pencil" /> {t("game.manage")}</Link>}
             </div>
+            {game.status === "published" && (
+              <div className="mt-4"><ShareButtons url={gameUrl} text={t("share.gameText", { title: game.title, system: game.system })} /></div>
+            )}
 
             <section className="mt-8">
               <h2 className="text-xl font-bold">{t("game.about")}</h2>
@@ -100,6 +115,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
 
             {member && (
               <section className="mt-10" aria-labelledby="chat-h">
+                <AutoRefresh />
                 <h2 id="chat-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="comments" className="text-accent" /> {t("chat.title")}</h2>
                 <p className="text-sm text-muted">{t("chat.visibility")}</p>
                 <ul className="mt-4 space-y-3">
@@ -176,6 +192,16 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                             {t("common.hours", { n: s.duration_minutes / 60 })} ·{" "}
                             {left <= 0 ? <span className="text-danger">{t("common.full")}</span> : t("game.seatsLeftOf", { left, total: game.seats_total })}
                           </p>
+                          {mine && (
+                            <div className="mt-1.5">
+                              <CalendarLinks
+                                compact
+                                sessionId={s.id}
+                                google={googleCalendarUrl(sessionEvent({ ...game, id: s.id, starts_at: s.starts_at, duration_minutes: s.duration_minutes }, origin, t))}
+                                t={t}
+                              />
+                            </div>
+                          )}
                         </div>
                         {mine ? (
                           <span className="chip gap-1 border-success/30! bg-success-soft! text-success!"><Icon name="check-circle" solid />{t("game.booked")}</span>

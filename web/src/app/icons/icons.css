@@ -2,6 +2,9 @@
 @layer base{.fi{display:inline-flex;align-items:center;justify-content:center;line-height:1;vertical-align:-0.125em}}
 @font-face{font-family:qb-uicons-rr;src:url(./qb-uicons-rr.woff2) format("woff2");font-display:block}
 [class^="fi-rr-"]:before,[class*=" fi-rr-"]:before{font-family:qb-uicons-rr!important;font-style:normal;font-weight:normal!important;font-variant:normal;text-transform:none;line-height:1;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.fi-rr-share:before{content:"\fbd5"}
+.fi-rr-link-alt:before{content:"\f8b5"}
+.fi-rr-download:before{content:"\f591"}
 .fi-rr-bell:before{content:"\f239"}
 .fi-rr-search:before{content:"\fbba"}
 .fi-rr-dice-d20:before{content:"\f556"}
@@ -86,3 +89,6 @@
 .fi-sr-badge-check:before{content:"\f1eb"}
 .fi-sr-dice-d20:before{content:"\f54b"}
 .fi-sr-check-circle:before{content:"\f3bc"}
+@font-face{font-family:qb-uicons-brands;src:url(./qb-uicons-brands.woff2) format("woff2");font-display:block}
+[class^="fi-brands-"]:before,[class*=" fi-brands-"]:before{font-family:qb-uicons-brands!important;font-style:normal;font-weight:normal!important;font-variant:normal;text-transform:none;line-height:1;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.fi-brands-whatsapp:before{content:"\f1d2"}

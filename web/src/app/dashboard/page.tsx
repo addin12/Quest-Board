@@ -9,6 +9,9 @@ import { LocalTime } from "@/components/local-time";
 import { ConfirmButton } from "@/components/submit-button";
 import { RequestStatus } from "@/components/request-bits";
 import { cancelBookingAction } from "../actions";
+import { CalendarLinks } from "@/components/calendar-links";
+import { googleCalendarUrl, sessionEvent } from "@/lib/calendar";
+import { siteOrigin } from "@/lib/site";
 import { Icon } from "@/components/icon";
 import type { RegularIcon } from "@/lib/icons";
 
@@ -27,13 +30,21 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const past = all.filter((b) => b.status === "confirmed" && !upcoming.includes(b) && b.session_status !== "cancelled");
   const cancelled = all.filter((b) => b.status !== "confirmed" || b.session_status === "cancelled");
   const requests = listMyGmRequests(user.id);
+  const origin = await siteOrigin();
+  const gcal = (b: (typeof upcoming)[number]) => googleCalendarUrl(sessionEvent({ ...b, id: b.session_id }, origin, t));
+  const justBooked = booked ? upcoming.find((b) => String(b.session_id) === booked) : undefined;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
       <h1 className="flex items-center gap-2 text-3xl font-bold"><Icon name="calendar-clock" className="text-accent" /> {t("nav.myGames")}</h1>
       <p className="mt-1 text-muted">{t("dash.hello", { name: user.name.split(" ")[0] })}</p>
       {booked && (
-        <div className="mt-6"><Notice tone="success">{t("dash.bookedBanner")}</Notice></div>
+        <div className="mt-6">
+          <Notice tone="success">
+            {t("dash.bookedBanner")}
+            {justBooked && <div className="mt-2"><CalendarLinks sessionId={justBooked.session_id} google={gcal(justBooked)} t={t} /></div>}
+          </Notice>
+        </div>
       )}
 
       <Section icon="calendar" title={t("dash.upcoming", { n: upcoming.length })}>
@@ -43,7 +54,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
           </EmptyState>
         ) : (
           upcoming.map((b) => (
-            <BookingRow key={b.booking_id} b={b} t={t}>
+            <BookingRow key={b.booking_id} b={b} t={t} extra={<CalendarLinks compact sessionId={b.session_id} google={gcal(b)} t={t} />}>
               <Link href={`/games/${b.slug}`} className="btn-secondary px-3! py-1! text-xs"><Icon name="wallet" /> {t("dash.payInfo")}</Link>
               <form action={cancelBookingAction}>
                 <input type="hidden" name="bookingId" value={b.booking_id} />
@@ -118,7 +129,7 @@ function Section({ icon, title, children }: { icon: RegularIcon; title: string; 
   );
 }
 
-function BookingRow({ b, t, children }: { b: PlayerBooking; t: T; children: React.ReactNode }) {
+function BookingRow({ b, t, children, extra }: { b: PlayerBooking; t: T; children: React.ReactNode; extra?: React.ReactNode }) {
   return (
     <div className="card flex flex-wrap items-center gap-4 p-4">
       <Thumb hue={b.cover_hue} image={b.cover_image} />
@@ -128,6 +139,7 @@ function BookingRow({ b, t, children }: { b: PlayerBooking; t: T; children: Reac
           <LocalTime iso={b.starts_at} /> · {b.system} · {b.location_type === "online" ? b.platform : b.city} · GM {b.gm_name} ·{" "}
           {priceLabel(b.price_idr, t)}
         </p>
+        {extra && <div className="mt-1.5">{extra}</div>}
       </div>
       <div className="flex shrink-0 items-center gap-2">{children}</div>
     </div>

@@ -11,6 +11,7 @@ import { ConfirmButton, SubmitButton } from "@/components/submit-button";
 import { OfferForm, RequestMessageForm } from "@/components/hire-forms";
 import { RequestFacts, RequestStatus } from "@/components/request-bits";
 import { Icon } from "@/components/icon";
+import { AutoRefresh } from "@/components/auto-refresh";
 import { chooseOfferAction, closeRequestAction } from "@/app/actions";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -69,6 +70,7 @@ export default async function RequestPage(props: PageProps<"/hire-a-gm/requests/
       {/* Matched: private thread + payment details for the requester */}
       {inThread && (
         <section className="mt-8" aria-labelledby="thread-h">
+          <AutoRefresh />
           <h2 id="thread-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="comment-dots" className="text-accent" /> {t("hire.threadTitle")}</h2>
           <p className="text-sm text-muted">{t("hire.threadLead")}</p>
           {isRequester && matchedOffer && (

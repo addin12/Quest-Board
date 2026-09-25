@@ -137,7 +137,7 @@
   @apply w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text shadow-[inset_0_1px_3px_rgb(60_35_10/0.12)] placeholder:text-muted/80 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30;
 }
 @utility label { @apply mb-1 block text-sm font-bold; }
-@utility chip { @apply inline-flex items-center rounded-md border border-border bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted; }
+@utility chip { @apply inline-flex items-center whitespace-nowrap rounded-md border border-border bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted; }
 @utility popover { @apply overflow-hidden rounded-lg border border-border bg-surface text-text shadow-2xl shadow-black/40; }
 @utility badge { @apply flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-accent-ink ring-2 ring-[#2a1b10]; }
 @utility eyebrow { @apply font-display text-xs font-bold uppercase tracking-[0.18em] text-muted; }

@@ -11,12 +11,10 @@ All P1 items are done (2026-09-25). See **Done** below. New P1s go here.
 - **P2-1 · Legal pages (M):** Terms and Privacy (UU PDP 27/2022), in both languages, linked in the footer and at sign-up.
 - **P2-2 · Account basics (M):** password reset, email verification, and self-serve account deletion that anonymises reviews.
 - **P2-3 · GM "paid ✓" marker (S):** a per-seat toggle on the roster, GM-only. Add a `bookings.paid_marked_at` column.
-- **P2-4 · Chat freshness (S):** poll with `router.refresh()` every 20 s while the chat is visible. SSE comes later.
 - **P2-5 · Browse pagination (S):** `searchGames` is capped at 60 (`queries.ts:63`). Add `?page=` with a "Load more" link.
 - **P2-6 · Waitlist (M):** when a session is full, let players join a waitlist. When a seat frees up, auto-offer it to the first person, who gets 12 h to confirm.
 - **P2-7 · Location search (S):** include `gm_profiles.location` in the keyword search, and add a city filter for in-person games.
 - **P2-9 · Recurring sessions (M):** "repeat weekly × N" when scheduling campaign sessions.
-- **P2-10 · Share (S):** WhatsApp and Instagram share buttons, plus OG images per game.
 - **P2-11 · Report & admin console (L):** report a listing, review, message or payment details, with an admin queue for verifying GMs and hiding content.
 - **P2-12 · Notifications (L):** in-app notifications are done (v0.9.1). Still to do: email and WhatsApp delivery, plus reminders 24 h and 1 h before a session, in the user's language. Needs a provider and a `users.locale` column.
 
@@ -52,6 +50,9 @@ Every item below was done on 2026-09-25 (v0.5). `e2e:hardening` means `web/tests
 | P1-10 | Expired sessions purged on login; session rotated when a player becomes a GM; "Log out on all devices" button on the dashboard | `auth.ts`, `logoutEverywhereAction` | e2e:hardening "log out on all devices" |
 | P1-11 | Security headers: CSP (no-nonce variant from the Next guide), `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, no `X-Powered-By`. HSTS + upgrade-insecure-requests when `QUESTBOARD_ENFORCE_HTTPS=true` | `next.config.ts` | e2e:hardening "security headers" |
 | P1-12 | Anti-scam note under the GM's payment details | game page, `game.scamWarning` | e2e:hardening "anti-scam" |
+| P2-4 · Live chat | `<AutoRefresh>` runs `router.refresh()` every 20 s while the tab is visible (table chat and request thread); half-typed messages survive | `auto-refresh.tsx` | e2e: "table chat updates live" |
+| P2-10 · Share + link previews | WhatsApp / copy link / native share on games and GM profiles; tavern OG images (`opengraph-image.tsx`) for the site and each game; `metadataBase` from the request or `QUESTBOARD_BASE_URL`. Instagram has no web share URL, so the native share sheet covers it on phones | `share-buttons.tsx`, `lib/og-card.tsx`, `lib/site.ts` | e2e: share + OG PNG |
+| New · Add to calendar | Google Calendar link and `/api/sessions/{id}/ics` (RFC 5545, 1 h reminder, public details only) on booked sessions, My games and the booking confirmation | `lib/calendar.ts`, `calendar-links.tsx`, ics route | unit: calendar ×6; e2e ×3 |
 | P2-13 · Git | Repo at `Quest Board/` (branch `main`), root `.gitignore` (DBs, build, test output, env), `.gitattributes` (LF) | `.gitignore`, `.gitattributes` | a clean clone installs, typechecks, lints, passes unit tests and builds |
 | P2-14 · CI | GitHub Actions: `npm ci` → typecheck → lint → unit → build + e2e (bundled Chromium; traces uploaded on failure). `typecheck` now runs `next typegen` first, so it works on a fresh checkout | `.github/workflows/ci.yml`, `playwright.config.ts`, `package.json` | verified in a clean clone |
 | P2-8 · Mobile tab bar | Bottom tab bar below `sm`; the signed-in header no longer overflows at 320–390 px | `mobile-tab-bar.tsx`, `layout.tsx` | manual width check at 320/360/390 (EN+ID); axe sweep |

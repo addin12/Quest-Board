@@ -10,7 +10,7 @@ The full QA strategy and manual checklist are in `docs/09-testing-and-qa.md`.
 | `npm test` | `tests/unit/*.test.ts`: policy (IDR, canBook, canCancel, location), validation, i18n parity + default language, icon subset vs registry, **placeholder art exists + is script-free + migration v6 back-fill**, **categories (normalize, systemSlug, dictionary coverage, request/offer/profile validation, migration v7 back-fill)**, D&D editions, crypto | Node's built-in runner with native TS stripping. Imports use `.ts` extensions and relative paths (no `@/`) |
 | `npm run test:e2e` | `next build`, then Playwright on **:3100** against a fresh `data/e2e.db` | Uses installed **Edge**; `PW_CHANNEL=chrome` for Chrome. Default locale `en-US`, timezone `Asia/Jakarta` |
 
-Current baseline: **45 unit tests, 39 e2e journeys** (`a11y.spec.ts` 5 + `hardening.spec.ts` 9 + `hire-and-browse.spec.ts` 9 + `marketplace.spec.ts` 16), all green.
+Current baseline: **51 unit tests, 45 e2e journeys** (`a11y.spec.ts` 5 + `hardening.spec.ts` 9 + `hire-and-browse.spec.ts` 9 + `marketplace.spec.ts` 16 + `share-calendar-live.spec.ts` 6), all green.
 
 **Accessibility sweep** (`a11y.spec.ts`): `@axe-core/playwright` with WCAG 2.1 A/AA tags on 10 public pages × EN/ID × light/dark, plus signed-in pages and a form with errors. It fails with one line per violation (page → rule → selectors). Add new pages to its lists. Update these numbers when you add tests.
 
