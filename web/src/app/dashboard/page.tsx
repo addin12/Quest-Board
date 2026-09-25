@@ -11,6 +11,9 @@ import { RequestStatus } from "@/components/request-bits";
 import { cancelBookingAction } from "../actions";
 import { CalendarLinks } from "@/components/calendar-links";
 import { ResendVerificationButton } from "@/components/account-forms";
+import { myWaitlistDetailed, refreshWaitlists } from "@/lib/waitlist";
+import { WaitlistOffer } from "@/components/waitlist-controls";
+import { leaveWaitlistAction } from "../actions";
 import { googleCalendarUrl, sessionEvent } from "@/lib/calendar";
 import { siteOrigin } from "@/lib/site";
 import { Icon } from "@/components/icon";
@@ -31,6 +34,8 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const past = all.filter((b) => b.status === "confirmed" && !upcoming.includes(b) && b.session_status !== "cancelled");
   const cancelled = all.filter((b) => b.status !== "confirmed" || b.session_status === "cancelled");
   const requests = listMyGmRequests(user.id);
+  refreshWaitlists(myWaitlistDetailed(user.id).map((w) => w.session_id));
+  const waitlist = myWaitlistDetailed(user.id);
   const origin = await siteOrigin();
   const gcal = (b: (typeof upcoming)[number]) => googleCalendarUrl(sessionEvent({ ...b, id: b.session_id }, origin, t));
   const justBooked = booked ? upcoming.find((b) => String(b.session_id) === booked) : undefined;
@@ -75,6 +80,27 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
           ))
         )}
       </Section>
+
+      {waitlist.length > 0 && (
+        <Section icon="hourglass-end" title={t("wait.sectionTitle", { n: waitlist.length })}>
+          {waitlist.map((w) => (
+            <div key={w.session_id} className={`card flex flex-wrap items-center gap-4 p-4 ${w.status === "offered" ? "border-accent/60!" : ""}`}>
+              <div className="min-w-0 flex-1">
+                <Link href={`/games/${w.slug}`} className="font-semibold hover:text-accent">{w.title}</Link>
+                <p className="text-sm text-muted"><LocalTime iso={w.starts_at} /> · {w.system}</p>
+                <p className="mt-1 text-sm">{w.status === "offered" ? t("wait.offeredLine") : t("wait.position", { n: w.position })}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {w.status === "offered" && <WaitlistOffer sessionId={w.session_id} expiresAt={w.expires_at} t={t} />}
+                <form action={leaveWaitlistAction}>
+                  <input type="hidden" name="sessionId" value={w.session_id} />
+                  <button className="btn-ghost px-2! py-1! text-xs">{t(w.status === "offered" ? "wait.decline" : "wait.leave")}</button>
+                </form>
+              </div>
+            </div>
+          ))}
+        </Section>
+      )}
 
       {past.length > 0 && (
         <Section icon="dragon" title={t("dash.played")}>
@@ -148,6 +174,9 @@ function BookingRow({ b, t, children, extra }: { b: PlayerBooking; t: T; childre
           <LocalTime iso={b.starts_at} /> · {b.system} · {b.location_type === "online" ? b.platform : b.city} · GM {b.gm_name} ·{" "}
           {priceLabel(b.price_idr, t)}
         </p>
+        {b.paid_marked_at && b.status === "confirmed" && (
+          <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-success"><Icon name="check-circle" solid /> {t("paid.confirmedForYou")}</p>
+        )}
         {extra && <div className="mt-1.5">{extra}</div>}
       </div>
       <div className="flex shrink-0 items-center gap-2">{children}</div>

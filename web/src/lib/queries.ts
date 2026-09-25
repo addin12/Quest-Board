@@ -194,6 +194,7 @@ export type SessionRow = {
   duration_minutes: number;
   status: "scheduled" | "completed" | "cancelled";
   seats_taken: number;
+  seats_held: number;
 };
 
 export function listSessions(gameId: number, opts: { upcomingOnly?: boolean } = {}): SessionRow[] {
@@ -202,7 +203,8 @@ export function listSessions(gameId: number, opts: { upcomingOnly?: boolean } = 
   if (opts.upcomingOnly) args.push(new Date().toISOString());
   return db()
     .prepare(
-      `SELECT s.*, (SELECT COUNT(*) FROM bookings b WHERE b.session_id = s.id AND b.status = 'confirmed') AS seats_taken
+      `SELECT s.*, (SELECT COUNT(*) FROM bookings b WHERE b.session_id = s.id AND b.status = 'confirmed') AS seats_taken,
+              (SELECT COUNT(*) FROM waitlist w WHERE w.session_id = s.id AND w.status = 'offered' AND w.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ','now')) AS seats_held
          FROM game_sessions s WHERE s.game_id = ? ${cond} ORDER BY s.starts_at`,
     )
     .all(...args) as SessionRow[];
@@ -280,6 +282,7 @@ export function listGmReviews(gmId: number, limit = 10): ReviewRow[] {
 
 export type PlayerBooking = {
   booking_id: number;
+  paid_marked_at: string | null;
   status: "confirmed" | "cancelled";
   cancelled_by: "player" | "gm" | null;
   price_idr: number;
@@ -303,7 +306,7 @@ export type PlayerBooking = {
 export function listPlayerBookings(playerId: number): PlayerBooking[] {
   return db()
     .prepare(
-      `SELECT b.id AS booking_id, b.status, b.cancelled_by, b.price_idr, s.id AS session_id, s.starts_at, s.duration_minutes, s.status AS session_status,
+      `SELECT b.id AS booking_id, b.status, b.cancelled_by, b.price_idr, b.paid_marked_at, s.id AS session_id, s.starts_at, s.duration_minutes, s.status AS session_status,
               g.id AS game_id, g.slug, g.title, g.system, g.cover_hue, g.cover_image, g.platform, g.location_type, g.city, u.name AS gm_name,
               EXISTS (SELECT 1 FROM reviews r WHERE r.game_id = g.id AND r.player_id = b.player_id) AS has_review
          FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id JOIN users u ON u.id = g.gm_id
@@ -408,10 +411,10 @@ export function gmDashboardStats(gmId: number) {
 export function listSessionRoster(sessionId: number) {
   return db()
     .prepare(
-      `SELECT b.id AS booking_id, b.status, u.id AS user_id, u.name, u.avatar_hue, u.avatar_image
+      `SELECT b.id AS booking_id, b.status, b.paid_marked_at, u.id AS user_id, u.name, u.avatar_hue, u.avatar_image
          FROM bookings b JOIN users u ON u.id = b.player_id WHERE b.session_id = ? ORDER BY b.created_at`,
     )
-    .all(sessionId) as { booking_id: number; status: string; user_id: number; name: string; avatar_hue: number; avatar_image: string }[];
+    .all(sessionId) as { booking_id: number; status: string; paid_marked_at: string | null; user_id: number; name: string; avatar_hue: number; avatar_image: string }[];
 }
 
 export function getGmSettings(userId: number) {

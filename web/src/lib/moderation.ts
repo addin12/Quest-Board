@@ -1,6 +1,7 @@
 import "server-only";
 import { db, tx } from "./db";
 import { archiveGame } from "./account";
+import { dropFromWaitlists } from "./waitlist";
 import { notify } from "./notifications";
 import { isGameMember } from "./queries";
 import type { ReportDecision, ReportReason, ReportTarget } from "./reports";
@@ -102,6 +103,7 @@ export function suspendUser(userId: number, adminId: number): boolean {
   tx((c) => {
     c.prepare("UPDATE users SET suspended_at = ? WHERE id = ?").run(new Date().toISOString(), userId);
     c.prepare("DELETE FROM auth_sessions WHERE user_id = ?").run(userId);
+    dropFromWaitlists(c, userId);
     const games = c.prepare("SELECT id FROM games WHERE gm_id = ? AND status <> 'archived'").all(userId) as { id: number }[];
     for (const g of games) archiveGame(c, g.id, adminId);
     c.prepare("UPDATE gm_requests SET status = 'closed' WHERE requester_id = ? AND status = 'open'").run(userId);

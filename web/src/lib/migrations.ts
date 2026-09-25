@@ -157,6 +157,21 @@ export const MIGRATIONS: Record<number, string> = {
     CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, created_at);
     CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_type, target_id);
   `,
+  // v0.11 iteration 5: waitlist and the GM's paid marker.
+  11: `
+    ALTER TABLE bookings ADD COLUMN paid_marked_at TEXT;
+    CREATE TABLE IF NOT EXISTS waitlist (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id  INTEGER NOT NULL REFERENCES game_sessions(id) ON DELETE CASCADE,
+      player_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status      TEXT NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting','offered','claimed','expired','left')),
+      offered_at  TEXT,
+      expires_at  TEXT,                        -- an offer holds the seat until then
+      created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+      UNIQUE (session_id, player_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_waitlist_session ON waitlist(session_id, status, created_at);
+  `,
 };
 
 export type UpgradePlan =

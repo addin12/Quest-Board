@@ -22,6 +22,7 @@ Requires **Node ≥ 22.13** (developed on 24). No database server or native buil
 | `NODE_ENV` | set by Next | `production` enables Secure cookies |
 | `PW_CHANNEL` | `msedge` | Playwright browser (`chrome`, `msedge`) |
 | `QUESTBOARD_RATE_LIMIT` | on | Set `off` to disable rate limits (local debugging only) |
+| `QUESTBOARD_RATE_LIMIT_OVERRIDES` | unset | Per-bucket limits, e.g. `signup=500` (e2e runs only) |
 | `QUESTBOARD_ALLOW_RESET` | `false` | Lets `next start` back up and reset a DB that has no migration path. **Never set this in real production** |
 | `QUESTBOARD_ENFORCE_HTTPS` | `false` | Behind TLS: adds HSTS and `upgrade-insecure-requests` |
 | `RESEND_API_KEY` + `QUESTBOARD_MAIL_FROM` | unset | Deliver emails through Resend (e.g. `Quest Board <no-reply@questboard.id>`). Unset: emails are only queued in `email_outbox` |

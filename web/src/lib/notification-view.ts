@@ -50,6 +50,8 @@ export function describeNotification(n: NotificationSource, t: T): NotificationV
     case "booking_cancelled": return { ...base, href: "/gm", icon: "user", text: t("notif.bookingCancelled", { name: who, title: game }) };
     case "session_cancelled": return { ...base, href: gameHref, icon: "calendar", text: t("notif.sessionCancelled", { title: game }) };
     case "report_new": return { ...base, href: "/admin/reports", icon: "flag", text: t("notif.reportNew", { name: who }) };
+    case "waitlist_offer": return { ...base, href: gameHref, icon: "ticket", text: t("notif.waitlistOffer", { title: game }) };
+    case "payment_confirmed": return { ...base, href: "/dashboard", icon: "wallet", text: t("notif.paymentConfirmed", { name: who, title: game }) };
     case "report_resolved": return { ...base, actor: null, href: "/notifications", icon: "shield-check", text: t("notif.reportResolved") };
   }
 }

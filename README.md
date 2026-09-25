@@ -25,6 +25,10 @@ Each iteration ships with its own quality check (review, typecheck, lint, unit +
   - **`/admin`** (admins only): reports queue with evidence snapshots (remove content / suspend / dismiss, and the reporter is told), GM verification, and member search with suspend/unsuspend.
   - Suspension blocks login, hides the GM profile, withdraws offers and archives games, and booked players are notified.
   - Demo admin: `admin@questboard.test`.
+- **Iteration 5: waitlist, recurring sessions, paid ✓.**
+  - Full sessions have a **waitlist**. A freed seat is held for the next person for 12 h (or until the session starts), then passes on. People can leave, or pass an offer to the next person.
+  - GMs can add a **weekly series** (up to 12 sessions) in one go.
+  - GMs tick **"paid ✓"** per seat. The player sees "The GM confirmed your payment" and is notified.
 
 ## What changed in v0.10 (tavern look + notification popover)
 - **Medieval tavern design:** parchment and ink by day, a candlelit dark-oak room at night.

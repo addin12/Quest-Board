@@ -41,3 +41,19 @@ test("migration 10 adds reports, suspension and notification report ids; the DB 
   db.exec("UPDATE users SET suspended_at = 'now' WHERE id = 2");
   db.exec("INSERT INTO notifications (user_id, kind, report_id) VALUES (1, 'report_resolved', 1)");
 });
+
+test("migration 11 adds the waitlist (one entry per person per session) and the paid marker", () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec(SCHEMA_SQL);
+  db.exec("DROP TABLE waitlist; ALTER TABLE bookings DROP COLUMN paid_marked_at;");
+  db.exec(MIGRATIONS[11]);
+  db.exec(`INSERT INTO users (id, email, password_hash, name) VALUES (1, 'g@x.test', 'x', 'G'), (2, 'p@x.test', 'x', 'P');
+    INSERT INTO games (id, gm_id, slug, title, system, summary, description, format, location_type, price_idr, seats_total)
+      VALUES (1, 1, 'g', 'G', 'S', 's', 'd', 'one_shot', 'online', 0, 1);
+    INSERT INTO game_sessions (id, game_id, starts_at) VALUES (1, 1, '2099-01-01T00:00:00Z');
+    INSERT INTO bookings (session_id, player_id, price_idr, paid_marked_at) VALUES (1, 2, 0, '2026-01-01');`);
+  const ins = db.prepare("INSERT INTO waitlist (session_id, player_id, status) VALUES (1, 2, ?)");
+  ins.run("waiting");
+  assert.throws(() => ins.run("waiting"), /UNIQUE/);
+  assert.throws(() => db.prepare("INSERT INTO waitlist (session_id, player_id, status) VALUES (1, 1, 'maybe')").run(), /CHECK/);
+});

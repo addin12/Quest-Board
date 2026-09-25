@@ -28,10 +28,26 @@ export async function clientIp(): Promise<string> {
   return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "local";
 }
 
+/**
+ * Per-bucket limit overrides, e.g. QUESTBOARD_RATE_LIMIT_OVERRIDES="signup=500,request=100".
+ * Meant for e2e runs that create many accounts from one IP; production uses LIMITS.
+ */
+function limitFor(bucket: Bucket): number {
+  const raw = process.env.QUESTBOARD_RATE_LIMIT_OVERRIDES;
+  if (raw) {
+    for (const part of raw.split(",")) {
+      const [k, v] = part.split("=").map((x) => x.trim());
+      if (k === bucket && Number(v) > 0) return Number(v);
+    }
+  }
+  return LIMITS[bucket].limit;
+}
+
 /** Record a hit. Returns false when the caller is over the limit. */
 export function hit(bucket: Bucket, identity: string, nowMs = Date.now()): boolean {
   if (process.env.QUESTBOARD_RATE_LIMIT === "off") return true;
-  const { limit, windowMs } = LIMITS[bucket];
+  const { windowMs } = LIMITS[bucket];
+  const limit = limitFor(bucket);
   const key = `${bucket}:${identity}`;
   const row = db().prepare("SELECT window_start AS windowStart, count FROM rate_limits WHERE key = ?").get(key) as
     | { windowStart: number; count: number }

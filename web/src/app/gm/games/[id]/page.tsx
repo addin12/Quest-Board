@@ -10,7 +10,8 @@ import { LocalTime } from "@/components/local-time";
 import { Icon } from "@/components/icon";
 import { AddSessionForm } from "@/components/forms";
 import { ConfirmButton, SubmitButton } from "@/components/submit-button";
-import { archiveGameAction, cancelSessionAction, completeSessionAction } from "@/app/actions";
+import { archiveGameAction, cancelSessionAction, completeSessionAction, markPaidAction } from "@/app/actions";
+import { waitingCounts } from "@/lib/waitlist";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -28,6 +29,8 @@ export default async function ManageGamePage(props: PageProps<"/gm/games/[id]">)
   const upcoming = sessions.filter((s) => s.status === "scheduled" && new Date(s.starts_at) > now);
   const needsWrapUp = sessions.filter((s) => s.status === "scheduled" && new Date(s.starts_at) <= now);
   const history = sessions.filter((s) => s.status !== "scheduled").reverse();
+  const waiting = waitingCounts(game.id);
+  const paidOn = game.price_idr > 0;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
@@ -57,7 +60,7 @@ export default async function ManageGamePage(props: PageProps<"/gm/games/[id]">)
           <h2 className="mb-3 flex items-center gap-2 text-xl font-bold"><Icon name="hourglass-end" className="text-accent" /> {t("manage.wrapUp")}</h2>
           <div className="space-y-3">
             {needsWrapUp.map((s) => (
-              <SessionCard key={s.id} s={s} seatsTotal={game.seats_total} t={t}>
+              <SessionCard key={s.id} s={s} seatsTotal={game.seats_total} t={t} paid={paidOn}>
                 <form action={completeSessionAction}>
                   <input type="hidden" name="sessionId" value={s.id} />
                   <SubmitButton className="btn-primary py-1.5!"><Icon name="check" /> {t("manage.markPlayed")}</SubmitButton>
@@ -75,7 +78,7 @@ export default async function ManageGamePage(props: PageProps<"/gm/games/[id]">)
         ) : (
           <div className="space-y-3">
             {upcoming.map((s) => (
-              <SessionCard key={s.id} s={s} seatsTotal={game.seats_total} t={t}>
+              <SessionCard key={s.id} s={s} seatsTotal={game.seats_total} t={t} paid={paidOn} waiting={waiting.get(s.id) ?? 0}>
                 <form action={cancelSessionAction}>
                   <input type="hidden" name="sessionId" value={s.id} />
                   <ConfirmButton className="btn-danger py-1.5!" message={t("manage.cancelConfirm", { n: s.seats_taken })}>
@@ -120,11 +123,15 @@ function SessionCard({
   seatsTotal,
   t,
   children,
+  paid = false,
+  waiting = 0,
 }: {
   s: { id: number; starts_at: string; duration_minutes: number; seats_taken: number };
   seatsTotal: number;
   t: T;
   children: React.ReactNode;
+  paid?: boolean;
+  waiting?: number;
 }) {
   const active = listSessionRoster(s.id).filter((r) => r.status === "confirmed");
   return (
@@ -134,6 +141,8 @@ function SessionCard({
           <p className="flex items-center gap-2 font-semibold"><Icon name="calendar-clock" className="text-muted" /><LocalTime iso={s.starts_at} mode="long" /></p>
           <p className="text-sm text-muted">
             {t("common.hours", { n: s.duration_minutes / 60 })} · {t("manage.seatsBooked", { n: s.seats_taken, total: seatsTotal })}
+            {waiting > 0 && <> · <span className="font-semibold text-accent">{t("wait.gmCount", { n: waiting })}</span></>}
+            {paid && active.length > 0 && <> · {t("paid.count", { n: active.filter((p) => p.paid_marked_at).length, total: active.length })}</>}
           </p>
         </div>
         {children}
@@ -141,8 +150,21 @@ function SessionCard({
       {active.length > 0 && (
         <ul className="mt-3 flex flex-wrap gap-2" aria-label={t("manage.roster")}>
           {active.map((p) => (
-            <li key={p.booking_id} className="flex items-center gap-2 rounded-full border border-border py-1 pr-3 pl-1 text-sm">
+            <li key={p.booking_id} className={`flex items-center gap-2 rounded-full border py-1 pr-1.5 pl-1 text-sm ${paid && p.paid_marked_at ? "border-success/40 bg-success-soft" : "border-border"}`}>
               <Avatar name={p.name} hue={p.avatar_hue} image={p.avatar_image} size={24} /> {p.name}
+              {paid ? (
+                <form action={markPaidAction}>
+                  <input type="hidden" name="bookingId" value={p.booking_id} />
+                  <input type="hidden" name="paid" value={p.paid_marked_at ? "0" : "1"} />
+                  <button
+                    className={`rounded-full px-2 py-0.5 text-xs font-bold ${p.paid_marked_at ? "text-success hover:underline" : "bg-surface-2 text-muted hover:text-text"}`}
+                    aria-label={t(p.paid_marked_at ? "paid.unmarkNamed" : "paid.markNamed", { name: p.name })}
+                    aria-pressed={!!p.paid_marked_at}
+                  >
+                    {p.paid_marked_at ? <><Icon name="check" /> {t("paid.paid")}</> : t("paid.mark")}
+                  </button>
+                </form>
+              ) : <span className="pr-1.5" />}
             </li>
           ))}
         </ul>

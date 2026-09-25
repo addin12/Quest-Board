@@ -9,7 +9,7 @@ import { clientIp, hit, purgeOldWindows } from "@/lib/rate-limit";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { canBook, canCancel, normalizeLocation, slugify } from "@/lib/policy";
 import { isAllowedCover, isAllowedPortrait } from "@/lib/placeholders";
-import { parseGame, parseGmRequest, parseOffer, parseProfile, parseReview, parseSessionStart, parseSignup, type FieldErrors } from "@/lib/validation";
+import { parseGame, parseGmRequest, parseOffer, parseProfile, parseRepeat, parseReview, parseSessionStart, parseSignup, weeklyStarts, type FieldErrors } from "@/lib/validation";
 import { normalizeCategories } from "@/lib/categories";
 import { canReview, getGameById, getGmRequest, getGmSettings, getSessionWithGame, isGameMember, maxSeatsTakenUpcoming } from "@/lib/queries";
 import { LANG_COOKIE, type MsgKey } from "@/lib/i18n/dict";
@@ -19,6 +19,7 @@ import { consumeToken, issueToken, peekToken } from "@/lib/tokens";
 import { archiveGame, deleteAccount } from "@/lib/account";
 import { createReport, decideReport, setGmVerified, suspendUser, unsuspendUser } from "@/lib/moderation";
 import { isReportDecision, parseReport } from "@/lib/reports";
+import { heldSeats, joinWaitlist, leaveWaitlist, processWaitlist } from "@/lib/waitlist";
 import { getI18n } from "@/lib/i18n/server";
 import { siteOrigin } from "@/lib/site";
 
@@ -203,6 +204,9 @@ async function saveGameActionImpl(_: FormState, form: FormData): Promise<FormSta
         g.priceIdr, g.seatsTotal, g.experienceLevel, g.minAge, g.contentWarnings, g.safetyTools, g.tags, hue, coverImage, genres, styles, g.status, idRaw,
       );
     gameId = idRaw;
+    // More seats (or re-publishing) may free places for people on the waitlist.
+    const upcomingIds = db().prepare("SELECT id FROM game_sessions WHERE game_id = ? AND status = 'scheduled' AND starts_at > ?").all(idRaw, new Date().toISOString()) as { id: number }[];
+    tx((c) => { for (const u of upcomingIds) processWaitlist(c, u.id); });
   } else {
     gameId = Number(
       db()
@@ -244,11 +248,13 @@ async function addSessionActionImpl(_: FormState, form: FormData): Promise<FormS
   const start = parseSessionStart(form.get("startsAt"), form.get("tzOffset"), new Date());
   if (!start.ok) return { fieldErrors: start.errors };
   const duration = Math.max(30, Math.min(720, Number(form.get("duration") ?? 180) || 180));
-  db()
-    .prepare("INSERT INTO game_sessions (game_id, starts_at, duration_minutes) VALUES (?, ?, ?)")
-    .run(game.id, start.value.toISOString(), duration);
+  const starts = weeklyStarts(start.value, parseRepeat(form.get("repeat")));
+  tx((c) => {
+    const ins = c.prepare("INSERT INTO game_sessions (game_id, starts_at, duration_minutes) VALUES (?, ?, ?)");
+    for (const d of starts) ins.run(game.id, d.toISOString(), duration);
+  });
   revalidatePath("/", "layout");
-  return { ok: true };
+  return { ok: true, values: { added: String(starts.length) } };
 }
 
 /** GM cancels a session: every reserved seat is released. Any refund is between GM and player. */
@@ -261,6 +267,7 @@ export async function cancelSessionAction(form: FormData) {
     const booked = c.prepare("SELECT player_id FROM bookings WHERE session_id = ? AND status = 'confirmed'").all(sessionId) as { player_id: number }[];
     for (const b of booked) notify({ userId: b.player_id, kind: "session_cancelled", actorId: s.gm_id, sessionId }, c);
     c.prepare("UPDATE game_sessions SET status = 'cancelled' WHERE id = ?").run(sessionId);
+    c.prepare("UPDATE waitlist SET status = 'expired' WHERE session_id = ? AND status IN ('waiting','offered')").run(sessionId);
     c.prepare(
       "UPDATE bookings SET status = 'cancelled', cancelled_by = 'gm', cancelled_at = ? WHERE session_id = ? AND status = 'confirmed'",
     ).run(new Date().toISOString(), sessionId);
@@ -291,18 +298,20 @@ async function reserveSeatActionImpl(_: FormState, form: FormData): Promise<Form
     // Re-check inside the write transaction so two players can't take the last seat.
     const s = getSessionWithGame(sessionId);
     if (!s) return "err.notFound";
+    processWaitlist(c, sessionId);
     const already = c
       .prepare("SELECT 1 FROM bookings WHERE session_id = ? AND player_id = ? AND status = 'confirmed'")
       .get(sessionId, user.id);
     const verdict = canBook({
       sessionStatus: s.status, gameStatus: s.game_status, startsAt: new Date(s.starts_at), now: new Date(),
-      seatsTotal: s.seats_total, seatsTaken: s.seats_taken, isGm: s.gm_id === user.id, alreadyBooked: !!already,
+      seatsTotal: s.seats_total, seatsTaken: s.seats_taken + heldSeats(c, sessionId, user.id), isGm: s.gm_id === user.id, alreadyBooked: !!already,
     });
     if (!verdict.ok) return verdict.reason;
     c.prepare("INSERT INTO bookings (session_id, player_id, status, price_idr) VALUES (?, ?, 'confirmed', ?)").run(
       sessionId, user.id, s.price_idr,
     );
     notify({ userId: s.gm_id, kind: "booking_new", actorId: user.id, sessionId }, c);
+    c.prepare("UPDATE waitlist SET status = 'claimed' WHERE session_id = ? AND player_id = ? AND status IN ('waiting','offered')").run(sessionId, user.id);
     return null;
   });
   if (bookingError) return { error: bookingError };
@@ -326,6 +335,7 @@ export async function cancelBookingAction(form: FormData) {
     .prepare("UPDATE bookings SET status = 'cancelled', cancelled_by = 'player', cancelled_at = ? WHERE id = ?")
     .run(new Date().toISOString(), b.id);
   notify({ userId: b.gm_id, kind: "booking_cancelled", actorId: user.id, sessionId: b.session_id });
+  tx((c) => processWaitlist(c, b.session_id));
   revalidatePath("/", "layout");
 }
 
@@ -549,6 +559,35 @@ async function deleteAccountActionImpl(_: FormState, form: FormData): Promise<Fo
   (await cookies()).delete(SESSION_COOKIE);
   revalidatePath("/", "layout");
   redirect("/?deleted=1");
+}
+
+// ─── Waitlist & payments ─────────────────────────────────────────────────
+
+export async function joinWaitlistAction(form: FormData) {
+  const sessionId = Number(form.get("sessionId"));
+  const user = await requireUser(`/games/${String(form.get("slug") ?? "")}`);
+  joinWaitlist(sessionId, user.id); // "notFull" etc. just re-render the page with the right button
+  revalidatePath("/", "layout");
+}
+
+export async function leaveWaitlistAction(form: FormData) {
+  const user = await requireUser();
+  leaveWaitlist(Number(form.get("sessionId")), user.id);
+  revalidatePath("/", "layout");
+}
+
+/** GM ticks (or unticks) "paid ✓" for a seat. Payment itself happens off-platform. */
+export async function markPaidAction(form: FormData) {
+  const user = await requireGm();
+  const bookingId = Number(form.get("bookingId"));
+  const b = db()
+    .prepare("SELECT b.id, b.player_id, b.session_id, b.status, g.gm_id, g.price_idr FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id WHERE b.id = ?")
+    .get(bookingId) as { id: number; player_id: number; session_id: number; status: string; gm_id: number; price_idr: number } | undefined;
+  if (!b || (b.gm_id !== user.id && user.role !== "admin") || b.status !== "confirmed") throw new Error("Not found");
+  const paid = form.get("paid") === "1";
+  db().prepare("UPDATE bookings SET paid_marked_at = ? WHERE id = ?").run(paid ? new Date().toISOString() : null, b.id);
+  if (paid) notify({ userId: b.player_id, kind: "payment_confirmed", actorId: user.id, sessionId: b.session_id });
+  revalidatePath("/", "layout");
 }
 
 // ─── Reports & moderation ────────────────────────────────────────────────

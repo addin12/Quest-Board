@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildIcs, googleCalendarUrl, icsDate, icsEscape, icsFold, sessionEvent } from "../../src/lib/calendar.ts";
 import { makeT } from "../../src/lib/i18n/dict.ts";
+import { parseRepeat, weeklyStarts, MAX_REPEAT_WEEKS } from "../../src/lib/validation.ts";
 
 const t = makeT("en");
 const session = {
@@ -51,4 +52,14 @@ test("googleCalendarUrl carries title, dates and location", () => {
   assert.equal(u.searchParams.get("dates"), "20260928T120000Z/20260928T150000Z");
   assert.equal(u.searchParams.get("location"), "Discord + Foundry VTT");
   assert.match(u.searchParams.get("details") ?? "", /https:\/\/questboard\.id\/games\/mercusuar/);
+});
+
+test("weekly series: parseRepeat clamps, weeklyStarts steps 7 days", () => {
+  assert.equal(parseRepeat("4"), 4);
+  assert.equal(parseRepeat("0"), 1);
+  assert.equal(parseRepeat("99"), MAX_REPEAT_WEEKS);
+  assert.equal(parseRepeat("abc"), 1);
+  const first = new Date("2026-10-03T12:00:00.000Z");
+  const s = weeklyStarts(first, 3).map((d) => d.toISOString());
+  assert.deepEqual(s, ["2026-10-03T12:00:00.000Z", "2026-10-10T12:00:00.000Z", "2026-10-17T12:00:00.000Z"]);
 });

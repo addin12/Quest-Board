@@ -27,7 +27,7 @@ export async function newPage(browser: Browser) {
 }
 
 /** Sign up a GM, fill the GM profile, create a free online game with one session in 5 days. Returns its slug. */
-export async function createGmWithGame(page: Page, name: string, email: string, title: string): Promise<string> {
+export async function createGmWithGame(page: Page, name: string, email: string, title: string, opts: { seats?: number; price?: string } = {}): Promise<string> {
   await signup(page, name, email, true);
   await page.getByRole("link", { name: /Edit profile & payment details/ }).click();
   await page.getByLabel("Headline").fill("Short one-shots");
@@ -42,7 +42,8 @@ export async function createGmWithGame(page: Page, name: string, email: string, 
   await page.getByLabel("One-line summary").fill("A short mystery for a quiet evening.");
   await page.getByLabel("Full description").fill("Short investigation one-shot. Characters provided, beginners welcome, three hours.");
   await page.getByLabel("Platform(s)").fill("Discord");
-  await page.getByLabel("Price per seat, per session").fill("0");
+  await page.getByLabel("Price per seat, per session").fill(opts.price ?? "0");
+  if (opts.seats) await page.getByLabel("Seats per session").fill(String(opts.seats));
   await page.getByRole("button", { name: "Create game" }).click();
   await page.waitForURL(/\/gm\/games\/\d+$/);
   const future = new Date(Date.now() + 5 * 86_400_000);

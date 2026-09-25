@@ -90,10 +90,19 @@ export function AddSessionForm({ gameId }: { gameId: number }) {
           ))}
         </select>
       </div>
+      <div>
+        <label htmlFor="repeat" className="label">{t("manage.repeat")}</label>
+        <select id="repeat" name="repeat" defaultValue="1" className="input">
+          <option value="1">{t("manage.repeatOnce")}</option>
+          {[2, 3, 4, 6, 8, 10, 12].map((n) => (
+            <option key={n} value={n}>{t("manage.repeatWeeks", { n })}</option>
+          ))}
+        </select>
+      </div>
       <SubmitButton pendingText={t("manage.adding")}><Icon name="calendar-plus" /> {t("manage.addSession")}</SubmitButton>
       <div className="w-full">
         <FieldError id="startsAt" msg={startsErr && t(startsErr)} />
-        {state?.ok && <p className="text-xs text-success">{t("manage.sessionAdded")}</p>}
+        {state?.ok && <p className="text-xs text-success" role="status">{Number(state.values?.added ?? 1) > 1 ? t("manage.sessionsAdded", { n: Number(state.values?.added) }) : t("manage.sessionAdded")}</p>}
       </div>
     </form>
   );

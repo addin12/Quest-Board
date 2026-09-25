@@ -12,7 +12,8 @@
 // v8: notifications (in-app).
 // v9: users.email_verified_at / deleted_at + auth_tokens (reset, verify) + email_outbox.
 // v10: reports + users.suspended_at + notifications.report_id (moderation).
-export const SCHEMA_VERSION = 10;
+// v11: waitlist + bookings.paid_marked_at (GM "paid ✓").
+export const SCHEMA_VERSION = 11;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -96,7 +97,8 @@ CREATE TABLE IF NOT EXISTS bookings (
   price_idr    INTEGER NOT NULL,              -- price shown when the seat was reserved
   cancelled_by TEXT CHECK (cancelled_by IN ('player','gm')),
   created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  cancelled_at TEXT
+  cancelled_at TEXT,
+  paid_marked_at TEXT                         -- v11: the GM ticked "paid ✓" (payment happens off-platform)
 );
 CREATE INDEX IF NOT EXISTS idx_bookings_session ON bookings(session_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_player ON bookings(player_id);
@@ -221,4 +223,16 @@ CREATE TABLE IF NOT EXISTS reports (
 );
 CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_type, target_id);
+
+CREATE TABLE IF NOT EXISTS waitlist (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id  INTEGER NOT NULL REFERENCES game_sessions(id) ON DELETE CASCADE,
+  player_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status      TEXT NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting','offered','claimed','expired','left')),
+  offered_at  TEXT,
+  expires_at  TEXT,                        -- an offer holds the seat until then
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  UNIQUE (session_id, player_id)
+);
+CREATE INDEX IF NOT EXISTS idx_waitlist_session ON waitlist(session_id, status, created_at);
 `;

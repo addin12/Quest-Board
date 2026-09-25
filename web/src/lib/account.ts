@@ -2,6 +2,7 @@ import "server-only";
 import type { DatabaseSync } from "node:sqlite";
 import { db, tx } from "./db";
 import { notify } from "./notifications";
+import { dropFromWaitlists, processWaitlist } from "./waitlist";
 
 /** Name shown for deleted accounts wherever their old reviews and messages appear. */
 export const DELETED_NAME = "Anonymous";
@@ -25,6 +26,7 @@ export function archiveGame(c: DatabaseSync, gameId: number, actorId: number): n
         SELECT id FROM game_sessions WHERE game_id = ? AND status = 'scheduled' AND starts_at > ?)`,
   ).run(now, gameId, now);
   c.prepare("UPDATE game_sessions SET status = 'cancelled' WHERE game_id = ? AND status = 'scheduled' AND starts_at > ?").run(gameId, now);
+  c.prepare("UPDATE waitlist SET status = 'expired' WHERE status IN ('waiting','offered') AND session_id IN (SELECT id FROM game_sessions WHERE game_id = ?)").run(gameId);
   c.prepare("UPDATE games SET status = 'archived' WHERE id = ?").run(gameId);
   return seats.length;
 }
@@ -52,6 +54,8 @@ export function deleteAccount(userId: number): void {
         WHERE player_id = ? AND status = 'confirmed' AND session_id IN (SELECT id FROM game_sessions WHERE status = 'scheduled' AND starts_at > ?)`,
     ).run(now, userId, now);
 
+    for (const b of future) processWaitlist(c, b.session_id); // their released seats go to the waitlist
+    dropFromWaitlists(c, userId);
     const games = c.prepare("SELECT id FROM games WHERE gm_id = ? AND status <> 'archived'").all(userId) as { id: number }[];
     for (const g of games) archiveGame(c, g.id, userId);
 

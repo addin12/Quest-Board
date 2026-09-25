@@ -8,11 +8,8 @@ When you finish an item, move it to **Done** with the date and a test reference.
 All P1 items are done (2026-09-25). See **Done** below. New P1s go here.
 
 ## P2: Product & UX
-- **P2-3 · GM "paid ✓" marker (S):** a per-seat toggle on the roster, GM-only. Add a `bookings.paid_marked_at` column.
 - **P2-5 · Browse pagination (S):** `searchGames` is capped at 60 (`queries.ts:63`). Add `?page=` with a "Load more" link.
-- **P2-6 · Waitlist (M):** when a session is full, let players join a waitlist. When a seat frees up, auto-offer it to the first person, who gets 12 h to confirm.
 - **P2-7 · Location search (S):** include `gm_profiles.location` in the keyword search, and add a city filter for in-person games.
-- **P2-9 · Recurring sessions (M):** "repeat weekly × N" when scheduling campaign sessions.
 - **P2-12 · Notifications (L):** in-app notifications are done (v0.9.1). Still to do: email and WhatsApp delivery, plus reminders 24 h and 1 h before a session, in the user's language. Needs a provider and a `users.locale` column.
 
 ## P2: Platform & quality
@@ -47,6 +44,9 @@ Every item below was done on 2026-09-25 (v0.5). `e2e:hardening` means `web/tests
 | P1-10 | Expired sessions purged on login; session rotated when a player becomes a GM; "Log out on all devices" button on the dashboard | `auth.ts`, `logoutEverywhereAction` | e2e:hardening "log out on all devices" |
 | P1-11 | Security headers: CSP (no-nonce variant from the Next guide), `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, no `X-Powered-By`. HSTS + upgrade-insecure-requests when `QUESTBOARD_ENFORCE_HTTPS=true` | `next.config.ts` | e2e:hardening "security headers" |
 | P1-12 | Anti-scam note under the GM's payment details | game page, `game.scamWarning` | e2e:hardening "anti-scam" |
+| P2-6 · Waitlist | Join when full; a freed seat is offered to #1 and **held** (counts as taken for everyone else) for 12 h or until the start; expired or declined offers pass on; processed lazily on view/book/cancel/edit (no cron); GM sees "N waiting"; deleted/suspended accounts drop out | `lib/waitlist.ts`, `waitlist-controls.tsx`, game/book/dashboard pages, schema v11 | unit: migration 11; e2e: waitlist ×2 (incl. expiry) |
+| P2-9 · Recurring sessions | "Repeat: weekly, N sessions" (2–12) on the add-session form; same UTC time each week (Indonesia has no DST) | `weeklyStarts`/`parseRepeat`, `addSessionAction` | unit + e2e |
+| P2-3 · Paid ✓ | Per-seat toggle on the GM roster for paid games (`aria-pressed`), "N/M paid" count, player sees "The GM confirmed your payment" + notification | `markPaidAction`, `bookings.paid_marked_at` | e2e |
 | P2-11 · Report & admin console | Report games, reviews, table/private chat messages and members (payment-detail scams included) with a snapshot of the evidence; admins get a notification and a queue (`/admin/reports`). Decisions: remove (reviews/messages deleted so ratings stay honest, games archived), suspend owner, or dismiss; all open reports on the same target close and reporters are notified. GM verification (`/admin/gms`) and member suspension (`/admin/users`). Suspended: no login, sessions ended, GM profile/directory hidden, offers withdrawn, games archived (players notified). Admin console 404s for non-admins | `lib/reports.ts` (pure), `lib/moderation.ts`, `report-button.tsx`, `app/admin/**`, schema v10 | unit: reports ×3; e2e: moderation ×5 + admin axe |
 | P2-1 · Legal pages | `/terms` (10 sections) and `/privacy` (11 sections, UU PDP 27/2022) in EN/ID; linked at sign-up and in the footer; "draft" notice until `QUESTBOARD_LEGAL_FINAL=true`; contact from `QUESTBOARD_CONTACT_EMAIL` | `app/terms`, `app/privacy`, `legal.*` keys | e2e: legal pages; axe sweep |
 | P2-2 · Account basics | Password reset (hashed single-use 1 h tokens, same answer for unknown emails, other sessions revoked); email verification (7-day link, resend, required for GM requests/offers; demo and pre-v9 accounts grandfathered); **Download my data** (`/api/me/export`); **Delete account** (password + confirmation; seats released, games archived, everyone notified, data scrubbed, reviews/chats kept as "Anonymous"); email outbox + optional Resend delivery. Archiving a game now also notifies booked players | `lib/tokens.ts`, `lib/mailer.ts`, `lib/account.ts`, account pages, schema v9 | unit: accounts ×3; e2e: accounts ×6 |

@@ -138,6 +138,18 @@ export function parseSessionStart(dateTimeLocal: unknown, tzOffsetMinutes: unkno
   return { ok: true, value: d };
 }
 
+/** How many weekly sessions to create (1 = just this one). */
+export const MAX_REPEAT_WEEKS = 12;
+export function parseRepeat(raw: unknown): number {
+  const n = Math.floor(Number(raw));
+  return Number.isFinite(n) ? Math.max(1, Math.min(MAX_REPEAT_WEEKS, n)) : 1;
+}
+
+/** The start times of a weekly series: the first, then +7 days each (same UTC time). */
+export function weeklyStarts(first: Date, count: number): Date[] {
+  return Array.from({ length: count }, (_, i) => new Date(first.getTime() + i * 7 * 86_400_000));
+}
+
 export function parseReview(raw: Record<string, unknown>): Parsed<{ rating: number; body: string }> {
   const rating = Number(str(raw.rating));
   const body = str(raw.body);

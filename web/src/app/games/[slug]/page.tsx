@@ -25,6 +25,8 @@ import { CalendarLinks } from "@/components/calendar-links";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { googleCalendarUrl, sessionEvent } from "@/lib/calendar";
 import { siteOrigin } from "@/lib/site";
+import { myWaitlist, refreshWaitlists } from "@/lib/waitlist";
+import { WaitlistControls, WaitlistOffer } from "@/components/waitlist-controls";
 
 export async function generateMetadata(props: PageProps<"/games/[slug]">): Promise<Metadata> {
   const { slug } = await props.params;
@@ -45,7 +47,10 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
   const isOwner = !!user && (user.id === game?.gm_id || user.role === "admin");
   if (!game || (game.status !== "published" && !isOwner)) notFound();
 
+  // Bring waitlists up to date (expired offers pass to the next person) before showing seats.
+  refreshWaitlists(listSessions(game.id, { upcomingOnly: true }).map((s) => s.id));
   const sessions = listSessions(game.id, { upcomingOnly: true });
+  const waits = user ? myWaitlist(user.id, game.id) : [];
   const reviews = listGameReviews(game.id);
   const booked = user ? playerBookedSessionIds(game.id, user.id) : [];
   const member = user ? isGameMember(game.id, user.id) : false;
@@ -184,15 +189,20 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
               ) : (
                 <ul className="mt-2 divide-y divide-border">
                   {sessions.map((s) => {
-                    const left = game.seats_total - s.seats_taken;
                     const mine = booked.includes(s.id);
+                    const wait = waits.find((w) => w.session_id === s.id);
+                    const offered = wait?.status === "offered";
+                    // Seats held by someone else's waitlist offer count as taken.
+                    const heldForOthers = s.seats_held - (offered ? 1 : 0);
+                    const left = game.seats_total - s.seats_taken - s.seats_held;
                     const verdict = canBook({
                       sessionStatus: s.status, gameStatus: game.status, startsAt: new Date(s.starts_at), now,
-                      seatsTotal: game.seats_total, seatsTaken: s.seats_taken, isGm: user?.id === game.gm_id, alreadyBooked: mine,
+                      seatsTotal: game.seats_total, seatsTaken: s.seats_taken + heldForOthers, isGm: user?.id === game.gm_id, alreadyBooked: mine,
                     });
+                    const full = !verdict.ok && verdict.reason === "err.full";
                     return (
-                      <li key={s.id} className="flex items-center justify-between gap-3 py-3">
-                        <div className="text-sm">
+                      <li key={s.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-3">
+                        <div className="min-w-44 text-sm">
                           <p className="flex items-center gap-1.5 font-medium"><Icon name="calendar-clock" className="text-muted" /><LocalTime iso={s.starts_at} /></p>
                           <p className="text-xs text-muted">
                             {t("common.hours", { n: s.duration_minutes / 60 })} ·{" "}
@@ -211,8 +221,12 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                         </div>
                         {mine ? (
                           <span className="chip gap-1 border-success/30! bg-success-soft! text-success!"><Icon name="check-circle" solid />{t("game.booked")}</span>
+                        ) : verdict.ok && offered ? (
+                          <WaitlistOffer sessionId={s.id} expiresAt={wait?.expires_at ?? null} t={t} />
                         ) : verdict.ok ? (
                           <Link href={`/book/${s.id}`} className="btn-primary gap-1.5! px-3! py-1.5!"><Icon name="ticket" /> {t("game.book")}</Link>
+                        ) : full ? (
+                          <WaitlistControls sessionId={s.id} slug={game.slug} wait={wait} signedIn={!!user} t={t} />
                         ) : (
                           <span className="text-xs text-muted" title={t(verdict.reason)}>
                             {user?.id === game.gm_id ? t("game.yourTable") : left <= 0 ? t("common.full") : t("game.unavailable")}

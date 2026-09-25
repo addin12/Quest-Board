@@ -15,7 +15,9 @@ export type NotificationKind =
   | "booking_cancelled"  // → GM: a player cancelled their seat
   | "session_cancelled"  // → player: the GM cancelled a session they had booked
   | "report_new"         // → admins: a member reported something
-  | "report_resolved";   // → reporter: a moderator reviewed their report
+  | "report_resolved"    // → reporter: a moderator reviewed their report
+  | "waitlist_offer"     // → player: a seat opened up and is held for them
+  | "payment_confirmed"; // → player: the GM marked their seat as paid
 
 /** Kinds that update one unread row instead of piling up (chatty events). */
 const COLLAPSE: ReadonlySet<NotificationKind> = new Set(["request_message"]);
