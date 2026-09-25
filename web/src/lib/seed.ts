@@ -226,6 +226,7 @@ export function seedDatabase(conn: DatabaseSync) {
       );
     });
 
+    conn.exec("UPDATE users SET email_verified_at = created_at"); // demo accounts are verified
     conn.exec("COMMIT");
   } catch (err) {
     conn.exec("ROLLBACK");

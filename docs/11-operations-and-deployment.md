@@ -24,6 +24,10 @@ Requires **Node ≥ 22.13** (developed on 24). No database server or native buil
 | `QUESTBOARD_RATE_LIMIT` | on | Set `off` to disable rate limits (local debugging only) |
 | `QUESTBOARD_ALLOW_RESET` | `false` | Lets `next start` back up and reset a DB that has no migration path. **Never set this in real production** |
 | `QUESTBOARD_ENFORCE_HTTPS` | `false` | Behind TLS: adds HSTS and `upgrade-insecure-requests` |
+| `RESEND_API_KEY` + `QUESTBOARD_MAIL_FROM` | unset | Deliver emails through Resend (e.g. `Quest Board <no-reply@questboard.id>`). Unset: emails are only queued in `email_outbox` |
+| `QUESTBOARD_DEV_OUTBOX` | `false` | Shows `/dev/outbox` in a production build (**e2e only**: it reveals reset links). Always off when `QUESTBOARD_ENFORCE_HTTPS=true` |
+| `QUESTBOARD_CONTACT_EMAIL` | unset | Contact address shown on the Terms and Privacy pages |
+| `QUESTBOARD_LEGAL_FINAL` | `false` | Set `true` once a lawyer has approved the legal texts (hides the "draft" notice) |
 | `QUESTBOARD_BASE_URL` | request host | Public origin (e.g. `https://questboard.id`) for share links, `.ics` files and Open Graph tags. **Set it in production**, or links follow the Host header (a warning is logged once) |
 
 There are **no payment or API keys** to configure.

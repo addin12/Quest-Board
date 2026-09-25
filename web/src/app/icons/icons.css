@@ -2,6 +2,12 @@
 @layer base{.fi{display:inline-flex;align-items:center;justify-content:center;line-height:1;vertical-align:-0.125em}}
 @font-face{font-family:qb-uicons-rr;src:url(./qb-uicons-rr.woff2) format("woff2");font-display:block}
 [class^="fi-rr-"]:before,[class*=" fi-rr-"]:before{font-family:qb-uicons-rr!important;font-style:normal;font-weight:normal!important;font-variant:normal;text-transform:none;line-height:1;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.fi-rr-trash:before{content:"\fe17"}
+.fi-rr-envelope:before{content:"\f5de"}
+.fi-rr-envelope-open:before{content:"\f5dc"}
+.fi-rr-file-download:before{content:"\f65d"}
+.fi-rr-scale:before{content:"\fb97"}
+.fi-rr-user-lock:before{content:"\fe89"}
 .fi-rr-share:before{content:"\fbd5"}
 .fi-rr-link-alt:before{content:"\f8b5"}
 .fi-rr-download:before{content:"\f591"}

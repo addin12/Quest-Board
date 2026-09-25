@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db, tx } from "@/lib/db";
-import { createSession, destroyAllSessions, destroySession, getCurrentUser, purgeExpiredSessions, requireGm, requireUser, rotateSession } from "@/lib/auth";
+import { SESSION_COOKIE, createSession, destroyAllSessions, destroySession, getCurrentUser, purgeExpiredSessions, requireGm, requireUser, rotateSession } from "@/lib/auth";
 import { clientIp, hit, purgeOldWindows } from "@/lib/rate-limit";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { canBook, canCancel, normalizeLocation, slugify } from "@/lib/policy";
@@ -14,6 +14,11 @@ import { normalizeCategories } from "@/lib/categories";
 import { canReview, getGameById, getGmRequest, getGmSettings, getSessionWithGame, isGameMember, maxSeatsTakenUpcoming } from "@/lib/queries";
 import { LANG_COOKIE, type MsgKey } from "@/lib/i18n/dict";
 import { markAllRead, notify } from "@/lib/notifications";
+import { sendEmail } from "@/lib/mailer";
+import { consumeToken, issueToken, peekToken } from "@/lib/tokens";
+import { archiveGame, deleteAccount } from "@/lib/account";
+import { getI18n } from "@/lib/i18n/server";
+import { siteOrigin } from "@/lib/site";
 
 /**
  * Errors are translation keys; client forms render them with t().
@@ -88,6 +93,7 @@ async function signupActionImpl(_: FormState, form: FormData): Promise<FormState
     throw err;
   }
   await createSession(userId);
+  await sendVerificationEmail(userId, email, name);
   redirect(role === "gm" ? "/gm" : safeNext(form.get("next")));
 }
 
@@ -95,7 +101,7 @@ async function loginActionImpl(_: FormState, form: FormData): Promise<FormState>
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const password = String(form.get("password") ?? "");
   if (!hit("login", `${await clientIp()}:${email}`)) return { error: "err.rateLimited" };
-  const user = db().prepare("SELECT id, password_hash FROM users WHERE email = ?").get(email) as
+  const user = db().prepare("SELECT id, password_hash FROM users WHERE email = ? AND deleted_at IS NULL").get(email) as
     | { id: number; password_hash: string }
     | undefined;
   // Same message for unknown email and wrong password to avoid account enumeration.
@@ -218,16 +224,7 @@ export async function archiveGameAction(form: FormData) {
   if (!game || (game.gm_id !== gm.id && gm.role !== "admin")) throw new Error("Not found");
   // Archiving hides the game page from players, so release every future seat
   // instead of leaving players holding seats they can no longer see.
-  const now = new Date().toISOString();
-  tx((c) => {
-    c.prepare(
-      `UPDATE bookings SET status = 'cancelled', cancelled_by = 'gm', cancelled_at = ?
-        WHERE status = 'confirmed' AND session_id IN (
-          SELECT id FROM game_sessions WHERE game_id = ? AND status = 'scheduled' AND starts_at > ?)`,
-    ).run(now, game.id, now);
-    c.prepare("UPDATE game_sessions SET status = 'cancelled' WHERE game_id = ? AND status = 'scheduled' AND starts_at > ?").run(game.id, now);
-    c.prepare("UPDATE games SET status = 'archived' WHERE id = ?").run(game.id);
-  });
+  tx((c) => archiveGame(c, game.id, gm.id));
   revalidatePath("/", "layout");
   redirect("/gm");
 }
@@ -401,12 +398,13 @@ async function changePasswordActionImpl(_: FormState, form: FormData): Promise<F
 
 async function createGmRequestActionImpl(_: FormState, form: FormData): Promise<FormState> {
   const user = await requireUser("/hire-a-gm/request");
+  if (!user.email_verified) return { error: "err.verifyEmail" };
   const parsed = parseGmRequest(fd(form));
   if (!parsed.ok) return { fieldErrors: parsed.errors, error: "err.fixFields" };
   // Optional direct request to one GM (from their profile or the directory).
   const gmIdRaw = Number(form.get("gmId") ?? 0) || null;
   if (gmIdRaw) {
-    const gm = db().prepare("SELECT 1 FROM users u JOIN gm_profiles p ON p.user_id = u.id WHERE u.id = ? AND u.role IN ('gm','admin')").get(gmIdRaw);
+    const gm = db().prepare("SELECT 1 FROM users u JOIN gm_profiles p ON p.user_id = u.id WHERE u.id = ? AND u.role IN ('gm','admin') AND u.deleted_at IS NULL").get(gmIdRaw);
     if (!gm || gmIdRaw === user.id) return { error: "err.notFound" };
   }
   if (!hit("request", String(user.id))) return { error: "err.rateLimited" };
@@ -433,6 +431,7 @@ async function sendOfferActionImpl(_: FormState, form: FormData): Promise<FormSt
     return { error: "err.requestClosed" };
   }
   if (!getGmSettings(gm.id)?.headline) return { error: "err.gmProfileIncomplete" };
+  if (!gm.email_verified) return { error: "err.verifyEmail" };
   const parsed = parseOffer(fd(form));
   if (!parsed.ok) return { fieldErrors: parsed.errors };
   if (!hit("offer", String(gm.id))) return { error: "err.rateLimited" };
@@ -488,6 +487,65 @@ export async function closeRequestAction(form: FormData) {
   // Only open requests can be closed: a matched request keeps its thread and payment details.
   db().prepare("UPDATE gm_requests SET status = 'closed' WHERE id = ? AND status = 'open'").run(request.id);
   revalidatePath("/", "layout");
+}
+
+// ─── Email verification, password reset, account deletion ───────────────
+
+async function sendVerificationEmail(userId: number, email: string, name: string) {
+  const { t } = await getI18n();
+  const link = `${await siteOrigin()}/verify-email?token=${issueToken(userId, "verify")}`;
+  await sendEmail({ to: email, subject: t("mail.verifySubject"), text: t("mail.verifyBody", { name, link }) });
+}
+
+/** Settings / banner: send the verification link again. */
+export async function resendVerificationAction(): Promise<FormState> {
+  const user = await requireUser("/settings");
+  if (user.email_verified) return { ok: true };
+  if (!hit("verify", String(user.id))) return { error: "err.rateLimited" };
+  await sendVerificationEmail(user.id, user.email, user.name);
+  return { ok: true };
+}
+
+/** "Forgot password": always answers the same way, whether or not the email has an account. */
+async function requestPasswordResetActionImpl(_: FormState, form: FormData): Promise<FormState> {
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { fieldErrors: { email: "v.email" } };
+  if (!hit("reset", `${await clientIp()}:${email}`)) return { error: "err.rateLimited" };
+  const user = db().prepare("SELECT id, name FROM users WHERE email = ? AND deleted_at IS NULL").get(email) as { id: number; name: string } | undefined;
+  if (user) {
+    const { t } = await getI18n();
+    const link = `${await siteOrigin()}/reset-password?token=${issueToken(user.id, "reset")}`;
+    await sendEmail({ to: email, subject: t("mail.resetSubject"), text: t("mail.resetBody", { name: user.name, link }) });
+  }
+  return { ok: true };
+}
+
+async function resetPasswordActionImpl(_: FormState, form: FormData): Promise<FormState> {
+  const token = String(form.get("token") ?? "");
+  const next = String(form.get("newPassword") ?? "");
+  if (next.length < 8) return { fieldErrors: { newPassword: "v.password" } };
+  if (!peekToken(token, "reset")) return { error: "err.tokenInvalid" };
+  const userId = consumeToken(token, "reset");
+  if (!userId) return { error: "err.tokenInvalid" };
+  db().prepare("UPDATE users SET password_hash = ?, email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?").run(hashPassword(next), new Date().toISOString(), userId);
+  await destroyAllSessions(userId); // anyone holding an old session is signed out
+  await createSession(userId);
+  redirect("/dashboard?reset=1");
+}
+
+/** Delete my account: needs the current password and an explicit confirmation. */
+async function deleteAccountActionImpl(_: FormState, form: FormData): Promise<FormState> {
+  const user = await requireUser("/settings");
+  if (!hit("deleteAccount", String(user.id))) return { error: "err.rateLimited" };
+  const row = db().prepare("SELECT password_hash FROM users WHERE id = ?").get(user.id) as { password_hash: string };
+  const fieldErrors: FieldErrors = {};
+  if (!verifyPassword(String(form.get("password") ?? ""), row.password_hash)) fieldErrors.deletePassword = "v.currentPassword";
+  if (form.get("confirm") !== "on") fieldErrors.confirm = "v.deleteConfirm";
+  if (Object.keys(fieldErrors).length) return { fieldErrors };
+  deleteAccount(user.id);
+  (await cookies()).delete(SESSION_COOKIE);
+  revalidatePath("/", "layout");
+  redirect("/?deleted=1");
 }
 
 // ─── Notifications ───────────────────────────────────────────────────────
@@ -546,6 +604,18 @@ export async function createGmRequestAction(prev: FormState, form: FormData): Pr
 
 export async function sendOfferAction(prev: FormState, form: FormData): Promise<FormState> {
   return withEcho(form, () => sendOfferActionImpl(prev, form));
+}
+
+export async function requestPasswordResetAction(prev: FormState, form: FormData): Promise<FormState> {
+  return withEcho(form, () => requestPasswordResetActionImpl(prev, form));
+}
+
+export async function resetPasswordAction(prev: FormState, form: FormData): Promise<FormState> {
+  return withEcho(form, () => resetPasswordActionImpl(prev, form));
+}
+
+export async function deleteAccountAction(prev: FormState, form: FormData): Promise<FormState> {
+  return withEcho(form, () => deleteAccountActionImpl(prev, form));
 }
 
 export async function postRequestMessageAction(prev: FormState, form: FormData): Promise<FormState> {

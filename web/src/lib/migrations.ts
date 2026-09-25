@@ -107,6 +107,32 @@ export const MIGRATIONS: Record<number, string> = {
     );
     CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read_at, created_at);
   `,
+  // v0.11 iteration 3: email verification, password reset, account deletion.
+  9: `
+    ALTER TABLE users ADD COLUMN email_verified_at TEXT;
+    ALTER TABLE users ADD COLUMN deleted_at TEXT;
+    -- Accounts that existed before verification was introduced are grandfathered in.
+    UPDATE users SET email_verified_at = created_at WHERE email_verified_at IS NULL;
+    CREATE TABLE IF NOT EXISTS auth_tokens (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind        TEXT NOT NULL CHECK (kind IN ('reset','verify')),
+      token_hash  TEXT NOT NULL UNIQUE,     -- SHA-256 of the emailed token; the token itself is never stored
+      expires_at  TEXT NOT NULL,
+      used_at     TEXT,
+      created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_auth_tokens_user ON auth_tokens(user_id, kind);
+    CREATE TABLE IF NOT EXISTS email_outbox (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      to_address  TEXT NOT NULL,
+      subject     TEXT NOT NULL,
+      body_text   TEXT NOT NULL,
+      created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+      sent_at     TEXT,
+      error       TEXT
+    );
+  `,
 };
 
 export type UpgradePlan =

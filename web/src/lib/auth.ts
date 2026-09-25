@@ -15,6 +15,7 @@ export type CurrentUser = {
   role: "player" | "gm" | "admin";
   avatar_hue: number;
   avatar_image: string;
+  email_verified: boolean;
 };
 
 export async function createSession(userId: number) {
@@ -61,13 +62,16 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   if (!token) return null;
   const row = db()
     .prepare(
-      `SELECT u.id, u.email, u.name, u.role, u.avatar_hue, u.avatar_image, s.expires_at
+      `SELECT u.id, u.email, u.name, u.role, u.avatar_hue, u.avatar_image, u.email_verified_at, s.expires_at
          FROM auth_sessions s JOIN users u ON u.id = s.user_id
-        WHERE s.token_hash = ?`,
+        WHERE s.token_hash = ? AND u.deleted_at IS NULL`,
     )
-    .get(hashToken(token)) as (CurrentUser & { expires_at: string }) | undefined;
+    .get(hashToken(token)) as (Omit<CurrentUser, "email_verified"> & { email_verified_at: string | null; expires_at: string }) | undefined;
   if (!row || new Date(row.expires_at) < new Date()) return null;
-  return { id: row.id, email: row.email, name: row.name, role: row.role, avatar_hue: row.avatar_hue, avatar_image: row.avatar_image };
+  return {
+    id: row.id, email: row.email, name: row.name, role: row.role, avatar_hue: row.avatar_hue, avatar_image: row.avatar_image,
+    email_verified: !!row.email_verified_at,
+  };
 });
 
 export async function requireUser(next?: string): Promise<CurrentUser> {

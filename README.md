@@ -15,6 +15,11 @@ Each iteration ships with its own quality check (review, typecheck, lint, unit +
   - Tavern-style link previews (Open Graph images).
   - **Add to calendar** (Google Calendar or `.ics` with a 1-hour reminder) for booked sessions.
   - Table and request chats **refresh live** every 20 s.
+- **Iteration 3: accounts & legal.**
+  - Forgot/reset password (1-hour single-use link) and email verification. A verified email is required to post GM requests and offers.
+  - **Download my data** (JSON) and **Delete account**, which releases seats, archives the GM's games, notifies everyone affected, and anonymises reviews and chats.
+  - **Terms of Service** and **Privacy Policy** (UU PDP), marked as a draft until a lawyer reviews them.
+  - Emails go to an outbox (`/dev/outbox` in development) and are delivered through Resend when `RESEND_API_KEY` is set.
 
 ## What changed in v0.10 (tavern look + notification popover)
 - **Medieval tavern design:** parchment and ink by day, a candlelit dark-oak room at night.

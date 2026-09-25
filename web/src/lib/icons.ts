@@ -5,6 +5,7 @@
 
 /** Regular-rounded style (`fi-rr-*`). */
 export const REGULAR_ICONS = [
+  "trash", "envelope", "envelope-open", "file-download", "scale", "user-lock",
   "share", "link-alt", "download",
   "bell",
   "search", "dice-d20", "hat-wizard", "calendar-clock", "calendar", "calendar-plus", "users", "user", "user-add",

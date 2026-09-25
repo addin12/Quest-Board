@@ -251,7 +251,7 @@ export function getGmProfile(userId: number) {
               (SELECT COUNT(*) FROM reviews r JOIN games g ON g.id = r.game_id WHERE g.gm_id = u.id) AS review_count,
               (SELECT COUNT(*) FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id
                 WHERE g.gm_id = u.id AND s.status = 'completed' AND b.status = 'confirmed') AS seats_played
-         FROM users u JOIN gm_profiles p ON p.user_id = u.id WHERE u.id = ?`,
+         FROM users u JOIN gm_profiles p ON p.user_id = u.id WHERE u.id = ? AND u.deleted_at IS NULL`,
     )
     .get(userId) as
     | {

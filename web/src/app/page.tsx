@@ -2,18 +2,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { searchGames, listSystemsInUse } from "@/lib/queries";
 import { getI18n } from "@/lib/i18n/server";
-import { GameCard } from "@/components/ui";
+import { GameCard, Notice } from "@/components/ui";
 import { Icon } from "@/components/icon";
 import { GENRES, genreIcon, genreLabelKey } from "@/lib/categories";
 
-export default async function HomePage() {
+export default async function HomePage(props: PageProps<"/">) {
   const { t } = await getI18n();
+  const { deleted } = await props.searchParams;
   const soonest = searchGames({ sort: "soonest" }, 6);
   const beginner = searchGames({ level: "beginner", sort: "rating" }, 3);
   const systems = listSystemsInUse();
 
   return (
     <>
+      {deleted && <div className="mx-auto max-w-6xl px-4 pt-6"><Notice tone="success">{t("delete.done")}</Notice></div>}
       {/* Tavern hero: candlelit scene (public/images/tavern/hero.svg, npm run tavern-art) under a dark wash for legible text. */}
       <section className="on-wood relative overflow-hidden border-b-2 border-[#8a6a3a] bg-[#1b1008]">
         <Image src="/images/tavern/hero.svg" alt="" fill priority sizes="100vw" className="object-cover object-[70%_center]" />

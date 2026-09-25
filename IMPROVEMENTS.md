@@ -8,8 +8,6 @@ When you finish an item, move it to **Done** with the date and a test reference.
 All P1 items are done (2026-09-25). See **Done** below. New P1s go here.
 
 ## P2: Product & UX
-- **P2-1 · Legal pages (M):** Terms and Privacy (UU PDP 27/2022), in both languages, linked in the footer and at sign-up.
-- **P2-2 · Account basics (M):** password reset, email verification, and self-serve account deletion that anonymises reviews.
 - **P2-3 · GM "paid ✓" marker (S):** a per-seat toggle on the roster, GM-only. Add a `bookings.paid_marked_at` column.
 - **P2-5 · Browse pagination (S):** `searchGames` is capped at 60 (`queries.ts:63`). Add `?page=` with a "Load more" link.
 - **P2-6 · Waitlist (M):** when a session is full, let players join a waitlist. When a seat frees up, auto-offer it to the first person, who gets 12 h to confirm.
@@ -50,6 +48,8 @@ Every item below was done on 2026-09-25 (v0.5). `e2e:hardening` means `web/tests
 | P1-10 | Expired sessions purged on login; session rotated when a player becomes a GM; "Log out on all devices" button on the dashboard | `auth.ts`, `logoutEverywhereAction` | e2e:hardening "log out on all devices" |
 | P1-11 | Security headers: CSP (no-nonce variant from the Next guide), `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, no `X-Powered-By`. HSTS + upgrade-insecure-requests when `QUESTBOARD_ENFORCE_HTTPS=true` | `next.config.ts` | e2e:hardening "security headers" |
 | P1-12 | Anti-scam note under the GM's payment details | game page, `game.scamWarning` | e2e:hardening "anti-scam" |
+| P2-1 · Legal pages | `/terms` (10 sections) and `/privacy` (11 sections, UU PDP 27/2022) in EN/ID; linked at sign-up and in the footer; "draft" notice until `QUESTBOARD_LEGAL_FINAL=true`; contact from `QUESTBOARD_CONTACT_EMAIL` | `app/terms`, `app/privacy`, `legal.*` keys | e2e: legal pages; axe sweep |
+| P2-2 · Account basics | Password reset (hashed single-use 1 h tokens, same answer for unknown emails, other sessions revoked); email verification (7-day link, resend, required for GM requests/offers; demo and pre-v9 accounts grandfathered); **Download my data** (`/api/me/export`); **Delete account** (password + confirmation; seats released, games archived, everyone notified, data scrubbed, reviews/chats kept as "Anonymous"); email outbox + optional Resend delivery. Archiving a game now also notifies booked players | `lib/tokens.ts`, `lib/mailer.ts`, `lib/account.ts`, account pages, schema v9 | unit: accounts ×3; e2e: accounts ×6 |
 | P2-4 · Live chat | `<AutoRefresh>` runs `router.refresh()` every 20 s while the tab is visible (table chat and request thread); half-typed messages survive | `auto-refresh.tsx` | e2e: "table chat updates live" |
 | P2-10 · Share + link previews | WhatsApp / copy link / native share on games and GM profiles; tavern OG images (`opengraph-image.tsx`) for the site and each game; `metadataBase` from the request or `QUESTBOARD_BASE_URL`. Instagram has no web share URL, so the native share sheet covers it on phones | `share-buttons.tsx`, `lib/og-card.tsx`, `lib/site.ts` | e2e: share + OG PNG |
 | New · Add to calendar | Google Calendar link and `/api/sessions/{id}/ics` (RFC 5545, 1 h reminder, public details only) on booked sessions, My games and the booking confirmation | `lib/calendar.ts`, `calendar-links.tsx`, ics route | unit: calendar ×6; e2e ×3 |

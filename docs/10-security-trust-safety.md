@@ -59,6 +59,13 @@ The trade-off is **trust**: players transfer money to GMs directly. Mitigations 
 - PR checklist: authorization check? validation? strings in both languages? tests?
 
 
+## 6b. v0.11: account security & privacy rights
+- **Reset and verify tokens** are 32 random bytes and stored only as SHA-256 hashes. They're single-use (an atomic `UPDATE … RETURNING`) and expire (1 h reset, 7 d verify). Issuing a new token voids the old one.
+- **"Forgot password"** gives the same answer for every email (no account enumeration) and is rate-limited per IP + email. A successful reset revokes every session.
+- **Deletion** needs the password plus an explicit confirmation, and it's rate-limited. Personal data is scrubbed at once and the account can never log in. Deleted GMs 404 and can't receive direct requests.
+- **Export** is only for the signed-in person (401 otherwise) and is `no-store`.
+- **The dev outbox** exposes live links, so it's disabled whenever HTTPS is enforced.
+
 ## 6. v0.9: requests, offers and settings
 - **Payment details:** `payment_info` is still members-only. In the hire flow it is shown only to the requester, and only after they choose that GM's offer.
 - **Access control:** request pages 404 for anyone who is not the requester, an eligible GM, or a GM who has offered. Every write action re-checks authorisation server-side (never trust hidden fields).

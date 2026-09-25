@@ -4,8 +4,8 @@ This is the decision log. Treat these entries as requirements: they came from th
 
 ## Current state (v0.10, 2026-09-25)
 - A working MVP plus 11 spec docs, in git (`main`) with GitHub Actions CI (`.github/workflows/ci.yml`). There is no remote yet: push to GitHub to turn CI on.
-- Schema version is **8**. Real migrations live in `web/src/lib/migrations.ts`; v4 is the baseline.
-- 51 unit tests and 45 e2e journeys (including 5 axe accessibility sweeps), all passing.
+- Schema version is **9**. Real migrations live in `web/src/lib/migrations.ts`; v4 is the baseline.
+- 54 unit tests and 51 e2e journeys (including 5 axe accessibility sweeps), all passing.
 - All IMPROVEMENTS P1 items are done. Next up is P2, which needs product-owner approval.
 
 ## Decision log
@@ -16,6 +16,11 @@ This is the decision log. Treat these entries as requirements: they came from th
 - Iteration 2: share buttons + OG images, Add to calendar (Google + .ics), live chat via polling (20 s).
   - **Absolute URLs** come from `QUESTBOARD_BASE_URL` (required in production) or the request host.
   - Instagram has no web share intent, so the native share sheet covers it.
+- Iteration 3: accounts & legal.
+  - **A verified email is required only for GM requests and offers** (anti-spam). Booking stays open to unverified accounts. Existing and demo accounts are grandfathered as verified.
+  - **Deletion scrubs rather than removes:** name becomes "Anonymous", email `deleted-<id>@deleted.invalid`, and reviews/chats are kept. A GM's games are archived and players notified.
+  - Emails go to `email_outbox`, and are delivered through Resend only when `RESEND_API_KEY` + `QUESTBOARD_MAIL_FROM` are set.
+  - The legal texts are **drafts** for a lawyer to review. The contact email comes from `QUESTBOARD_CONTACT_EMAIL`.
 
 ### v0.10, 2026-09-25: medieval tavern theme + bell popover (product owner feedback)
 - **Visual identity is now "medieval tavern"** (supersedes v0.1's "warm, bookish" look).

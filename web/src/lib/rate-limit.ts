@@ -14,6 +14,9 @@ export const LIMITS = {
   request: { limit: 5, windowMs: 60 * 60_000 },  // GM requests per user
   offer: { limit: 30, windowMs: 60 * 60_000 },   // offers per GM
   password: { limit: 5, windowMs: 15 * 60_000 }, // password changes per user
+  reset: { limit: 5, windowMs: 60 * 60_000 },    // "forgot password" emails per IP + email
+  verify: { limit: 5, windowMs: 60 * 60_000 },   // verification emails per user
+  deleteAccount: { limit: 5, windowMs: 60 * 60_000 }, // deletion attempts per user
 } as const;
 
 export type Bucket = keyof typeof LIMITS;

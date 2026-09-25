@@ -5,8 +5,9 @@ import { getI18n } from "@/lib/i18n/server";
 import { getGmProfile } from "@/lib/queries";
 import { SYSTEMS } from "@/lib/validation";
 import { GmRequestForm } from "@/components/hire-forms";
-import { Avatar } from "@/components/ui";
+import { Avatar, Notice } from "@/components/ui";
 import { Icon } from "@/components/icon";
+import { ResendVerificationButton } from "@/components/account-forms";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -16,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RequestGmPage(props: PageProps<"/hire-a-gm/request">) {
   const { gm: gmParam } = await props.searchParams;
   const gmId = Number(Array.isArray(gmParam) ? gmParam[0] : gmParam) || 0;
-  await requireUser(`/hire-a-gm/request${gmId ? `?gm=${gmId}` : ""}`);
+  const user = await requireUser(`/hire-a-gm/request${gmId ? `?gm=${gmId}` : ""}`);
   const { t } = await getI18n();
   const gm = gmId ? getGmProfile(gmId) : undefined;
 
@@ -26,6 +27,13 @@ export default async function RequestGmPage(props: PageProps<"/hire-a-gm/request
         <Link href="/hire-a-gm" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-text"><Icon name="arrow-left" /> {t("hire.title")}</Link>
         <h1 className="mt-2 flex items-center gap-2 text-3xl font-bold"><Icon name="briefcase" className="text-accent" /> {t("hire.requestPageTitle")}</h1>
         <p className="mt-1 mb-8 text-muted">{gm ? t("hire.requestLeadDirect", { name: gm.name }) : t("hire.requestLead")}</p>
+        {!user.email_verified && (
+          <div className="mb-5">
+            <Notice>
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-2">{t("err.verifyEmail")} <ResendVerificationButton /></span>
+            </Notice>
+          </div>
+        )}
         <div className="card p-6">
           <GmRequestForm systems={SYSTEMS} gm={gm ? { id: gm.id, name: gm.name } : undefined} />
         </div>

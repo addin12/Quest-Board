@@ -22,7 +22,7 @@ async function violationsOf(page: Page, label: string): Promise<string[]> {
   return violations.map((v) => `${label} → ${v.id} (${v.impact}): ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`);
 }
 
-const PUBLIC_PAGES = ["/", "/games", "/games/mercusuar-di-pulau-kabut", "/browse", "/browse/genre/horror", "/hire-a-gm", "/gms/1", "/login", "/signup", "/how-it-works"];
+const PUBLIC_PAGES = ["/", "/games", "/games/mercusuar-di-pulau-kabut", "/browse", "/browse/genre/horror", "/hire-a-gm", "/gms/1", "/login", "/signup", "/how-it-works", "/terms", "/privacy", "/forgot-password"];
 
 for (const scheme of ["light", "dark"] as const) {
   for (const lang of ["en", "id"] as const) {

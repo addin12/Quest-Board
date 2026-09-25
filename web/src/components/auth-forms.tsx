@@ -22,6 +22,7 @@ export function LoginForm({ next }: { next?: string }) {
         <label htmlFor="password" className="label">{t("auth.password")}</label>
         <input id="password" name="password" type="password" autoComplete="current-password" required className="input" />
       </div>
+      <p className="-mt-2 text-right text-xs"><Link href="/forgot-password" className="font-semibold text-accent hover:underline">{t("reset.forgot")}</Link></p>
       {state?.error && <Notice tone="danger">{t(state.error)}</Notice>}
       <SubmitButton className="btn-primary w-full" pendingText={t("auth.signingIn")}>{t("nav.login")}</SubmitButton>
       <p className="text-center text-sm text-muted">
@@ -73,6 +74,10 @@ export function SignupForm({ next, defaultRole }: { next?: string; defaultRole?:
         {fe.password ? <FieldError id="password" msg={t(fe.password)} /> : <p className="mt-1 text-xs text-muted">{t("auth.passwordHint")}</p>}
       </div>
       {state?.error && <Notice tone="danger">{t(state.error)}</Notice>}
+      <p className="text-xs text-muted">
+        {t("legal.agreePrefix")} <Link href="/terms" className="font-semibold text-accent underline">{t("legal.terms.title")}</Link> {t("legal.agreeAnd")}{" "}
+        <Link href="/privacy" className="font-semibold text-accent underline">{t("legal.privacy.title")}</Link>.
+      </p>
       <SubmitButton className="btn-primary w-full" pendingText={t("auth.creating")}>{t("auth.createAccount")}</SubmitButton>
       <p className="text-center text-sm text-muted">
         {t("auth.haveAccount")} <Link href="/login" className="font-semibold text-accent">{t("nav.login")}</Link>

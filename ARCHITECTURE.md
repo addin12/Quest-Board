@@ -28,6 +28,10 @@ src/app/
   hire-a-gm/requests/[id] request detail: offers (requester) · offer form (GM) · private thread + payment info after match
   gm/requests             GM inbox: matched + open requests
   notifications/          in-app notifications (opening it marks all read)
+  forgot-password/ · reset-password/ · verify-email/        emailed-link flows (tokens in lib/tokens.ts)
+  terms/ · privacy/       legal pages (sections from legal.* dictionary keys)
+  dev/outbox/             queued emails — dev/e2e only, never with QUESTBOARD_ENFORCE_HTTPS
+  api/me/export/          signed-in person's data as JSON (UU PDP access right)
   gm/ · gm/games/new · gm/games/[id] · gm/games/[id]/edit   GM dashboard & management
   api/games/route.ts · api/games/[slug]/route.ts           public read-only JSON (no payment details)
   api/sessions/[id]/ics/  one scheduled session as an iCalendar file
@@ -65,10 +69,10 @@ tests/    unit/*.test.ts (node:test) · e2e/marketplace.spec.ts (Playwright)
 - **Read:** a server component awaits `params`, then calls `getI18n()`, `getCurrentUser()` (memoised per request) and the synchronous `queries.ts` functions, and renders HTML. Client components hydrate only forms and `<LocalTime>`.
 - **Write:** a `<form action={serverAction}>` sends the request. The exported action wraps an internal `…Impl` in `withEcho()`. The impl validates (returning `MsgKey` errors), rate-limits (`hit()`), authorizes, writes the DB (inside `tx()` if capacity is involved), calls `revalidatePath("/", "layout")`, and then either redirects or returns `{ ok }`. On failure, `withEcho` adds `values` so the form can refill itself after React's automatic reset.
 
-## Data model (schema v8)
+## Data model (schema v9)
 | Table | Contents |
 |---|---|
-| `users` | `role` is `player`, `gm` or `admin`; `avatar_image` (optional path, v6) |
+| `users` | `role` is `player`, `gm` or `admin`; `avatar_image` (optional path, v6); `email_verified_at`, `deleted_at` (v9; deleted accounts are scrubbed, never removed, so history keeps its foreign keys) |
 | `gm_profiles` | `headline`, `systems`, `years_experience`, **`location`**, `verified`, **`payment_info`** (members-only) |
 | `auth_sessions` | `token_hash`, `user_id`, `expires_at` |
 | `games` | `cover_image` (optional path, v6), `price_idr`, `seats_total` (1–12), `format`, `location_type` + `platform`/`city`, **`language`** (`id`\|`en`\|`both`), `status` (`draft`\|`published`\|`archived`), **`genres`/`styles`** (CSV of category keys, max 3 each, v7) |
@@ -80,6 +84,8 @@ tests/    unit/*.test.ts (node:test) · e2e/marketplace.spec.ts (Playwright)
 | `gm_request_offers` | `message`, `price_idr` (per player per session); UNIQUE(request_id, gm_id) (v7) |
 | `gm_request_messages` | private thread between the requester and the matched GM (v7) |
 | `notifications` | `user_id`, `kind`, `actor_id`, `request_id`/`session_id` (link target), `read_at` (v8). Written only through `notify()` |
+| `auth_tokens` | emailed single-use tokens: `kind` `reset`\|`verify`, `token_hash` (SHA-256), `expires_at`, `used_at` (v9) |
+| `email_outbox` | every email sent: `to_address`, `subject`, `body_text`, `sent_at` / `error` (v9) |
 | `rate_limits` | `key` = `<bucket>:<identity>`, `window_start`, `count` (v5) |
 
 Derived values (seats taken, ratings, expected income) are computed in SQL inside `queries.ts`. They are not stored.
@@ -121,6 +127,8 @@ Derived values (seats taken, ratings, expected income) are computed in SQL insid
   1. Add it to `NotificationKind` in `lib/notifications.ts` (and to `COLLAPSE` if it's chatty).
   2. Call `notify({...}, c)` in the action. Pass `c` when inside `tx()`. It never notifies the actor.
   3. Add a case to `describeNotification()` in `lib/notification-view.ts` (shared by the popover and the page) and `notif.*` strings in both dictionaries.
+- **Sending an email:** `await sendEmail({ to, subject: t("mail.xSubject"), text: t("mail.xBody", {...}) })` from `lib/mailer.ts`. Write the text in both dictionaries; it's plain text only.
+- **Emailed links:** `issueToken(userId, kind)` → link; `peekToken` to show a form; `consumeToken` to act (atomic, single-use).
 - **Form fields:** render errors with `<FieldError id="x" msg={…} />` and spread `{...errAttrs("x", msg)}` on the control, so screen readers announce the error.
 - **New server action:** add it to `actions.ts` with its own auth check. Return `FormState` with `MsgKey` errors, and call `revalidatePath("/", "layout")`.
 - **New page:** `src/app/<route>/page.tsx` as an async server component, with `generateMetadata()` using `t()` and a guard via `requireUser()` or `requireGm()` if it's private.

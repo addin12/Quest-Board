@@ -10,6 +10,7 @@ import { ConfirmButton } from "@/components/submit-button";
 import { RequestStatus } from "@/components/request-bits";
 import { cancelBookingAction } from "../actions";
 import { CalendarLinks } from "@/components/calendar-links";
+import { ResendVerificationButton } from "@/components/account-forms";
 import { googleCalendarUrl, sessionEvent } from "@/lib/calendar";
 import { siteOrigin } from "@/lib/site";
 import { Icon } from "@/components/icon";
@@ -23,7 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const user = await requireUser("/dashboard");
   const { t } = await getI18n();
-  const { booked } = await props.searchParams;
+  const { booked, reset } = await props.searchParams;
   const all = listPlayerBookings(user.id);
   const now = new Date();
   const upcoming = all.filter((b) => b.status === "confirmed" && b.session_status === "scheduled" && new Date(b.starts_at) > now);
@@ -38,6 +39,14 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
     <div className="mx-auto max-w-4xl px-4 py-10">
       <h1 className="flex items-center gap-2 text-3xl font-bold"><Icon name="calendar-clock" className="text-accent" /> {t("nav.myGames")}</h1>
       <p className="mt-1 text-muted">{t("dash.hello", { name: user.name.split(" ")[0] })}</p>
+      {!user.email_verified && (
+        <div className="mt-6">
+          <Notice>
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-2">{t("verify.banner", { email: user.email })} <ResendVerificationButton /></span>
+          </Notice>
+        </div>
+      )}
+      {reset && <div className="mt-6"><Notice tone="success">{t("reset.done")}</Notice></div>}
       {booked && (
         <div className="mt-6">
           <Notice tone="success">

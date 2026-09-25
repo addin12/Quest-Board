@@ -59,6 +59,8 @@ test("a v4 database migrates to the current schema without losing data", () => {
   db.exec(`DROP TABLE rate_limits;
     ALTER TABLE games DROP COLUMN cover_image; ALTER TABLE users DROP COLUMN avatar_image;
     ALTER TABLE games DROP COLUMN genres; ALTER TABLE games DROP COLUMN styles;
+    DROP TABLE email_outbox; DROP TABLE auth_tokens;
+    ALTER TABLE users DROP COLUMN email_verified_at; ALTER TABLE users DROP COLUMN deleted_at;
     DROP TABLE notifications;
     DROP TABLE gm_request_messages; DROP TABLE gm_request_offers; DROP TABLE gm_requests;
     PRAGMA user_version = 4;`);

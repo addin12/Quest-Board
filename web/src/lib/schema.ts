@@ -10,7 +10,8 @@
 // v6: games.cover_image, users.avatar_image (optional image paths; '' = generated fallback).
 // v7: games.genres / games.styles (CSV of category keys) + gm_requests, gm_request_offers, gm_request_messages.
 // v8: notifications (in-app).
-export const SCHEMA_VERSION = 8;
+// v9: users.email_verified_at / deleted_at + auth_tokens (reset, verify) + email_outbox.
+export const SCHEMA_VERSION = 9;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -24,7 +25,9 @@ CREATE TABLE IF NOT EXISTS users (
   avatar_hue    INTEGER NOT NULL DEFAULT 260,
   bio           TEXT NOT NULL DEFAULT '',
   avatar_image  TEXT NOT NULL DEFAULT '',   -- path/URL of a portrait; '' = initials avatar
-  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  email_verified_at TEXT,                  -- NULL until the emailed link is opened (v9)
+  deleted_at    TEXT                       -- set when the person deleted their account; data scrubbed (v9)
 );
 
 CREATE TABLE IF NOT EXISTS gm_profiles (
@@ -175,4 +178,24 @@ CREATE TABLE IF NOT EXISTS notifications (
   read_at     TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read_at, created_at);
+
+CREATE TABLE IF NOT EXISTS auth_tokens (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind        TEXT NOT NULL CHECK (kind IN ('reset','verify')),
+  token_hash  TEXT NOT NULL UNIQUE,     -- SHA-256 of the emailed token; the token itself is never stored
+  expires_at  TEXT NOT NULL,
+  used_at     TEXT,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_auth_tokens_user ON auth_tokens(user_id, kind);
+CREATE TABLE IF NOT EXISTS email_outbox (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  to_address  TEXT NOT NULL,
+  subject     TEXT NOT NULL,
+  body_text   TEXT NOT NULL,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  sent_at     TEXT,
+  error       TEXT
+);
 `;

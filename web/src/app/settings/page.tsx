@@ -6,6 +6,7 @@ import { getUserSettings } from "@/lib/queries";
 import { Icon } from "@/components/icon";
 import { ConfirmButton } from "@/components/submit-button";
 import { PasswordForm, ProfileSettingsForm } from "@/components/settings-forms";
+import { DeleteAccountForm, ResendVerificationButton } from "@/components/account-forms";
 import { logoutEverywhereAction } from "../actions";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -25,7 +26,15 @@ export default async function SettingsPage() {
       <h1 className="flex items-center gap-2 text-3xl font-bold"><Icon name="settings" className="text-accent" /> {t("settings.title")}</h1>
       <p className="mt-1 text-muted">{t("settings.lead")}</p>
 
-      <section className="card mt-8 p-6" aria-labelledby="profile-h">
+      <section className={`card mt-8 flex flex-wrap items-center gap-3 p-4 ${user.email_verified ? "" : "border-accent/50!"}`} aria-label={t("verify.statusLabel")}>
+        <Icon name={user.email_verified ? "check-circle" : "envelope"} className={user.email_verified ? "text-success" : "text-accent"} />
+        <p className="min-w-0 flex-1 text-sm">
+          <span className="font-semibold">{user.email}</span> · {user.email_verified ? t("verify.isVerified") : t("verify.notVerified")}
+        </p>
+        {!user.email_verified && <ResendVerificationButton />}
+      </section>
+
+      <section className="card mt-6 p-6" aria-labelledby="profile-h">
         <h2 id="profile-h" className="mb-5 flex items-center gap-2 text-xl font-bold"><Icon name="user-pen" className="text-muted" /> {t("settings.profile")}</h2>
         <ProfileSettingsForm defaults={{ name: me.name, email: me.email, bio: me.bio, hue: me.avatar_hue, avatarImage: me.avatar_image }} />
       </section>
@@ -62,6 +71,17 @@ export default async function SettingsPage() {
             <Icon name="sign-out-alt" /> {t("dash.logoutEverywhere")}
           </ConfirmButton>
         </form>
+      </section>
+      <section className="card mt-6 p-6" aria-labelledby="data-h">
+        <h2 id="data-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="user-lock" className="text-muted" /> {t("data.title")}</h2>
+        <p className="mt-1 mb-4 text-sm text-muted">{t("data.lead")}</p>
+        <a href="/api/me/export" download className="btn-secondary"><Icon name="file-download" /> {t("data.export")}</a>
+      </section>
+
+      <section className="card mt-6 border-danger/40! p-6" aria-labelledby="delete-h">
+        <h2 id="delete-h" className="flex items-center gap-2 text-xl font-bold text-danger"><Icon name="trash" /> {t("delete.title")}</h2>
+        <p className="mt-1 mb-4 whitespace-pre-line text-sm text-muted">{t(isGm ? "delete.leadGm" : "delete.lead")}</p>
+        <DeleteAccountForm />
       </section>
     </div>
   );
