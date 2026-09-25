@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — "medieval tavern" theme (see DESIGN.md).
+ * Light = parchment & ink by daylight; dark = a candlelit tavern at night.
+ * `.parchment` re-applies the page palette inside a wooden area (e.g. the bell popover);
+ * `.on-wood` switches to the dark-oak palette used by the header, footer, tab bar and hero.
+ * Every text/background pair below is ≥ 4.5:1 (checked; the axe sweep re-checks).
+ */
+:root,
+.parchment {
+  --bg: #efe3c8;
+  --surface: #faf3e3;
+  --surface-2: #e9dcbf;
+  --text: #2b1d10;
+  --muted: #665034;
+  --border: #cdb68c;
+  --accent: #8e2b1c;        /* oxblood — wax seal */
+  --accent-hover: #71200f;
+  --accent-ink: #fbf3e2;
+  --accent-soft: #f3ddd0;
+  --gold: #85600f;          /* brass, as text */
+  --success: #2c5a31;
+  --success-soft: #e0ecd6;
+  --danger: #9f2419;
+  --danger-soft: #f5dcd4;
+  --card-shadow: inset 0 0 0 1px rgb(255 252 240 / 0.5), inset 0 0 36px rgb(140 95 35 / 0.1), 0 2px 6px -2px rgb(60 35 10 / 0.28);
+  --page-texture: url("/textures/parchment.svg");
+  color: var(--text);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root,
+  .parchment {
+    --bg: #16100a;
+    --surface: #22180f;
+    --surface-2: #2e2217;
+    --text: #f0e3c6;
+    --muted: #c4ae8b;
+    --border: #4d3825;
+    --accent: #e8a54b;      /* candle amber */
+    --accent-hover: #f2b865;
+    --accent-ink: #1c1208;
+    --accent-soft: #3a2913;
+    --gold: #e8c46c;
+    --success: #9bd08f;
+    --success-soft: #1f2e1a;
+    --danger: #f08e7e;
+    --danger-soft: #3b1b15;
+    --card-shadow: inset 0 0 0 1px rgb(255 220 160 / 0.05), inset 0 0 40px rgb(0 0 0 / 0.35), 0 2px 10px -2px rgb(0 0 0 / 0.6);
+    --page-texture: url("/textures/wood-faint.svg");
+  }
+}
+
+/* Dark-oak surfaces (header, footer, mobile tab bar, home hero) — same in both schemes. */
+.on-wood {
+  --bg: #2a1b10;
+  --surface: #332215;
+  --surface-2: #3b2819;
+  --text: #f3e6c8;
+  --muted: #d6c09b;
+  --border: #5a3f27;
+  --accent: #eab35a;
+  --accent-hover: #f5c877;
+  --accent-ink: #1c1208;
+  --accent-soft: #4a3218;
+  --gold: #eab35a;
+  color: var(--text);
+}
+.wood-plank {
+  background-color: #2a1b10;
+  background-image: linear-gradient(rgb(255 220 160 / 0.06), rgb(0 0 0 / 0.22)), url("/textures/wood.svg");
+  background-size: auto, 900px 180px;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-gold: var(--gold);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --font-sans: var(--font-alegreya-sans), "Segoe UI", system-ui, sans-serif;
+  --font-serif: var(--font-alegreya), Georgia, serif;
+  --font-display: var(--font-cinzel), "Times New Roman", serif;
+}
+
+:root {
+  /* For inline styles (e.g. the wordmark). */
+  --font-heading: var(--font-cinzel), "Times New Roman", serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--bg);
+    background-image: var(--page-texture);
+    background-size: 360px 360px;
+    color: var(--text);
+  }
+  h1, h2 {
+    font-family: var(--font-cinzel), "Times New Roman", serif;
+    letter-spacing: 0.01em;
+  }
+  h3 {
+    font-family: var(--font-alegreya), Georgia, serif;
+  }
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-md border border-transparent px-4 py-2 text-sm font-bold tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+}
+/* Wax seal: deep colour, a highlight on top, a darker lip below. */
+@utility btn-primary {
+  @apply btn border-black/25 bg-accent text-accent-ink shadow-[inset_0_1px_0_rgb(255_255_255/0.22),0_1px_2px_rgb(0_0_0/0.35)] hover:bg-accent-hover;
+}
+@utility btn-secondary {
+  @apply btn border-border bg-surface text-text shadow-[inset_0_1px_0_rgb(255_255_255/0.35)] hover:bg-surface-2;
+}
+@utility btn-ghost { @apply btn text-muted hover:bg-surface-2 hover:text-text; }
+@utility btn-danger { @apply btn border-danger/40 text-danger hover:bg-danger-soft; }
+/* Parchment card with a slightly burnt edge. */
+@utility card { @apply rounded-lg border border-border bg-surface shadow-(--card-shadow); }
+@utility input {
+  @apply w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text shadow-[inset_0_1px_3px_rgb(60_35_10/0.12)] placeholder:text-muted/80 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30;
+}
+@utility label { @apply mb-1 block text-sm font-bold; }
+@utility chip { @apply inline-flex items-center rounded-md border border-border bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted; }
+@utility popover { @apply overflow-hidden rounded-lg border border-border bg-surface text-text shadow-2xl shadow-black/40; }
+@utility badge { @apply flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-accent-ink ring-2 ring-[#2a1b10]; }
+@utility eyebrow { @apply font-display text-xs font-bold uppercase tracking-[0.18em] text-muted; }
+/* ❦ divider: the flourish SVG is a mask, so it takes the current theme's brass colour. */
+@utility ornament {
+  @apply block h-4 w-44 bg-gold;
+  mask: url("/textures/flourish.svg") center / contain no-repeat;
+}

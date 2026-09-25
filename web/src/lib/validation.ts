@@ -1,0 +1,206 @@
+// Input validation for forms. Pure functions returning either parsed values
+// or a map of field errors. Errors are translation keys (see i18n/dict.ts),
+// so messages render in the viewer's language.
+
+import type { MsgKey } from "./i18n/dict";
+
+export type FieldErrors = Record<string, MsgKey>;
+export type Parsed<T> = { ok: true; value: T } | { ok: false; errors: FieldErrors };
+
+const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+
+const MAX_PRICE_IDR = 10_000_000; // mirrors policy.ts (kept import-free for node --test)
+
+/** D&D 5e is split by edition: the 2014 rules and the revised 2024 rules ("5.5e"). */
+export const SYSTEMS = [
+  "D&D 5.5e (2024)",
+  "D&D 5e (2014)",
+  "Pathfinder 2e",
+  "Call of Cthulhu",
+  "Daggerheart",
+  "Blades in the Dark",
+  "Vampire: The Masquerade",
+  "Mothership",
+  "Shadowrun",
+  "Starfinder",
+  "Other",
+] as const;
+
+export type GameLanguage = "id" | "en" | "both";
+
+export type SignupInput = { name: string; email: string; password: string; role: "player" | "gm" };
+
+export function parseSignup(raw: Record<string, unknown>): Parsed<SignupInput> {
+  const errors: FieldErrors = {};
+  const name = str(raw.name);
+  const email = str(raw.email).toLowerCase();
+  const password = typeof raw.password === "string" ? raw.password : "";
+  const role = raw.role === "gm" ? "gm" : "player";
+
+  if (name.length < 2 || name.length > 50) errors.name = "v.name";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "v.email";
+  if (password.length < 8) errors.password = "v.password";
+
+  return Object.keys(errors).length ? { ok: false, errors } : { ok: true, value: { name, email, password, role } };
+}
+
+export type GameInput = {
+  title: string;
+  system: string;
+  summary: string;
+  description: string;
+  format: "one_shot" | "campaign";
+  locationType: "online" | "in_person";
+  language: GameLanguage;
+  platform: string;
+  city: string;
+  priceIdr: number;
+  seatsTotal: number;
+  experienceLevel: "any" | "beginner" | "experienced";
+  minAge: number;
+  contentWarnings: string;
+  safetyTools: string;
+  tags: string;
+  status: "draft" | "published";
+};
+
+/** Accepts "75.000", "Rp 75,000", "75000". Empty means free (0). */
+function parsePrice(v: unknown): number {
+  const s = str(v);
+  if (!s) return 0;
+  const digits = s.replace(/[^\d]/g, "");
+  return digits ? Number(digits) : NaN;
+}
+
+export function parseGame(raw: Record<string, unknown>): Parsed<GameInput> {
+  const errors: FieldErrors = {};
+  const title = str(raw.title);
+  const system = str(raw.system);
+  const summary = str(raw.summary);
+  const description = str(raw.description);
+  const format = raw.format === "campaign" ? "campaign" : "one_shot";
+  const locationType = raw.locationType === "in_person" ? "in_person" : "online";
+  const language: GameLanguage = raw.language === "en" ? "en" : raw.language === "both" ? "both" : "id";
+  const platform = str(raw.platform);
+  const city = str(raw.city);
+  const priceIdr = parsePrice(raw.price);
+  const seatsTotal = Number(str(raw.seatsTotal) || "0");
+  const minAge = Number(str(raw.minAge) || "18");
+  const exp = str(raw.experienceLevel);
+  const experienceLevel = exp === "beginner" || exp === "experienced" ? exp : "any";
+  const status = raw.status === "draft" ? "draft" : "published";
+
+  if (title.length < 4 || title.length > 80) errors.title = "v.title";
+  if (!system) errors.system = "v.system";
+  if (summary.length < 10 || summary.length > 160) errors.summary = "v.summary";
+  if (description.length < 30) errors.description = "v.description";
+  if (!Number.isInteger(priceIdr) || priceIdr < 0 || priceIdr > MAX_PRICE_IDR) errors.price = "v.price";
+  if (!Number.isInteger(seatsTotal) || seatsTotal < 1 || seatsTotal > 12) errors.seatsTotal = "v.seats";
+  if (!Number.isInteger(minAge) || minAge < 0 || minAge > 99) errors.minAge = "v.minAge";
+  if (locationType === "online" && !platform) errors.platform = "v.platform";
+  if (locationType === "in_person" && !city) errors.city = "v.city";
+
+  if (Object.keys(errors).length) return { ok: false, errors };
+  return {
+    ok: true,
+    value: {
+      title,
+      system,
+      summary,
+      description,
+      format,
+      locationType,
+      language,
+      platform,
+      city,
+      priceIdr,
+      seatsTotal,
+      experienceLevel,
+      minAge,
+      contentWarnings: str(raw.contentWarnings),
+      safetyTools: str(raw.safetyTools),
+      tags: str(raw.tags),
+      status,
+    },
+  };
+}
+
+export function parseSessionStart(dateTimeLocal: unknown, tzOffsetMinutes: unknown, now: Date): Parsed<Date> {
+  // `datetime-local` gives "YYYY-MM-DDTHH:mm" in the GM's wall-clock time.
+  // The browser sends its timezone offset (Date#getTimezoneOffset) so we can convert to UTC.
+  const v = str(dateTimeLocal);
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(v);
+  if (!m) return { ok: false, errors: { startsAt: "v.startsAt" } };
+  const offset = Number(tzOffsetMinutes) || 0;
+  const utcMs = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) + offset * 60_000;
+  const d = new Date(utcMs);
+  if (d.getTime() <= now.getTime()) return { ok: false, errors: { startsAt: "v.startsFuture" } };
+  return { ok: true, value: d };
+}
+
+export function parseReview(raw: Record<string, unknown>): Parsed<{ rating: number; body: string }> {
+  const rating = Number(str(raw.rating));
+  const body = str(raw.body);
+  const errors: FieldErrors = {};
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) errors.rating = "v.rating";
+  if (body.length > 2000) errors.body = "v.reviewBody";
+  return Object.keys(errors).length ? { ok: false, errors } : { ok: true, value: { rating, body } };
+}
+
+// ─── Hire a GM ─────────────────────────────────────────────────────────
+
+export type GmRequestInput = {
+  title: string;
+  system: string;
+  groupSize: number;
+  experienceLevel: "any" | "beginner" | "experienced";
+  language: GameLanguage;
+  locationType: "online" | "in_person";
+  city: string;
+  schedule: string;
+  budgetIdr: number;
+  details: string;
+};
+
+export function parseGmRequest(raw: Record<string, unknown>): Parsed<GmRequestInput> {
+  const errors: FieldErrors = {};
+  const title = str(raw.title);
+  const system = str(raw.system).slice(0, 60);
+  const groupSize = Number(str(raw.groupSize) || "0");
+  const exp = str(raw.experienceLevel);
+  const experienceLevel = exp === "beginner" || exp === "experienced" ? exp : "any";
+  const language: GameLanguage = raw.language === "en" ? "en" : raw.language === "both" ? "both" : "id";
+  const locationType = raw.locationType === "in_person" ? "in_person" : "online";
+  const city = str(raw.city).slice(0, 60);
+  const schedule = str(raw.schedule);
+  const budgetIdr = parsePrice(raw.budget);
+  const details = str(raw.details);
+
+  if (title.length < 5 || title.length > 80) errors.title = "v.requestTitle";
+  if (!Number.isInteger(groupSize) || groupSize < 1 || groupSize > 12) errors.groupSize = "v.groupSize";
+  if (locationType === "in_person" && !city) errors.city = "v.city";
+  if (schedule.length < 3 || schedule.length > 200) errors.schedule = "v.schedule";
+  if (!Number.isInteger(budgetIdr) || budgetIdr < 0 || budgetIdr > MAX_PRICE_IDR) errors.budget = "v.price";
+  if (details.length < 20 || details.length > 2000) errors.details = "v.requestDetails";
+
+  if (Object.keys(errors).length) return { ok: false, errors };
+  return { ok: true, value: { title, system, groupSize, experienceLevel, language, locationType, city, schedule, budgetIdr, details } };
+}
+
+export function parseOffer(raw: Record<string, unknown>): Parsed<{ message: string; priceIdr: number }> {
+  const errors: FieldErrors = {};
+  const message = str(raw.message);
+  const priceIdr = parsePrice(raw.price);
+  if (message.length < 10 || message.length > 1000) errors.message = "v.offerMessage";
+  if (!Number.isInteger(priceIdr) || priceIdr < 0 || priceIdr > MAX_PRICE_IDR) errors.price = "v.price";
+  return Object.keys(errors).length ? { ok: false, errors } : { ok: true, value: { message, priceIdr } };
+}
+
+export function parseProfile(raw: Record<string, unknown>): Parsed<{ name: string; bio: string }> {
+  const name = str(raw.name);
+  const bio = str(raw.bio);
+  const errors: FieldErrors = {};
+  if (name.length < 2 || name.length > 50) errors.name = "v.name";
+  if (bio.length > 2000) errors.bio = "v.bioLong";
+  return Object.keys(errors).length ? { ok: false, errors } : { ok: true, value: { name, bio } };
+}

@@ -1,0 +1,60 @@
+import { test, expect, type Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+
+// Automated WCAG 2.1 A/AA checks (axe-core) on the main pages, in both languages
+// and both colour schemes. Axe catches roughly a third of real issues — keep
+// doing the manual checklist in DESIGN.md too.
+
+// Each test scans many pages with axe (and the first one warms up the server).
+test.describe.configure({ timeout: 120_000 });
+
+async function login(page: Page, email: string) {
+  await page.goto("/login");
+  await page.locator("#email").fill(email);
+  await page.locator("#password").fill("password123");
+  await page.locator("form button.btn-primary").click();
+  await page.waitForURL("**/dashboard");
+}
+
+/** Axe violations on the current page, one readable line each (prefixed with `label`). */
+async function violationsOf(page: Page, label: string): Promise<string[]> {
+  const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+  return violations.map((v) => `${label} → ${v.id} (${v.impact}): ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`);
+}
+
+const PUBLIC_PAGES = ["/", "/games", "/games/mercusuar-di-pulau-kabut", "/browse", "/browse/genre/horror", "/hire-a-gm", "/gms/1", "/login", "/signup", "/how-it-works"];
+
+for (const scheme of ["light", "dark"] as const) {
+  for (const lang of ["en", "id"] as const) {
+    test.describe(`${lang} · ${scheme}`, () => {
+      test.use({ colorScheme: scheme });
+
+      test("public pages have no axe violations", async ({ page, context, baseURL }) => {
+        await context.addCookies([{ name: "qb_lang", value: lang, url: baseURL! }]);
+        const found: string[] = [];
+        for (const path of PUBLIC_PAGES) {
+          await page.goto(path);
+          found.push(...(await violationsOf(page, `${path} [${lang}/${scheme}]`)));
+        }
+        expect(found).toEqual([]);
+      });
+    });
+  }
+}
+
+test("signed-in pages and forms with errors have no axe violations", async ({ page }) => {
+  await login(page, "gm@questboard.test");
+  const found: string[] = [];
+  for (const path of ["/dashboard", "/settings", "/gm", "/gm/requests", "/gm/games/new", "/become-a-gm", "/hire-a-gm/request"]) {
+    await page.goto(path);
+    found.push(...(await violationsOf(page, path)));
+  }
+  // Errors are linked to their fields.
+  await page.goto("/hire-a-gm/request");
+  await page.getByRole("button", { name: "Send request" }).click();
+  const title = page.locator("#title");
+  await expect(title).toHaveAttribute("aria-invalid", "true");
+  await expect(title).toHaveAccessibleDescription("Write a short title (5–80 characters).");
+  found.push(...(await violationsOf(page, "/hire-a-gm/request with errors")));
+  expect(found).toEqual([]);
+});
