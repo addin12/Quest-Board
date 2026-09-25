@@ -26,10 +26,12 @@ export function ConfirmButton({
   children,
   message,
   className = "btn-danger",
+  ariaLabel,
 }: {
   children: React.ReactNode;
   message: string;
   className?: string;
+  ariaLabel?: string;
 }) {
   const { pending } = useFormStatus();
   const { t } = useI18n();
@@ -38,6 +40,7 @@ export function ConfirmButton({
       type="submit"
       disabled={pending}
       className={className}
+      aria-label={ariaLabel}
       onClick={(e) => {
         if (!confirm(message)) e.preventDefault();
       }}

@@ -5,6 +5,7 @@
 
 /** Regular-rounded style (`fi-rr-*`). */
 export const REGULAR_ICONS = [
+  "flag", "ban", "shield", "badge-check", "chart-histogram", "user-check", "user-slash", "gavel", "list-check",
   "trash", "envelope", "envelope-open", "file-download", "scale", "user-lock",
   "share", "link-alt", "download",
   "bell",

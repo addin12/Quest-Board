@@ -20,6 +20,7 @@ import { genreIcon, genreLabelKey, isGenre, isStyle, parseCategoryCsv, styleIcon
 import { LocalTime } from "@/components/local-time";
 import { MessageForm, ReviewForm } from "@/components/forms";
 import { ShareButtons } from "@/components/share-buttons";
+import { ReportButton } from "@/components/report-button";
 import { CalendarLinks } from "@/components/calendar-links";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { googleCalendarUrl, sessionEvent } from "@/lib/calendar";
@@ -78,7 +79,10 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
               {isOwner && <Link href={`/gm/games/${game.id}`} className="btn-secondary py-1!"><Icon name="pencil" /> {t("game.manage")}</Link>}
             </div>
             {game.status === "published" && (
-              <div className="mt-4"><ShareButtons url={gameUrl} text={t("share.gameText", { title: game.title, system: game.system })} /></div>
+              <div className="mt-4 flex flex-col gap-2">
+                <ShareButtons url={gameUrl} text={t("share.gameText", { title: game.title, system: game.system })} />
+                {user && user.id !== game.gm_id && <ReportButton targetType="game" targetId={game.id} />}
+              </div>
             )}
 
             <section className="mt-8">
@@ -129,6 +133,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                           <span className="ml-2 text-xs text-muted"><LocalTime iso={m.created_at} /></span>
                         </p>
                         <p className="whitespace-pre-line text-sm">{m.body}</p>
+                        {user && m.user_id !== user.id && <ReportButton targetType="message" targetId={m.id} className="mt-1" />}
                       </div>
                     </li>
                   ))}
@@ -156,6 +161,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                           <Rating n={r.rating} label={t("reviews.starsLabel", { n: r.rating })} />
                         </p>
                         {r.body && <p className="mt-1 text-sm">{r.body}</p>}
+                        {user && r.player_id !== user.id && <ReportButton targetType="review" targetId={r.id} className="mt-1" />}
                       </div>
                     </li>
                   ))}

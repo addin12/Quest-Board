@@ -77,6 +77,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                     <Link href="/dashboard" className="btn-ghost px-2.5 max-sm:hidden sm:px-4" aria-label={t("nav.myGames")}>
                       <Icon name="calendar-clock" /> <span className="hidden xl:inline">{t("nav.myGames")}</span>
                     </Link>
+                    {user.role === "admin" && (
+                      <Link href="/admin" className="btn-ghost px-2.5" aria-label={t("admin.title")} title={t("admin.title")}>
+                        <Icon name="shield" />
+                      </Link>
+                    )}
                     <NotificationBell unread={unread} items={recent} openRequests={openRequests} />
                     <Link href="/settings" className="flex items-center rounded-full pl-1 hover:opacity-90" aria-label={t("settings.title")} title={t("settings.title")}>
                       <Avatar name={user.name} hue={user.avatar_hue} image={user.avatar_image} size={30} />

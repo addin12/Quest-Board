@@ -10,6 +10,7 @@ test("migration 9 adds verification/deletion columns and grandfathers existing a
   db.exec(SCHEMA_SQL);
   db.exec(`DROP TABLE email_outbox; DROP TABLE auth_tokens;
     ALTER TABLE users DROP COLUMN email_verified_at; ALTER TABLE users DROP COLUMN deleted_at;`);
+  // (v10 columns such as users.suspended_at stay — migration 9 doesn't touch them.)
   db.exec("INSERT INTO users (email, password_hash, name) VALUES ('old@x.test', 'x', 'Old Timer')");
   db.exec(MIGRATIONS[9]);
   const u = db.prepare("SELECT email_verified_at, deleted_at, created_at FROM users").get() as { email_verified_at: string; deleted_at: string | null; created_at: string };

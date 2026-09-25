@@ -10,7 +10,9 @@ The full QA strategy and manual checklist are in `docs/09-testing-and-qa.md`.
 | `npm test` | `tests/unit/*.test.ts`: policy (IDR, canBook, canCancel, location), validation, i18n parity + default language, icon subset vs registry, **placeholder art exists + is script-free + migration v6 back-fill**, **categories (normalize, systemSlug, dictionary coverage, request/offer/profile validation, migration v7 back-fill)**, D&D editions, crypto | Node's built-in runner with native TS stripping. Imports use `.ts` extensions and relative paths (no `@/`) |
 | `npm run test:e2e` | `next build`, then Playwright on **:3100** against a fresh `data/e2e.db` | Uses installed **Edge**; `PW_CHANNEL=chrome` for Chrome. Default locale `en-US`, timezone `Asia/Jakarta` |
 
-Current baseline: **54 unit tests, 51 e2e journeys** (`a11y.spec.ts` 5 + `accounts.spec.ts` 6 + `hardening.spec.ts` 9 + `hire-and-browse.spec.ts` 9 + `marketplace.spec.ts` 16 + `share-calendar-live.spec.ts` 6), all green.
+Current baseline: **57 unit tests, 57 e2e journeys** (`a11y.spec.ts` 6 + `accounts.spec.ts` 6 + `hardening.spec.ts` 9 + `hire-and-browse.spec.ts` 9 + `marketplace.spec.ts` 16 + `moderation.spec.ts` 5 + `share-calendar-live.spec.ts` 6), all green.
+
+**Shared steps** live in `tests/e2e/helpers.ts` (`login`, `signup`, `createGmWithGame`, `bookFirstOpenSeat`, `unique`). Specs share one database and run in file order, so **don't assume seeded content is untouched**: find it by content (e.g. "a review with a Report button") and prefer fresh accounts for destructive flows.
 
 **Emails in e2e:** the test server runs with `QUESTBOARD_DEV_OUTBOX=true`, so tests read verification and reset links from `/dev/outbox` (see `linkFromOutbox()` in `accounts.spec.ts`).
 **After a client-side navigation**, wait for the new page's heading before filling fields: the old page's inputs can still match for a moment.

@@ -133,6 +133,30 @@ export const MIGRATIONS: Record<number, string> = {
       error       TEXT
     );
   `,
+  // v0.11 iteration 4: reports & moderation.
+  10: `
+    ALTER TABLE users ADD COLUMN suspended_at TEXT;
+    ALTER TABLE notifications ADD COLUMN report_id INTEGER;
+    CREATE TABLE IF NOT EXISTS reports (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      reporter_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      target_type     TEXT NOT NULL CHECK (target_type IN ('game','review','message','request_message','user')),
+      target_id       INTEGER NOT NULL,
+      target_owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      reason          TEXT NOT NULL CHECK (reason IN ('scam','harassment','inappropriate','spam','misleading','other')),
+      details         TEXT NOT NULL DEFAULT '',
+      snapshot        TEXT NOT NULL,          -- what the content said when it was reported
+      href            TEXT NOT NULL,          -- where it lives (for the moderator)
+      status          TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','resolved','dismissed')),
+      decision        TEXT CHECK (decision IN ('remove','suspend','dismiss')),
+      note            TEXT NOT NULL DEFAULT '',
+      resolved_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+      resolved_at     TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, created_at);
+    CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_type, target_id);
+  `,
 };
 
 export type UpgradePlan =

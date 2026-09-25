@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db, tx } from "@/lib/db";
-import { SESSION_COOKIE, createSession, destroyAllSessions, destroySession, getCurrentUser, purgeExpiredSessions, requireGm, requireUser, rotateSession } from "@/lib/auth";
+import { SESSION_COOKIE, createSession, destroyAllSessions, destroySession, getCurrentUser, purgeExpiredSessions, requireAdmin, requireGm, requireUser, rotateSession } from "@/lib/auth";
 import { clientIp, hit, purgeOldWindows } from "@/lib/rate-limit";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { canBook, canCancel, normalizeLocation, slugify } from "@/lib/policy";
@@ -17,6 +17,8 @@ import { markAllRead, notify } from "@/lib/notifications";
 import { sendEmail } from "@/lib/mailer";
 import { consumeToken, issueToken, peekToken } from "@/lib/tokens";
 import { archiveGame, deleteAccount } from "@/lib/account";
+import { createReport, decideReport, setGmVerified, suspendUser, unsuspendUser } from "@/lib/moderation";
+import { isReportDecision, parseReport } from "@/lib/reports";
 import { getI18n } from "@/lib/i18n/server";
 import { siteOrigin } from "@/lib/site";
 
@@ -101,11 +103,12 @@ async function loginActionImpl(_: FormState, form: FormData): Promise<FormState>
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const password = String(form.get("password") ?? "");
   if (!hit("login", `${await clientIp()}:${email}`)) return { error: "err.rateLimited" };
-  const user = db().prepare("SELECT id, password_hash FROM users WHERE email = ? AND deleted_at IS NULL").get(email) as
-    | { id: number; password_hash: string }
+  const user = db().prepare("SELECT id, password_hash, suspended_at FROM users WHERE email = ? AND deleted_at IS NULL").get(email) as
+    | { id: number; password_hash: string; suspended_at: string | null }
     | undefined;
   // Same message for unknown email and wrong password to avoid account enumeration.
   if (!user || !verifyPassword(password, user.password_hash)) return { error: "err.badLogin" };
+  if (user.suspended_at) return { error: "err.suspended" };
   purgeExpiredSessions();
   purgeOldWindows();
   await createSession(user.id);
@@ -404,7 +407,7 @@ async function createGmRequestActionImpl(_: FormState, form: FormData): Promise<
   // Optional direct request to one GM (from their profile or the directory).
   const gmIdRaw = Number(form.get("gmId") ?? 0) || null;
   if (gmIdRaw) {
-    const gm = db().prepare("SELECT 1 FROM users u JOIN gm_profiles p ON p.user_id = u.id WHERE u.id = ? AND u.role IN ('gm','admin') AND u.deleted_at IS NULL").get(gmIdRaw);
+    const gm = db().prepare("SELECT 1 FROM users u JOIN gm_profiles p ON p.user_id = u.id WHERE u.id = ? AND u.role IN ('gm','admin') AND u.deleted_at IS NULL AND u.suspended_at IS NULL").get(gmIdRaw);
     if (!gm || gmIdRaw === user.id) return { error: "err.notFound" };
   }
   if (!hit("request", String(user.id))) return { error: "err.rateLimited" };
@@ -548,6 +551,45 @@ async function deleteAccountActionImpl(_: FormState, form: FormData): Promise<Fo
   redirect("/?deleted=1");
 }
 
+// ─── Reports & moderation ────────────────────────────────────────────────
+
+async function createReportActionImpl(_: FormState, form: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = parseReport(fd(form));
+  if (!parsed.ok) return parsed.errors.target ? { error: parsed.errors.target } : { fieldErrors: parsed.errors };
+  if (!hit("report", String(user.id))) return { error: "err.rateLimited" };
+  const { targetType, targetId, reason, details } = parsed.value;
+  const result = createReport(user.id, targetType, targetId, reason, details);
+  if (result === "notFound") return { error: "err.notFound" };
+  if (result === "own") return { error: "err.reportOwn" };
+  if (result === "duplicate") return { error: "err.alreadyReported" };
+  revalidatePath("/admin", "layout");
+  return { ok: true };
+}
+
+export async function decideReportAction(form: FormData) {
+  const admin = await requireAdmin();
+  const decision = form.get("decision");
+  if (!isReportDecision(decision)) throw new Error("Bad decision");
+  decideReport(Number(form.get("reportId")), admin.id, decision, String(form.get("note") ?? "").trim().slice(0, 500));
+  revalidatePath("/", "layout");
+}
+
+export async function setSuspendedAction(form: FormData) {
+  const admin = await requireAdmin();
+  const userId = Number(form.get("userId"));
+  if (userId === admin.id) throw new Error("Cannot suspend yourself");
+  if (form.get("suspend") === "1") suspendUser(userId, admin.id);
+  else unsuspendUser(userId);
+  revalidatePath("/", "layout");
+}
+
+export async function setGmVerifiedAction(form: FormData) {
+  await requireAdmin();
+  setGmVerified(Number(form.get("userId")), form.get("verified") === "1");
+  revalidatePath("/", "layout");
+}
+
 // ─── Notifications ───────────────────────────────────────────────────────
 
 /** Called when the header popover opens. */
@@ -616,6 +658,10 @@ export async function resetPasswordAction(prev: FormState, form: FormData): Prom
 
 export async function deleteAccountAction(prev: FormState, form: FormData): Promise<FormState> {
   return withEcho(form, () => deleteAccountActionImpl(prev, form));
+}
+
+export async function createReportAction(prev: FormState, form: FormData): Promise<FormState> {
+  return withEcho(form, () => createReportActionImpl(prev, form));
 }
 
 export async function postRequestMessageAction(prev: FormState, form: FormData): Promise<FormState> {

@@ -2,6 +2,15 @@
 @layer base{.fi{display:inline-flex;align-items:center;justify-content:center;line-height:1;vertical-align:-0.125em}}
 @font-face{font-family:qb-uicons-rr;src:url(./qb-uicons-rr.woff2) format("woff2");font-display:block}
 [class^="fi-rr-"]:before,[class*=" fi-rr-"]:before{font-family:qb-uicons-rr!important;font-style:normal;font-weight:normal!important;font-variant:normal;text-transform:none;line-height:1;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.fi-rr-flag:before{content:"\f695"}
+.fi-rr-ban:before{content:"\f205"}
+.fi-rr-shield:before{content:"\fbe8"}
+.fi-rr-badge-check:before{content:"\f1eb"}
+.fi-rr-chart-histogram:before{content:"\f3a2"}
+.fi-rr-user-check:before{content:"\fe7d"}
+.fi-rr-user-slash:before{content:"\fe99"}
+.fi-rr-gavel:before{content:"\f6eb"}
+.fi-rr-list-check:before{content:"\f8c0"}
 .fi-rr-trash:before{content:"\fe17"}
 .fi-rr-envelope:before{content:"\f5de"}
 .fi-rr-envelope-open:before{content:"\f5dc"}

@@ -11,7 +11,8 @@
 // v7: games.genres / games.styles (CSV of category keys) + gm_requests, gm_request_offers, gm_request_messages.
 // v8: notifications (in-app).
 // v9: users.email_verified_at / deleted_at + auth_tokens (reset, verify) + email_outbox.
-export const SCHEMA_VERSION = 9;
+// v10: reports + users.suspended_at + notifications.report_id (moderation).
+export const SCHEMA_VERSION = 10;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -27,7 +28,8 @@ CREATE TABLE IF NOT EXISTS users (
   avatar_image  TEXT NOT NULL DEFAULT '',   -- path/URL of a portrait; '' = initials avatar
   created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   email_verified_at TEXT,                  -- NULL until the emailed link is opened (v9)
-  deleted_at    TEXT                       -- set when the person deleted their account; data scrubbed (v9)
+  deleted_at    TEXT,                      -- set when the person deleted their account; data scrubbed (v9)
+  suspended_at  TEXT                       -- set by a moderator: no login, profile hidden (v10)
 );
 
 CREATE TABLE IF NOT EXISTS gm_profiles (
@@ -175,7 +177,8 @@ CREATE TABLE IF NOT EXISTS notifications (
   request_id  INTEGER REFERENCES gm_requests(id) ON DELETE CASCADE,
   session_id  INTEGER REFERENCES game_sessions(id) ON DELETE CASCADE,
   created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  read_at     TEXT
+  read_at     TEXT,
+  report_id   INTEGER                    -- v10: report_new / report_resolved
 );
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read_at, created_at);
 
@@ -198,4 +201,24 @@ CREATE TABLE IF NOT EXISTS email_outbox (
   sent_at     TEXT,
   error       TEXT
 );
+
+CREATE TABLE IF NOT EXISTS reports (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  reporter_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  target_type     TEXT NOT NULL CHECK (target_type IN ('game','review','message','request_message','user')),
+  target_id       INTEGER NOT NULL,
+  target_owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reason          TEXT NOT NULL CHECK (reason IN ('scam','harassment','inappropriate','spam','misleading','other')),
+  details         TEXT NOT NULL DEFAULT '',
+  snapshot        TEXT NOT NULL,          -- what the content said when it was reported
+  href            TEXT NOT NULL,          -- where it lives (for the moderator)
+  status          TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','resolved','dismissed')),
+  decision        TEXT CHECK (decision IN ('remove','suspend','dismiss')),
+  note            TEXT NOT NULL DEFAULT '',
+  resolved_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  resolved_at     TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_type, target_id);
 `;

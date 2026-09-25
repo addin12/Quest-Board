@@ -251,7 +251,7 @@ export function getGmProfile(userId: number) {
               (SELECT COUNT(*) FROM reviews r JOIN games g ON g.id = r.game_id WHERE g.gm_id = u.id) AS review_count,
               (SELECT COUNT(*) FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id
                 WHERE g.gm_id = u.id AND s.status = 'completed' AND b.status = 'confirmed') AS seats_played
-         FROM users u JOIN gm_profiles p ON p.user_id = u.id WHERE u.id = ? AND u.deleted_at IS NULL`,
+         FROM users u JOIN gm_profiles p ON p.user_id = u.id WHERE u.id = ? AND u.deleted_at IS NULL AND u.suspended_at IS NULL`,
     )
     .get(userId) as
     | {
@@ -436,7 +436,7 @@ export type GmFilters = { q?: string; system?: string; genre?: string; style?: s
 
 /** GMs with a filled-in profile, filtered for the "Hire a GM" directory. */
 export function searchGms(f: GmFilters, limit = 48): GmDirectoryRow[] {
-  const where = ["u.role IN ('gm','admin')", "p.headline <> ''"];
+  const where = ["u.role IN ('gm','admin')", "p.headline <> ''", "u.deleted_at IS NULL", "u.suspended_at IS NULL"];
   const args: (string | number)[] = [];
   const like = (v: string) => `%${escapeLike(v)}%`;
   if (f.q) { where.push("(u.name LIKE ? ESCAPE '\\' OR p.headline LIKE ? ESCAPE '\\')"); args.push(like(f.q), like(f.q)); }

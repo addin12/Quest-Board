@@ -59,6 +59,12 @@ The trade-off is **trust**: players transfer money to GMs directly. Mitigations 
 - PR checklist: authorization check? validation? strings in both languages? tests?
 
 
+## 6c. v0.11: reports & moderation
+- **Report:** only signed-in people, never their own content, and only things they can see (for example, table chat only if they're a member). One open report per person per target, rate-limited at 10/h.
+- **Evidence:** a snapshot of the content (for member reports, including payment details) is stored with the report and shown only to admins.
+- **Admin-only actions** re-check `requireAdmin()` on the server. The console answers 404 to everyone else.
+- **Suspension** ends every session at once, and `getCurrentUser` ignores suspended accounts. Login shows a clear "suspended" message only after a correct password, so it can't be used to probe accounts.
+
 ## 6b. v0.11: account security & privacy rights
 - **Reset and verify tokens** are 32 random bytes and stored only as SHA-256 hashes. They're single-use (an atomic `UPDATE … RETURNING`) and expire (1 h reset, 7 d verify). Issuing a new token voids the old one.
 - **"Forgot password"** gives the same answer for every email (no account enumeration) and is rate-limited per IP + email. A successful reset revokes every session.

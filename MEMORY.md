@@ -4,8 +4,8 @@ This is the decision log. Treat these entries as requirements: they came from th
 
 ## Current state (v0.10, 2026-09-25)
 - A working MVP plus 11 spec docs, in git (`main`) with GitHub Actions CI (`.github/workflows/ci.yml`). There is no remote yet: push to GitHub to turn CI on.
-- Schema version is **9**. Real migrations live in `web/src/lib/migrations.ts`; v4 is the baseline.
-- 54 unit tests and 51 e2e journeys (including 5 axe accessibility sweeps), all passing.
+- Schema version is **10**. Real migrations live in `web/src/lib/migrations.ts`; v4 is the baseline.
+- 57 unit tests and 57 e2e journeys (including 6 axe accessibility sweeps), all passing.
 - All IMPROVEMENTS P1 items are done. Next up is P2, which needs product-owner approval.
 
 ## Decision log
@@ -21,6 +21,12 @@ This is the decision log. Treat these entries as requirements: they came from th
   - **Deletion scrubs rather than removes:** name becomes "Anonymous", email `deleted-<id>@deleted.invalid`, and reviews/chats are kept. A GM's games are archived and players notified.
   - Emails go to `email_outbox`, and are delivered through Resend only when `RESEND_API_KEY` + `QUESTBOARD_MAIL_FROM` are set.
   - The legal texts are **drafts** for a lawyer to review. The contact email comes from `QUESTBOARD_CONTACT_EMAIL`.
+- Iteration 4: moderation.
+  - **Removing a review or message deletes it** (so ratings stay honest). The report keeps a snapshot as evidence. Removing a game archives it.
+  - **Suspension** blocks login, archives games (players notified), withdraws offers and hides the GM profile. Unsuspending restores login only.
+  - Admins can't be suspended.
+  - Reporters stay anonymous to the reported person.
+  - The admin console 404s for everyone else.
 
 ### v0.10, 2026-09-25: medieval tavern theme + bell popover (product owner feedback)
 - **Visual identity is now "medieval tavern"** (supersedes v0.1's "warm, bookish" look).

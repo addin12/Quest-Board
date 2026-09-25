@@ -12,6 +12,7 @@ import { OfferForm, RequestMessageForm } from "@/components/hire-forms";
 import { RequestFacts, RequestStatus } from "@/components/request-bits";
 import { Icon } from "@/components/icon";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { ReportButton } from "@/components/report-button";
 import { chooseOfferAction, closeRequestAction } from "@/app/actions";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -87,6 +88,7 @@ export default async function RequestPage(props: PageProps<"/hire-a-gm/requests/
                 <div className="min-w-0">
                   <p className="text-sm"><span className="font-semibold">{m.name}</span><span className="ml-2 text-xs text-muted"><LocalTime iso={m.created_at} /></span></p>
                   <p className="whitespace-pre-line text-sm">{m.body}</p>
+                  {m.user_id !== user.id && <ReportButton targetType="request_message" targetId={m.id} className="mt-1" />}
                 </div>
               </li>
             ))}

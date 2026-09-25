@@ -20,6 +20,11 @@ Each iteration ships with its own quality check (review, typecheck, lint, unit +
   - **Download my data** (JSON) and **Delete account**, which releases seats, archives the GM's games, notifies everyone affected, and anonymises reviews and chats.
   - **Terms of Service** and **Privacy Policy** (UU PDP), marked as a draft until a lawyer reviews them.
   - Emails go to an outbox (`/dev/outbox` in development) and are delivered through Resend when `RESEND_API_KEY` is set.
+- **Iteration 4: reports & admin console.**
+  - A **Report** button on games, reviews, chat messages and GM profiles (reason + details).
+  - **`/admin`** (admins only): reports queue with evidence snapshots (remove content / suspend / dismiss, and the reporter is told), GM verification, and member search with suspend/unsuspend.
+  - Suspension blocks login, hides the GM profile, withdraws offers and archives games, and booked players are notified.
+  - Demo admin: `admin@questboard.test`.
 
 ## What changed in v0.10 (tavern look + notification popover)
 - **Medieval tavern design:** parchment and ink by day, a candlelit dark-oak room at night.

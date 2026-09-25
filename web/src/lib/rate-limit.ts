@@ -17,6 +17,7 @@ export const LIMITS = {
   reset: { limit: 5, windowMs: 60 * 60_000 },    // "forgot password" emails per IP + email
   verify: { limit: 5, windowMs: 60 * 60_000 },   // verification emails per user
   deleteAccount: { limit: 5, windowMs: 60 * 60_000 }, // deletion attempts per user
+  report: { limit: 10, windowMs: 60 * 60_000 },  // reports per user
 } as const;
 
 export type Bucket = keyof typeof LIMITS;

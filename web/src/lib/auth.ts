@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { db } from "./db";
 import { hashToken, newSessionToken } from "./password";
 
@@ -64,7 +64,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     .prepare(
       `SELECT u.id, u.email, u.name, u.role, u.avatar_hue, u.avatar_image, u.email_verified_at, s.expires_at
          FROM auth_sessions s JOIN users u ON u.id = s.user_id
-        WHERE s.token_hash = ? AND u.deleted_at IS NULL`,
+        WHERE s.token_hash = ? AND u.deleted_at IS NULL AND u.suspended_at IS NULL`,
     )
     .get(hashToken(token)) as (Omit<CurrentUser, "email_verified"> & { email_verified_at: string | null; expires_at: string }) | undefined;
   if (!row || new Date(row.expires_at) < new Date()) return null;
@@ -77,6 +77,13 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 export async function requireUser(next?: string): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) redirect(`/login${next ? `?next=${encodeURIComponent(next)}` : ""}`);
+  return user;
+}
+
+/** Admin console guard: anyone else gets a plain 404 (the console's existence isn't advertised). */
+export async function requireAdmin(): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "admin") notFound();
   return user;
 }
 

@@ -13,7 +13,9 @@ export type NotificationKind =
   | "request_message"    // → the other party in a matched request's thread (collapsed while unread)
   | "booking_new"        // → GM: a player reserved a seat
   | "booking_cancelled"  // → GM: a player cancelled their seat
-  | "session_cancelled"; // → player: the GM cancelled a session they had booked
+  | "session_cancelled"  // → player: the GM cancelled a session they had booked
+  | "report_new"         // → admins: a member reported something
+  | "report_resolved";   // → reporter: a moderator reviewed their report
 
 /** Kinds that update one unread row instead of piling up (chatty events). */
 const COLLAPSE: ReadonlySet<NotificationKind> = new Set(["request_message"]);
@@ -24,6 +26,7 @@ export type NotifyInput = {
   actorId?: number | null;
   requestId?: number | null;
   sessionId?: number | null;
+  reportId?: number | null;
 };
 
 /** Record a notification. Never notifies people about their own actions. Pass `c` inside tx(). */
@@ -39,8 +42,8 @@ export function notify(n: NotifyInput, c: DatabaseSync = db()): void {
       .run(now, n.actorId ?? null, n.userId, n.kind, n.requestId ?? null);
     if (Number(bumped.changes) > 0) return;
   }
-  c.prepare("INSERT INTO notifications (user_id, kind, actor_id, request_id, session_id, created_at) VALUES (?, ?, ?, ?, ?, ?)").run(
-    n.userId, n.kind, n.actorId ?? null, n.requestId ?? null, n.sessionId ?? null, now,
+  c.prepare("INSERT INTO notifications (user_id, kind, actor_id, request_id, session_id, report_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(
+    n.userId, n.kind, n.actorId ?? null, n.requestId ?? null, n.sessionId ?? null, n.reportId ?? null, now,
   );
 }
 

@@ -45,7 +45,7 @@ for (const scheme of ["light", "dark"] as const) {
 test("signed-in pages and forms with errors have no axe violations", async ({ page }) => {
   await login(page, "gm@questboard.test");
   const found: string[] = [];
-  for (const path of ["/dashboard", "/settings", "/gm", "/gm/requests", "/gm/games/new", "/become-a-gm", "/hire-a-gm/request"]) {
+  for (const path of ["/dashboard", "/settings", "/gm", "/gm/requests", "/gm/games/new", "/become-a-gm", "/hire-a-gm/request", "/notifications"]) {
     await page.goto(path);
     found.push(...(await violationsOf(page, path)));
   }
@@ -56,5 +56,15 @@ test("signed-in pages and forms with errors have no axe violations", async ({ pa
   await expect(title).toHaveAttribute("aria-invalid", "true");
   await expect(title).toHaveAccessibleDescription("Write a short title (5–80 characters).");
   found.push(...(await violationsOf(page, "/hire-a-gm/request with errors")));
+  expect(found).toEqual([]);
+});
+
+test("the admin console has no axe violations", async ({ page }) => {
+  await login(page, "admin@questboard.test");
+  const found: string[] = [];
+  for (const path of ["/admin", "/admin/reports", "/admin/reports?status=resolved", "/admin/gms", "/admin/users"]) {
+    await page.goto(path);
+    found.push(...(await violationsOf(page, path)));
+  }
   expect(found).toEqual([]);
 });
