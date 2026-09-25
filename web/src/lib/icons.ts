@@ -5,6 +5,7 @@
 
 /** Regular-rounded style (`fi-rr-*`). */
 export const REGULAR_ICONS = [
+  "thumbtack", "bookmark", "heart", "megaphone", "note", "comment",
   "flag", "ban", "shield", "badge-check", "chart-histogram", "user-check", "user-slash", "gavel", "list-check",
   "trash", "envelope", "envelope-open", "file-download", "scale", "user-lock",
   "share", "link-alt", "download",
@@ -24,7 +25,7 @@ export const REGULAR_ICONS = [
 ] as const;
 
 /** Solid-rounded style (`fi-sr-*`) for filled accents. */
-export const SOLID_ICONS = ["star", "badge-check", "dice-d20", "check-circle"] as const;
+export const SOLID_ICONS = ["star", "badge-check", "dice-d20", "check-circle", "bookmark", "heart", "thumbtack"] as const;
 
 /** Brand logos (`fi-brands-*`), e.g. share targets. */
 export const BRAND_ICONS = ["whatsapp"] as const;

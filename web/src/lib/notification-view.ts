@@ -17,6 +17,8 @@ export type NotificationSource = {
   request_title: string | null;
   game_title: string | null;
   game_slug: string | null;
+  post_id?: number | null;
+  post_title?: string | null;
 };
 
 export type NotificationView = {
@@ -52,6 +54,8 @@ export function describeNotification(n: NotificationSource, t: T): NotificationV
     case "report_new": return { ...base, href: "/admin/reports", icon: "flag", text: t("notif.reportNew", { name: who }) };
     case "waitlist_offer": return { ...base, href: gameHref, icon: "ticket", text: t("notif.waitlistOffer", { title: game }) };
     case "payment_confirmed": return { ...base, href: "/dashboard", icon: "wallet", text: t("notif.paymentConfirmed", { name: who, title: game }) };
+    case "lfg_reply": return { ...base, href: n.post_id ? `/board/${n.post_id}` : "/board", icon: "thumbtack", text: t("notif.lfgReply", { name: who, title: n.post_title ?? "" }) };
+    case "followed_gm_game": return { ...base, href: gameHref, icon: "dice-d20", text: t("notif.followedGame", { name: who, title: game }) };
     case "report_resolved": return { ...base, actor: null, href: "/notifications", icon: "shield-check", text: t("notif.reportResolved") };
   }
 }

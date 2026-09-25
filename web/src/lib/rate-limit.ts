@@ -18,6 +18,8 @@ export const LIMITS = {
   verify: { limit: 5, windowMs: 60 * 60_000 },   // verification emails per user
   deleteAccount: { limit: 5, windowMs: 60 * 60_000 }, // deletion attempts per user
   report: { limit: 10, windowMs: 60 * 60_000 },  // reports per user
+  notice: { limit: 5, windowMs: 24 * 60 * 60_000 }, // notice-board posts per user per day
+  noticeReply: { limit: 30, windowMs: 60 * 60_000 }, // notice-board replies per user
 } as const;
 
 export type Bucket = keyof typeof LIMITS;

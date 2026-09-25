@@ -7,15 +7,17 @@ export function SubmitButton({
   children,
   pendingText,
   className = "btn-primary",
+  ariaPressed,
 }: {
   children: React.ReactNode;
   pendingText?: string;
   className?: string;
+  ariaPressed?: boolean;
 }) {
   const { pending } = useFormStatus();
   const { t } = useI18n();
   return (
-    <button type="submit" disabled={pending} className={className} aria-busy={pending}>
+    <button type="submit" disabled={pending} className={className} aria-busy={pending} aria-pressed={ariaPressed}>
       {pending ? (pendingText ?? t("common.working")) : children}
     </button>
   );

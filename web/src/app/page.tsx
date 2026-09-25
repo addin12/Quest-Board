@@ -91,6 +91,17 @@ export default async function HomePage(props: PageProps<"/">) {
       </section>
 
       <section className="mx-auto max-w-6xl px-4 pt-16">
+        <Link href="/board" className="on-wood wood-plank flex flex-col items-start gap-4 rounded-lg border-2 border-[#8a6a3a] p-6 sm:flex-row sm:items-center">
+          <span className="parchment notice flex h-14 w-14 shrink-0 -rotate-3 items-center justify-center text-2xl text-accent"><Icon name="thumbtack" solid /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-xl font-bold" style={{ fontFamily: "var(--font-heading)" }}>{t("home.boardTitle")}</span>
+            <span className="mt-1 block text-sm text-text/90">{t("home.boardBody")}</span>
+          </span>
+          <span className="btn-primary shrink-0">{t("board.open")} <Icon name="arrow-right" /></span>
+        </Link>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pt-6">
         <Link href="/hire-a-gm" className="card flex flex-col items-start gap-4 p-6 hover:border-accent sm:flex-row sm:items-center">
           <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-2xl text-accent"><Icon name="briefcase" /></span>
           <span className="min-w-0 flex-1">

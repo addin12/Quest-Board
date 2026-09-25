@@ -29,6 +29,12 @@ Each iteration ships with its own quality check (review, typecheck, lint, unit +
   - Full sessions have a **waitlist**. A freed seat is held for the next person for 12 h (or until the session starts), then passes on. People can leave, or pass an offer to the next person.
   - GMs can add a **weekly series** (up to 12 sessions) in one go.
   - GMs tick **"paid ✓"** per seat. The player sees "The GM confirmed your payment" and is notified.
+- **Iteration 6: Tavern Notice Board, saved games, follows.**
+  - **`/board`:** parchment notes pinned to an oak board, either "Looking for a group" or "Looking for players".
+    - Filters, public replies (the author is notified), take-down, and a 30-day expiry.
+    - Posting needs a verified email, and notices and replies can be reported.
+  - **Save** games (they show in My games) and **follow** GMs, whose next published game notifies followers once.
+  - The phone tab bar now covers widths below 768 px, and the header never wraps (checked from 640 to 1536 px for every role).
 
 ## What changed in v0.10 (tavern look + notification popover)
 - **Medieval tavern design:** parchment and ink by day, a candlelit dark-oak room at night.

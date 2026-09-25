@@ -172,6 +172,74 @@ export const MIGRATIONS: Record<number, string> = {
     );
     CREATE INDEX IF NOT EXISTS idx_waitlist_session ON waitlist(session_id, status, created_at);
   `,
+  // v0.11 iteration 6: notice board, saved games, follows; reports accept board content.
+  12: `
+    ALTER TABLE games ADD COLUMN announced_at TEXT;
+    -- Games already live before follows existed count as announced.
+    UPDATE games SET announced_at = created_at WHERE status = 'published';
+    ALTER TABLE notifications ADD COLUMN game_id INTEGER;
+    ALTER TABLE notifications ADD COLUMN post_id INTEGER;
+    CREATE TABLE reports_v12 (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      reporter_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      target_type     TEXT NOT NULL CHECK (target_type IN ('game','review','message','request_message','user','lfg_post','lfg_reply')),
+      target_id       INTEGER NOT NULL,
+      target_owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      reason          TEXT NOT NULL CHECK (reason IN ('scam','harassment','inappropriate','spam','misleading','other')),
+      details         TEXT NOT NULL DEFAULT '',
+      snapshot        TEXT NOT NULL,          -- what the content said when it was reported
+      href            TEXT NOT NULL,          -- where it lives (for the moderator)
+      status          TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','resolved','dismissed')),
+      decision        TEXT CHECK (decision IN ('remove','suspend','dismiss')),
+      note            TEXT NOT NULL DEFAULT '',
+      resolved_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+      resolved_at     TEXT
+    );
+    INSERT INTO reports_v12 (id, reporter_id, target_type, target_id, target_owner_id, reason, details, snapshot, href, status, decision, note, resolved_by, created_at, resolved_at) SELECT id, reporter_id, target_type, target_id, target_owner_id, reason, details, snapshot, href, status, decision, note, resolved_by, created_at, resolved_at FROM reports;
+    DROP TABLE reports;
+    ALTER TABLE reports_v12 RENAME TO reports;
+    CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, created_at);
+    CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_type, target_id);
+    CREATE TABLE IF NOT EXISTS lfg_posts (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      author_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind          TEXT NOT NULL CHECK (kind IN ('lf_group','lf_players')),
+      title         TEXT NOT NULL,
+      system        TEXT NOT NULL DEFAULT '',
+      location_type TEXT NOT NULL DEFAULT 'online' CHECK (location_type IN ('online','in_person')),
+      city          TEXT NOT NULL DEFAULT '',
+      language      TEXT NOT NULL DEFAULT 'id' CHECK (language IN ('id','en','both')),
+      schedule      TEXT NOT NULL DEFAULT '',
+      spots         INTEGER NOT NULL DEFAULT 0 CHECK (spots BETWEEN 0 AND 8),
+      body          TEXT NOT NULL,
+      status        TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','closed')),
+      created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+      expires_at    TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_lfg_posts_open ON lfg_posts(status, expires_at, created_at);
+    CREATE TABLE IF NOT EXISTS lfg_replies (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      post_id     INTEGER NOT NULL REFERENCES lfg_posts(id) ON DELETE CASCADE,
+      author_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      body        TEXT NOT NULL,
+      created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_lfg_replies_post ON lfg_replies(post_id, created_at);
+    CREATE TABLE IF NOT EXISTS saved_games (
+      user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      game_id     INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+      created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+      PRIMARY KEY (user_id, game_id)
+    );
+    CREATE TABLE IF NOT EXISTS gm_follows (
+      follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      gm_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+      PRIMARY KEY (follower_id, gm_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_gm_follows_gm ON gm_follows(gm_id);
+  `,
 };
 
 export type UpgradePlan =

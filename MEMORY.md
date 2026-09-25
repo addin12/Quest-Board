@@ -4,8 +4,8 @@ This is the decision log. Treat these entries as requirements: they came from th
 
 ## Current state (v0.10, 2026-09-25)
 - A working MVP plus 11 spec docs, in git (`main`) with GitHub Actions CI (`.github/workflows/ci.yml`). There is no remote yet: push to GitHub to turn CI on.
-- Schema version is **11**. Real migrations live in `web/src/lib/migrations.ts`; v4 is the baseline.
-- 59 unit tests and 61 e2e journeys (including 6 axe accessibility sweeps), all passing.
+- Schema version is **12**. Real migrations live in `web/src/lib/migrations.ts`; v4 is the baseline.
+- 62 unit tests and 65 e2e journeys (including 6 axe accessibility sweeps), all passing.
 - All IMPROVEMENTS P1 items are done. Next up is P2, which needs product-owner approval.
 
 ## Decision log
@@ -31,6 +31,11 @@ This is the decision log. Treat these entries as requirements: they came from th
   - Waitlist offers **hold** the seat for 12 h (or until the start). Processing is lazy (no cron).
   - The "paid ✓" marker is informational only (payments stay off-platform).
   - Weekly repeats keep the same UTC time.
+- Iteration 6: Notice Board + social.
+  - **Board replies are public** (a forum-style thread), with a safety note about not sharing phone numbers early. There are no private DMs yet.
+  - Notices expire after 30 days, and taken-down notices 404 for strangers.
+  - Following notifies once per game (`announced_at`); existing games count as announced.
+  - The phone tab bar now runs up to `md`.
 
 ### v0.10, 2026-09-25: medieval tavern theme + bell popover (product owner feedback)
 - **Visual identity is now "medieval tavern"** (supersedes v0.1's "warm, bookish" look).

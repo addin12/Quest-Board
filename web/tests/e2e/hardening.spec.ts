@@ -34,6 +34,7 @@ test("P1-6 search treats % and _ literally", async ({ page }) => {
 
 test("P1-9 repeated failed logins are rate limited", async ({ page }) => {
   await page.goto("/login");
+  await page.waitForLoadState("networkidle"); // type only once the form has hydrated
   for (let i = 0; i < 10; i++) {
     await page.getByLabel("Email").fill("brute@force.test");
     await page.getByLabel("Password").fill(`wrong-${i}`);

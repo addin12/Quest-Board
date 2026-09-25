@@ -8,6 +8,8 @@ import { Avatar, EmptyState, GameCard, Stars, VerifiedBadge } from "@/components
 import { Icon } from "@/components/icon";
 import { ShareButtons } from "@/components/share-buttons";
 import { ReportButton } from "@/components/report-button";
+import { FollowGmButton } from "@/components/social-buttons";
+import { followerCount, isFollowing } from "@/lib/community";
 import { getCurrentUser } from "@/lib/auth";
 import { siteOrigin } from "@/lib/site";
 
@@ -53,6 +55,7 @@ export default async function GmProfilePage(props: PageProps<"/gms/[id]">) {
         <div className="flex flex-col items-start gap-3 sm:items-end">
           <Link href={`/hire-a-gm/request?gm=${gm.id}`} className="btn-primary"><Icon name="briefcase" /> {t("hire.requestThisGm")}</Link>
           <ShareButtons url={`${await siteOrigin()}/gms/${gm.id}`} text={t("share.gmText", { name: gm.name })} />
+          {viewer && viewer.id !== gm.id && <FollowGmButton gmId={gm.id} following={isFollowing(viewer.id, gm.id)} count={followerCount(gm.id)} t={t} />}
           {viewer && viewer.id !== gm.id && <ReportButton targetType="user" targetId={gm.id} />}
         </div>
       </header>

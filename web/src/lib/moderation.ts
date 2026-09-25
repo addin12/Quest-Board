@@ -44,6 +44,18 @@ export function resolveTarget(type: ReportTarget, id: number): Target | null {
         canSee: (u) => u === m.requester_id || u === m.matched_gm_id,
       };
     }
+    case "lfg_post": {
+      const p = c.prepare("SELECT p.id, p.author_id, p.title, p.body, p.status, u.name FROM lfg_posts p JOIN users u ON u.id = p.author_id WHERE p.id = ?").get(id) as
+        | { id: number; author_id: number; title: string; body: string; status: string; name: string } | undefined;
+      if (!p) return null;
+      return { ownerId: p.author_id, href: `/board/${p.id}`, snapshot: `Notice “${p.title}” by ${p.name}\n${p.body}`, canSee: () => true };
+    }
+    case "lfg_reply": {
+      const r = c.prepare("SELECT r.author_id, r.body, p.id AS post_id, p.title, u.name FROM lfg_replies r JOIN lfg_posts p ON p.id = r.post_id JOIN users u ON u.id = r.author_id WHERE r.id = ?").get(id) as
+        | { author_id: number; body: string; post_id: number; title: string; name: string } | undefined;
+      if (!r) return null;
+      return { ownerId: r.author_id, href: `/board/${r.post_id}`, snapshot: `Reply on notice “${r.title}”, ${r.name}:\n${r.body}`, canSee: () => true };
+    }
     case "user": {
       const u = c.prepare("SELECT u.id, u.name, u.deleted_at, COALESCE(p.headline, '') AS headline, COALESCE(p.payment_info, '') AS payment_info FROM users u LEFT JOIN gm_profiles p ON p.user_id = u.id WHERE u.id = ?").get(id) as
         | { id: number; name: string; deleted_at: string | null; headline: string; payment_info: string } | undefined;
@@ -104,6 +116,7 @@ export function suspendUser(userId: number, adminId: number): boolean {
     c.prepare("UPDATE users SET suspended_at = ? WHERE id = ?").run(new Date().toISOString(), userId);
     c.prepare("DELETE FROM auth_sessions WHERE user_id = ?").run(userId);
     dropFromWaitlists(c, userId);
+    c.prepare("UPDATE lfg_posts SET status = 'closed' WHERE author_id = ? AND status = 'open'").run(userId);
     const games = c.prepare("SELECT id FROM games WHERE gm_id = ? AND status <> 'archived'").all(userId) as { id: number }[];
     for (const g of games) archiveGame(c, g.id, adminId);
     c.prepare("UPDATE gm_requests SET status = 'closed' WHERE requester_id = ? AND status = 'open'").run(userId);
@@ -132,6 +145,8 @@ export function decideReport(reportId: number, adminId: number, decision: Report
       else if (r.target_type === "message") c.prepare("DELETE FROM messages WHERE id = ?").run(r.target_id);
       else if (r.target_type === "request_message") c.prepare("DELETE FROM gm_request_messages WHERE id = ?").run(r.target_id);
       else if (r.target_type === "game") archiveGame(c, r.target_id, adminId);
+      else if (r.target_type === "lfg_post") c.prepare("DELETE FROM lfg_posts WHERE id = ?").run(r.target_id);
+      else if (r.target_type === "lfg_reply") c.prepare("DELETE FROM lfg_replies WHERE id = ?").run(r.target_id);
     }
     const status = decision === "dismiss" ? "dismissed" : "resolved";
     const affected = c

@@ -27,6 +27,8 @@ import { googleCalendarUrl, sessionEvent } from "@/lib/calendar";
 import { siteOrigin } from "@/lib/site";
 import { myWaitlist, refreshWaitlists } from "@/lib/waitlist";
 import { WaitlistControls, WaitlistOffer } from "@/components/waitlist-controls";
+import { SaveGameButton } from "@/components/social-buttons";
+import { isSaved } from "@/lib/community";
 
 export async function generateMetadata(props: PageProps<"/games/[slug]">): Promise<Metadata> {
   const { slug } = await props.params;
@@ -85,7 +87,10 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
             </div>
             {game.status === "published" && (
               <div className="mt-4 flex flex-col gap-2">
-                <ShareButtons url={gameUrl} text={t("share.gameText", { title: game.title, system: game.system })} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <ShareButtons url={gameUrl} text={t("share.gameText", { title: game.title, system: game.system })} />
+                  {user && user.id !== game.gm_id && <SaveGameButton gameId={game.id} slug={game.slug} saved={isSaved(user.id, game.id)} t={t} />}
+                </div>
                 {user && user.id !== game.gm_id && <ReportButton targetType="game" targetId={game.id} />}
               </div>
             )}

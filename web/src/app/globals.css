@@ -141,6 +141,17 @@
 @utility popover { @apply overflow-hidden rounded-lg border border-border bg-surface text-text shadow-2xl shadow-black/40; }
 @utility badge { @apply flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-accent-ink ring-2 ring-[#2a1b10]; }
 @utility eyebrow { @apply font-display text-xs font-bold uppercase tracking-[0.18em] text-muted; }
+/* Notice-board note: parchment with a soft drop shadow, pinned at the top. */
+@utility notice {
+  @apply rounded-sm border border-border bg-surface text-text shadow-[0_6px_14px_-6px_rgb(40_20_5/0.55),inset_0_0_30px_rgb(140_95_35/0.12)];
+}
+/* Dark mode: notes a shade lighter than the oak board, with a warm edge, so they read as paper. */
+@media (prefers-color-scheme: dark) {
+  .notice {
+    background-color: #33261a;
+    border-color: #7a5a38;
+  }
+}
 /* ❦ divider: the flourish SVG is a mask, so it takes the current theme's brass colour. */
 @utility ornament {
   @apply block h-4 w-44 bg-gold;

@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
 import type { T } from "@/lib/i18n/dict";
 import { listMyGmRequests, listPlayerBookings, type PlayerBooking } from "@/lib/queries";
-import { EmptyState, Notice, Thumb, priceLabel } from "@/components/ui";
+import { Avatar, EmptyState, GameCard, Notice, Thumb, priceLabel } from "@/components/ui";
 import { LocalTime } from "@/components/local-time";
 import { ConfirmButton } from "@/components/submit-button";
 import { RequestStatus } from "@/components/request-bits";
@@ -14,6 +14,8 @@ import { ResendVerificationButton } from "@/components/account-forms";
 import { myWaitlistDetailed, refreshWaitlists } from "@/lib/waitlist";
 import { WaitlistOffer } from "@/components/waitlist-controls";
 import { leaveWaitlistAction } from "../actions";
+import { listFollowing, listSavedGameIds, myNotices } from "@/lib/community";
+import { getGameCardsByIds } from "@/lib/queries";
 import { googleCalendarUrl, sessionEvent } from "@/lib/calendar";
 import { siteOrigin } from "@/lib/site";
 import { Icon } from "@/components/icon";
@@ -36,6 +38,9 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const requests = listMyGmRequests(user.id);
   refreshWaitlists(myWaitlistDetailed(user.id).map((w) => w.session_id));
   const waitlist = myWaitlistDetailed(user.id);
+  const saved = getGameCardsByIds(listSavedGameIds(user.id));
+  const following = listFollowing(user.id);
+  const notices = myNotices(user.id).filter((n) => n.status === "open" && new Date(n.expires_at) > now);
   const origin = await siteOrigin();
   const gcal = (b: (typeof upcoming)[number]) => googleCalendarUrl(sessionEvent({ ...b, id: b.session_id }, origin, t));
   const justBooked = booked ? upcoming.find((b) => String(b.session_id) === booked) : undefined;
@@ -98,6 +103,36 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
                 </form>
               </div>
             </div>
+          ))}
+        </Section>
+      )}
+
+      {saved.length > 0 && (
+        <Section icon="bookmark" title={t("social.savedTitle", { n: saved.length })}>
+          <div className="grid gap-5 sm:grid-cols-2">{saved.map((g) => <GameCard key={g.id} game={g} t={t} />)}</div>
+        </Section>
+      )}
+
+      {following.length > 0 && (
+        <Section icon="heart" title={t("social.followingTitle", { n: following.length })}>
+          <div className="flex flex-wrap gap-2">
+            {following.map((g) => (
+              <Link key={g.id} href={`/gms/${g.id}`} className="card flex items-center gap-2 py-2 pr-4 pl-2 hover:border-accent">
+                <Avatar name={g.name} hue={g.avatar_hue} image={g.avatar_image} size={32} />
+                <span className="text-sm"><span className="block font-semibold">{g.name}</span><span className="block text-xs text-muted">{g.headline}</span></span>
+              </Link>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {notices.length > 0 && (
+        <Section icon="thumbtack" title={t("board.myNotices", { n: notices.length })}>
+          {notices.map((n) => (
+            <Link key={n.id} href={`/board/${n.id}`} className="card flex items-center justify-between gap-3 p-4 hover:border-accent">
+              <span className="font-semibold">{n.title}</span>
+              <span className="text-xs text-muted">{t("board.replies", { n: n.reply_count })}</span>
+            </Link>
           ))}
         </Section>
       )}

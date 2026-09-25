@@ -47,7 +47,7 @@ test("reporting a review: validation, no self-reports, no duplicates; the admin 
   const admin = await newPage(browser);
   await login(admin, "admin@questboard.test");
   await admin.getByRole("button", { name: /^Notifications/ }).click();
-  await expect(admin.getByRole("region", { name: "Notifications" }).getByText("Andi Wijaya sent a new report")).toBeVisible();
+  await expect(admin.getByRole("region", { name: "Notifications" }).getByText("Andi Wijaya sent a new report").first()).toBeVisible(); // other specs may have reported too
   await admin.getByRole("link", { name: "Admin" }).click();
   await admin.getByRole("link", { name: /^Reports/ }).click();
   const card = admin.getByRole("listitem").filter({ hasText: "Spam or advertising" }).first();
@@ -64,7 +64,7 @@ test("reporting a review: validation, no self-reports, no duplicates; the admin 
   await reporter.goto("/games/mercusuar-di-pulau-kabut");
   await expect(reporter.getByText(reviewText.slice(0, 30), { exact: false })).toHaveCount(0);
   await reporter.goto("/notifications");
-  await expect(reporter.getByText("Thanks — a moderator reviewed your report.")).toBeVisible();
+  await expect(reporter.getByText("Thanks — a moderator reviewed your report.").first()).toBeVisible();
 });
 
 test("people can't report their own content", async ({ page }) => {

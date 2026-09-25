@@ -20,6 +20,8 @@ import { archiveGame, deleteAccount } from "@/lib/account";
 import { createReport, decideReport, setGmVerified, suspendUser, unsuspendUser } from "@/lib/moderation";
 import { isReportDecision, parseReport } from "@/lib/reports";
 import { heldSeats, joinWaitlist, leaveWaitlist, processWaitlist } from "@/lib/waitlist";
+import { addReply, announceGameIfNew, createNotice, getNotice, setFollowing, setSaved } from "@/lib/community";
+import { parseNotice, parseReply } from "@/lib/board";
 import { getI18n } from "@/lib/i18n/server";
 import { siteOrigin } from "@/lib/site";
 
@@ -221,6 +223,7 @@ async function saveGameActionImpl(_: FormState, form: FormData): Promise<FormSta
         ).lastInsertRowid,
     );
   }
+  announceGameIfNew(gameId); // first publish → tell the GM's followers
   revalidatePath("/", "layout");
   redirect(`/gm/games/${gameId}`);
 }
@@ -590,6 +593,57 @@ export async function markPaidAction(form: FormData) {
   revalidatePath("/", "layout");
 }
 
+// ─── Tavern Notice Board, saved games, follows ───────────────────────────
+
+async function createNoticeActionImpl(_: FormState, form: FormData): Promise<FormState> {
+  const user = await requireUser("/board/new");
+  if (!user.email_verified) return { error: "err.verifyEmail" };
+  const parsed = parseNotice(fd(form));
+  if (!parsed.ok) return { fieldErrors: parsed.errors, error: "err.fixFields" };
+  if (!hit("notice", String(user.id))) return { error: "err.rateLimited" };
+  const id = createNotice(user.id, parsed.value);
+  revalidatePath("/board");
+  redirect(`/board/${id}?posted=1`);
+}
+
+async function replyNoticeActionImpl(_: FormState, form: FormData): Promise<FormState> {
+  const user = await requireUser();
+  if (!user.email_verified) return { error: "err.verifyEmail" };
+  const post = getNotice(Number(form.get("postId")));
+  if (!post || post.status !== "open" || new Date(post.expires_at) <= new Date()) return { error: "err.noticeClosed" };
+  const parsed = parseReply(fd(form));
+  if (!parsed.ok) return { fieldErrors: { body: parsed.error } };
+  if (!hit("noticeReply", String(user.id))) return { error: "err.rateLimited" };
+  addReply(post.id, user.id, parsed.value);
+  revalidatePath(`/board/${post.id}`);
+  return { ok: true };
+}
+
+export async function closeNoticeAction(form: FormData) {
+  const user = await requireUser();
+  const post = getNotice(Number(form.get("postId")));
+  if (!post || (post.author_id !== user.id && user.role !== "admin")) throw new Error("Not found");
+  db().prepare("UPDATE lfg_posts SET status = 'closed' WHERE id = ?").run(post.id);
+  revalidatePath("/board", "layout");
+}
+
+export async function toggleSaveAction(form: FormData) {
+  const gameId = Number(form.get("gameId"));
+  const user = await requireUser(`/games/${String(form.get("slug") ?? "")}`);
+  if (!getGameById(gameId)) throw new Error("Not found");
+  setSaved(user.id, gameId, form.get("save") === "1");
+  revalidatePath("/", "layout");
+}
+
+export async function toggleFollowAction(form: FormData) {
+  const gmId = Number(form.get("gmId"));
+  const user = await requireUser(`/gms/${gmId}`);
+  const gm = db().prepare("SELECT 1 FROM gm_profiles p JOIN users u ON u.id = p.user_id WHERE u.id = ? AND u.deleted_at IS NULL AND u.suspended_at IS NULL").get(gmId);
+  if (!gm || gmId === user.id) throw new Error("Not found");
+  setFollowing(user.id, gmId, form.get("follow") === "1");
+  revalidatePath("/", "layout");
+}
+
 // ─── Reports & moderation ────────────────────────────────────────────────
 
 async function createReportActionImpl(_: FormState, form: FormData): Promise<FormState> {
@@ -701,6 +755,14 @@ export async function deleteAccountAction(prev: FormState, form: FormData): Prom
 
 export async function createReportAction(prev: FormState, form: FormData): Promise<FormState> {
   return withEcho(form, () => createReportActionImpl(prev, form));
+}
+
+export async function createNoticeAction(prev: FormState, form: FormData): Promise<FormState> {
+  return withEcho(form, () => createNoticeActionImpl(prev, form));
+}
+
+export async function replyNoticeAction(prev: FormState, form: FormData): Promise<FormState> {
+  return withEcho(form, () => replyNoticeActionImpl(prev, form));
 }
 
 export async function postRequestMessageAction(prev: FormState, form: FormData): Promise<FormState> {

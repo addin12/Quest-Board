@@ -54,6 +54,12 @@ The full UX spec (flows, screens, sitemap) is in `docs/07-ux-ui-spec.md`. This f
 - **Notification rows:** actor avatar, a kind icon in accent, one sentence and a relative time. Unread rows get an accent border, a faint accent-soft background and a "New" chip.
 - **Contrast:** light-theme `--accent-soft` (#faebe4) and `--success-soft` (#e9f5ec) are tuned so accent/success text on them is ≥ 4.5:1. Re-check with the axe sweep if you touch tokens.
 
+## Notice Board
+- The board is an `.on-wood .wood-plank` panel with a brass border. Each note is `.parchment .notice`: square-ish corners, a drop shadow, a solid thumbtack at the top centre, and a stable tilt of −1.5° to +1.5° (`noticeTilt(id)`) that straightens on hover and focus.
+- In dark mode, notes are a shade lighter than the oak (#33261a with a #7a5a38 edge) so they read as paper.
+- "Looking for players" eyebrows use success green; "Looking for a group" uses the accent colour.
+- **Header rule:** items never wrap (`whitespace-nowrap`). Anything new in the header must pass the width sweep (640–1536 px, signed-in GM/admin, EN + ID) or go icon-only.
+
 ## Typography
 - **h1, h2, the wordmark and eyebrows:** **Cinzel** (`font-display`, `var(--font-heading)` in inline styles). It's an inscription face with small caps, like a tavern sign. Keep h1 ≤ 60 px, and use `font-extrabold` for heroes.
 - **h3 and titles inside cards:** **Alegreya** (`font-serif`), a book serif.

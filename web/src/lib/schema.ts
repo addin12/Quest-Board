@@ -13,7 +13,9 @@
 // v9: users.email_verified_at / deleted_at + auth_tokens (reset, verify) + email_outbox.
 // v10: reports + users.suspended_at + notifications.report_id (moderation).
 // v11: waitlist + bookings.paid_marked_at (GM "paid ✓").
-export const SCHEMA_VERSION = 11;
+// v12: Tavern Notice Board (lfg_posts, lfg_replies), saved_games, gm_follows, games.announced_at,
+//      notifications.game_id/post_id, reports accept lfg_post/lfg_reply.
+export const SCHEMA_VERSION = 12;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -73,6 +75,7 @@ CREATE TABLE IF NOT EXISTS games (
   cover_image        TEXT NOT NULL DEFAULT '',  -- path/URL of cover art; '' = generated gradient
   genres             TEXT NOT NULL DEFAULT '',  -- CSV of genre keys (lib/categories.ts)
   styles             TEXT NOT NULL DEFAULT '',  -- CSV of play-style keys
+  announced_at       TEXT,                      -- v12: followers were told about this game
   status             TEXT NOT NULL DEFAULT 'published' CHECK (status IN ('draft','published','archived')),
   created_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
@@ -180,7 +183,9 @@ CREATE TABLE IF NOT EXISTS notifications (
   session_id  INTEGER REFERENCES game_sessions(id) ON DELETE CASCADE,
   created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   read_at     TEXT,
-  report_id   INTEGER                    -- v10: report_new / report_resolved
+  report_id   INTEGER,                   -- v10: report_new / report_resolved
+  game_id     INTEGER,                   -- v12: followed_gm_game
+  post_id     INTEGER                    -- v12: lfg_reply
 );
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read_at, created_at);
 
@@ -207,7 +212,7 @@ CREATE TABLE IF NOT EXISTS email_outbox (
 CREATE TABLE IF NOT EXISTS reports (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   reporter_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  target_type     TEXT NOT NULL CHECK (target_type IN ('game','review','message','request_message','user')),
+  target_type     TEXT NOT NULL CHECK (target_type IN ('game','review','message','request_message','user','lfg_post','lfg_reply')),
   target_id       INTEGER NOT NULL,
   target_owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   reason          TEXT NOT NULL CHECK (reason IN ('scam','harassment','inappropriate','spam','misleading','other')),
@@ -235,4 +240,43 @@ CREATE TABLE IF NOT EXISTS waitlist (
   UNIQUE (session_id, player_id)
 );
 CREATE INDEX IF NOT EXISTS idx_waitlist_session ON waitlist(session_id, status, created_at);
+
+CREATE TABLE IF NOT EXISTS lfg_posts (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  author_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind          TEXT NOT NULL CHECK (kind IN ('lf_group','lf_players')),
+  title         TEXT NOT NULL,
+  system        TEXT NOT NULL DEFAULT '',
+  location_type TEXT NOT NULL DEFAULT 'online' CHECK (location_type IN ('online','in_person')),
+  city          TEXT NOT NULL DEFAULT '',
+  language      TEXT NOT NULL DEFAULT 'id' CHECK (language IN ('id','en','both')),
+  schedule      TEXT NOT NULL DEFAULT '',
+  spots         INTEGER NOT NULL DEFAULT 0 CHECK (spots BETWEEN 0 AND 8),
+  body          TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','closed')),
+  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  expires_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_lfg_posts_open ON lfg_posts(status, expires_at, created_at);
+CREATE TABLE IF NOT EXISTS lfg_replies (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  post_id     INTEGER NOT NULL REFERENCES lfg_posts(id) ON DELETE CASCADE,
+  author_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body        TEXT NOT NULL,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_lfg_replies_post ON lfg_replies(post_id, created_at);
+CREATE TABLE IF NOT EXISTS saved_games (
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  game_id     INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY (user_id, game_id)
+);
+CREATE TABLE IF NOT EXISTS gm_follows (
+  follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  gm_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY (follower_id, gm_id)
+);
+CREATE INDEX IF NOT EXISTS idx_gm_follows_gm ON gm_follows(gm_id);
 `;

@@ -227,6 +227,7 @@ export function seedDatabase(conn: DatabaseSync) {
     });
 
     conn.exec("UPDATE users SET email_verified_at = created_at"); // demo accounts are verified
+    conn.exec("UPDATE games SET announced_at = created_at WHERE status = 'published'");
     conn.exec("COMMIT");
   } catch (err) {
     conn.exec("ROLLBACK");

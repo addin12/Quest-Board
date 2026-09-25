@@ -130,6 +130,16 @@ export function categorySummary(): { systems: SystemSummary[]; genres: Record<st
 }
 
 /** Resolve a system URL slug to its name: any system with published games, or a known system (even with none yet). */
+/** Published game cards for a list of ids, in that order (e.g. saved games). */
+export function getGameCardsByIds(ids: number[]): GameCard[] {
+  if (ids.length === 0) return [];
+  const rows = db()
+    .prepare(`${CARD_SELECT} WHERE g.status = 'published' AND g.id IN (${ids.map(() => "?").join(",")})`)
+    .all(new Date().toISOString(), ...ids) as GameCard[];
+  const byId = new Map(rows.map((g) => [g.id, g]));
+  return ids.map((id) => byId.get(id)).filter((g): g is GameCard => !!g);
+}
+
 export function systemFromSlug(slug: string): string | undefined {
   return (
     listSystemsInUse().find((s) => systemSlug(s.system) === slug)?.system ??

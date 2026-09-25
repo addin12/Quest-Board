@@ -60,6 +60,9 @@ export function deleteAccount(userId: number): void {
     for (const g of games) archiveGame(c, g.id, userId);
 
     c.prepare("UPDATE gm_requests SET status = 'closed' WHERE requester_id = ? AND status = 'open'").run(userId);
+    c.prepare("UPDATE lfg_posts SET status = 'closed' WHERE author_id = ? AND status = 'open'").run(userId);
+    c.prepare("DELETE FROM saved_games WHERE user_id = ?").run(userId);
+    c.prepare("DELETE FROM gm_follows WHERE follower_id = ? OR gm_id = ?").run(userId, userId);
     c.prepare("DELETE FROM gm_request_offers WHERE gm_id = ? AND request_id IN (SELECT id FROM gm_requests WHERE status = 'open')").run(userId);
 
     c.prepare(
@@ -94,5 +97,9 @@ export function exportAccount(userId: number) {
     offers_sent: q("SELECT o.id, r.title AS request, o.message, o.price_idr, o.created_at FROM gm_request_offers o JOIN gm_requests r ON r.id = o.request_id WHERE o.gm_id = ?", userId),
     request_messages: q("SELECT id, request_id, body, created_at FROM gm_request_messages WHERE user_id = ?", userId),
     notifications: q("SELECT kind, created_at, read_at FROM notifications WHERE user_id = ?", userId),
+    notice_board_posts: q("SELECT id, kind, title, system, schedule, body, status, created_at FROM lfg_posts WHERE author_id = ?", userId),
+    notice_board_replies: q("SELECT id, post_id, body, created_at FROM lfg_replies WHERE author_id = ?", userId),
+    saved_games: q("SELECT g.title, s.created_at FROM saved_games s JOIN games g ON g.id = s.game_id WHERE s.user_id = ?", userId),
+    following: q("SELECT u.name, f.created_at FROM gm_follows f JOIN users u ON u.id = f.gm_id WHERE f.follower_id = ?", userId),
   };
 }

@@ -2,6 +2,12 @@
 @layer base{.fi{display:inline-flex;align-items:center;justify-content:center;line-height:1;vertical-align:-0.125em}}
 @font-face{font-family:qb-uicons-rr;src:url(./qb-uicons-rr.woff2) format("woff2");font-display:block}
 [class^="fi-rr-"]:before,[class*=" fi-rr-"]:before{font-family:qb-uicons-rr!important;font-style:normal;font-weight:normal!important;font-variant:normal;text-transform:none;line-height:1;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.fi-rr-thumbtack:before{content:"\fd95"}
+.fi-rr-bookmark:before{content:"\f28b"}
+.fi-rr-heart:before{content:"\f7a0"}
+.fi-rr-megaphone:before{content:"\f917"}
+.fi-rr-note:before{content:"\f9b8"}
+.fi-rr-comment:before{content:"\f4b8"}
 .fi-rr-flag:before{content:"\f695"}
 .fi-rr-ban:before{content:"\f205"}
 .fi-rr-shield:before{content:"\fbe8"}
@@ -104,6 +110,9 @@
 .fi-sr-badge-check:before{content:"\f1eb"}
 .fi-sr-dice-d20:before{content:"\f54b"}
 .fi-sr-check-circle:before{content:"\f3bc"}
+.fi-sr-bookmark:before{content:"\f289"}
+.fi-sr-heart:before{content:"\f794"}
+.fi-sr-thumbtack:before{content:"\fd6d"}
 @font-face{font-family:qb-uicons-brands;src:url(./qb-uicons-brands.woff2) format("woff2");font-display:block}
 [class^="fi-brands-"]:before,[class*=" fi-brands-"]:before{font-family:qb-uicons-brands!important;font-style:normal;font-weight:normal!important;font-variant:normal;text-transform:none;line-height:1;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 .fi-brands-whatsapp:before{content:"\f1d2"}

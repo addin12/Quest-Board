@@ -33,6 +33,7 @@ src/app/
   dev/outbox/             queued emails — dev/e2e only, never with QUESTBOARD_ENFORCE_HTTPS
   api/me/export/          signed-in person's data as JSON (UU PDP access right)
   admin/ · admin/reports · admin/gms · admin/users   moderation console (requireAdmin() → 404 for everyone else)
+  board/ · board/new · board/[id]   Tavern Notice Board (looking-for-group notes + public replies)
   gm/ · gm/games/new · gm/games/[id] · gm/games/[id]/edit   GM dashboard & management
   api/games/route.ts · api/games/[slug]/route.ts           public read-only JSON (no payment details)
   api/sessions/[id]/ics/  one scheduled session as an iCalendar file
@@ -60,6 +61,8 @@ src/lib/
   db.ts schema.ts seed.ts auth.ts password.ts queries.ts rate-limit.ts   server-only (schema.ts is pure too)
   policy.ts validation.ts icons.ts migrations.ts categories.ts calendar.ts i18n/dict.ts   pure (unit-tested)
   reports.ts              pure: report targets, reasons, decisions, parseReport()
+  board.ts                pure: notice kinds, parseNotice/parseReply, noticeTilt
+  community.ts            notices + replies, saved games, GM follows, announceGameIfNew
   waitlist.ts             processWaitlist (expire → offer free seats), heldSeats, join/leave, dropFromWaitlists
   moderation.ts           resolveTarget (owner, snapshot, visibility), createReport, decideReport, suspendUser
   site.ts                 siteOrigin(): QUESTBOARD_BASE_URL or the request host (absolute links)
@@ -74,7 +77,7 @@ tests/    unit/*.test.ts (node:test) · e2e/marketplace.spec.ts (Playwright)
 - **Read:** a server component awaits `params`, then calls `getI18n()`, `getCurrentUser()` (memoised per request) and the synchronous `queries.ts` functions, and renders HTML. Client components hydrate only forms and `<LocalTime>`.
 - **Write:** a `<form action={serverAction}>` sends the request. The exported action wraps an internal `…Impl` in `withEcho()`. The impl validates (returning `MsgKey` errors), rate-limits (`hit()`), authorizes, writes the DB (inside `tx()` if capacity is involved), calls `revalidatePath("/", "layout")`, and then either redirects or returns `{ ok }`. On failure, `withEcho` adds `values` so the form can refill itself after React's automatic reset.
 
-## Data model (schema v11)
+## Data model (schema v12)
 | Table | Contents |
 |---|---|
 | `users` | `role` is `player`, `gm` or `admin`; `avatar_image` (optional path, v6); `email_verified_at`, `deleted_at` (v9; deleted accounts are scrubbed, never removed, so history keeps its foreign keys); `suspended_at` (v10, set by moderators) |
@@ -83,6 +86,8 @@ tests/    unit/*.test.ts (node:test) · e2e/marketplace.spec.ts (Playwright)
 | `games` | `cover_image` (optional path, v6), `price_idr`, `seats_total` (1–12), `format`, `location_type` + `platform`/`city`, **`language`** (`id`\|`en`\|`both`), `status` (`draft`\|`published`\|`archived`), **`genres`/`styles`** (CSV of category keys, max 3 each, v7) |
 | `game_sessions` | `starts_at` UTC, `status` (`scheduled`\|`completed`\|`cancelled`) |
 | `bookings` | `status` (`confirmed`\|`cancelled`), `cancelled_by`, `price_idr` snapshot, `paid_marked_at` (v11, GM's "paid ✓"). Unique active seat per (session, player) |
+| `lfg_posts` / `lfg_replies` | notice board: `kind`, title, system, location, language, schedule, `spots`, body, `status` (`open`\|`closed`), `expires_at` (+30 d); replies are public (v12) |
+| `saved_games` / `gm_follows` | (user, game) and (follower, gm) pairs (v12). `games.announced_at` makes follower notifications fire once per game |
 | `waitlist` | `session_id`, `player_id` (unique pair), `status` (`waiting`\|`offered`\|`claimed`\|`expired`\|`left`), `offered_at`, `expires_at` (a live offer holds a seat) (v11) |
 | `reviews` | one per (game, player) |
 | `messages` | table chat (the page shows the newest 200) |

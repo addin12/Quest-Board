@@ -41,24 +41,27 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const openRequests = isGm && user ? countOpenRequestsForGm(user.id) : 0;
   return (
     <html lang={lang} className={`${cinzel.variable} ${alegreya.variable} ${alegreyaSans.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col font-sans max-sm:pb-16">
+      <body className="flex min-h-full flex-col font-sans max-md:pb-16">
         <I18nProvider lang={lang}>
           <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 btn-primary">
             {t("nav.skip")}
           </a>
           <header className="on-wood wood-plank sticky top-0 z-40 border-b-2 border-[#8a6a3a] shadow-[0_2px_10px_rgb(0_0_0/0.35)]">
-            <nav className="mx-auto flex h-16 max-w-6xl items-center gap-1 px-4" aria-label={t("nav.main")}>
+            <nav className="mx-auto flex h-16 max-w-6xl items-center gap-1 whitespace-nowrap px-4 2xl:max-w-7xl" aria-label={t("nav.main")}>
               <Link href="/" className="mr-1 flex items-center gap-2 text-lg font-extrabold tracking-wide sm:mr-3" style={{ fontFamily: "var(--font-heading)" }}>
                 <Icon name="dice-d20" solid className="text-xl text-accent drop-shadow-[0_0_6px_rgb(234_179_90/0.55)]" /> <span className="hidden min-[400px]:inline">Quest Board</span>
               </Link>
-              <Link href="/games" className="btn-ghost px-2.5 max-sm:hidden sm:px-4" aria-label={t("nav.findGame")}>
-                <Icon name="search" /> <span className="hidden sm:inline">{t("nav.findGame")}</span>
+              <Link href="/games" className="btn-ghost px-2.5 max-md:hidden xl:px-3" aria-label={t("nav.findGame")}>
+                <Icon name="search" /> <span className="hidden lg:inline">{t("nav.findGame")}</span>
               </Link>
-              <Link href="/browse" className="btn-ghost px-2.5 max-sm:hidden lg:px-4" aria-label={t("nav.browse")}>
+              <Link href="/browse" className="btn-ghost px-2.5 max-md:hidden xl:px-3" aria-label={t("nav.browse")}>
                 <Icon name="map" /> <span className="hidden lg:inline">{t("nav.browse")}</span>
               </Link>
-              <Link href="/hire-a-gm" className="btn-ghost px-2.5 max-sm:hidden lg:px-4" aria-label={t("nav.hireGm")}>
+              <Link href="/hire-a-gm" className="btn-ghost px-2.5 max-md:hidden xl:px-3" aria-label={t("nav.hireGm")}>
                 <Icon name="briefcase" /> <span className="hidden lg:inline">{t("nav.hireGm")}</span>
+              </Link>
+              <Link href="/board" className="btn-ghost hidden px-2.5 lg:inline-flex xl:px-3" aria-label={t("nav.board")} title={t("nav.board")}>
+                <Icon name="thumbtack" /> <span className="hidden 2xl:inline">{t("nav.board")}</span>
               </Link>
               {!isGm && (
                 <Link href="/become-a-gm" className="btn-ghost hidden xl:inline-flex">
@@ -70,11 +73,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 {user ? (
                   <>
                     {isGm && (
-                      <Link href="/gm" className="btn-ghost px-2.5 max-sm:hidden sm:px-4" aria-label={t("nav.gmDashboard")}>
+                      <Link href="/gm" className="btn-ghost px-2.5 max-md:hidden xl:px-3" aria-label={t("nav.gmDashboard")}>
                         <Icon name="hat-wizard" /> <span className="hidden xl:inline">{t("nav.gmDashboard")}</span>
                       </Link>
                     )}
-                    <Link href="/dashboard" className="btn-ghost px-2.5 max-sm:hidden sm:px-4" aria-label={t("nav.myGames")}>
+                    <Link href="/dashboard" className="btn-ghost px-2.5 max-md:hidden xl:px-3" aria-label={t("nav.myGames")}>
                       <Icon name="calendar-clock" /> <span className="hidden xl:inline">{t("nav.myGames")}</span>
                     </Link>
                     {user.role === "admin" && (
@@ -87,7 +90,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                       <Avatar name={user.name} hue={user.avatar_hue} image={user.avatar_image} size={30} />
                     </Link>
                     <form action={logoutAction}>
-                      <button className="btn-ghost px-2.5 sm:px-4" type="submit" aria-label={t("nav.logout")}>
+                      <button className="btn-ghost px-2.5 xl:px-3" type="submit" aria-label={t("nav.logout")}>
                         <Icon name="sign-out-alt" /> <span className="hidden xl:inline">{t("nav.logout")}</span>
                       </button>
                     </form>
@@ -115,6 +118,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <Link href="/games?level=beginner" className="hover:text-text">{t("footer.newToTtrpg")}</Link>
                 <Link href="/browse" className="hover:text-text">{t("nav.browse")}</Link>
                 <Link href="/hire-a-gm" className="hover:text-text">{t("nav.hireGm")}</Link>
+                <Link href="/board" className="hover:text-text">{t("nav.board")}</Link>
                 <Link href="/how-it-works" className="hover:text-text">{t("footer.howItWorks")}</Link>
               </div>
               <div className="flex flex-col gap-1">

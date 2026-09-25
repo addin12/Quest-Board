@@ -21,7 +21,7 @@ export function MobileTabBar({ signedIn, isGm }: { signedIn: boolean; isGm: bool
   else if (signedIn) tabs.push({ href: "/become-a-gm", icon: "hat-wizard", label: "tab.becomeGm", match: (p) => p.startsWith("/become-a-gm") });
 
   return (
-    <nav aria-label={t("nav.tabs")} className="on-wood wood-plank fixed inset-x-0 bottom-0 z-40 border-t-2 border-[#8a6a3a] pb-[env(safe-area-inset-bottom)] sm:hidden">
+    <nav aria-label={t("nav.tabs")} className="on-wood wood-plank fixed inset-x-0 bottom-0 z-40 border-t-2 border-[#8a6a3a] pb-[env(safe-area-inset-bottom)] md:hidden">
       <ul className="flex">
         {tabs.map((tab) => {
           const active = tab.match(path);
