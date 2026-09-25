@@ -5,6 +5,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { parseIdr } from "@/lib/policy";
 import { EmptyState, GameCard } from "@/components/ui";
 import { Icon } from "@/components/icon";
+import { FilterSheet } from "@/components/filter-sheet";
 import { GENRES, STYLES, genreLabelKey, isGenre, isStyle, styleLabelKey } from "@/lib/categories";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -44,8 +45,10 @@ export default async function BrowsePage(props: PageProps<"/games">) {
       <p className="mt-1 text-muted">{t("browse.count", { n: games.length })}</p>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[260px_1fr]">
-        <form className="card h-fit space-y-5 p-5 lg:sticky lg:top-24" aria-label={t("browse.filters")}>
-          <p className="eyebrow flex items-center gap-1.5"><Icon name="filter" /> {t("browse.filters")}</p>
+        <div className="h-fit lg:sticky lg:top-24">
+        <FilterSheet active={active}>
+        <form className="card space-y-5 p-5 max-lg:rounded-none max-lg:border-0 max-lg:shadow-none" aria-label={t("browse.filters")}>
+          <p className="eyebrow flex items-center gap-1.5 max-lg:hidden"><Icon name="filter" /> {t("browse.filters")}</p>
           <div>
             <label htmlFor="q" className="label">{t("common.search")}</label>
             <div className="relative">
@@ -119,6 +122,8 @@ export default async function BrowsePage(props: PageProps<"/games">) {
             {active > 0 && <Link href="/games" className="btn-secondary">{t("browse.clear")}</Link>}
           </div>
         </form>
+        </FilterSheet>
+        </div>
 
         <section aria-label={t("browse.results")}>
           {games.length === 0 ? (

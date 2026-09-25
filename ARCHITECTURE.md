@@ -34,6 +34,8 @@ src/app/
   api/me/export/          signed-in person's data as JSON (UU PDP access right)
   admin/ · admin/reports · admin/gms · admin/users   moderation console (requireAdmin() → 404 for everyone else)
   board/ · board/new · board/[id]   Tavern Notice Board (looking-for-group notes + public replies)
+  quiz/                   "What kind of adventurer are you?" (GET form → filter ladder)
+  games/(list) · board/(list) · hire-a-gm/(list) · gm/(list)   route groups: list page + its loading.tsx only
   gm/ · gm/games/new · gm/games/[id] · gm/games/[id]/edit   GM dashboard & management
   api/games/route.ts · api/games/[slug]/route.ts           public read-only JSON (no payment details)
   api/sessions/[id]/ics/  one scheduled session as an iCalendar file
@@ -45,6 +47,7 @@ src/components/
   ui.tsx                  Avatar, Stars, Cover, GameCard, Notice, EmptyState, VerifiedBadge, priceLabel, languageLabel
   icon.tsx                <Icon name solid? label?>
   report-button.tsx       "Report" disclosure with reason + details (client)
+  toaster.tsx · filter-sheet.tsx · month-calendar.tsx · skeletons.tsx   iteration-7 UX pieces
   share-buttons.tsx       WhatsApp / copy / native share (client)
   calendar-links.tsx      Google Calendar + .ics links (server-safe)
   auto-refresh.tsx        router.refresh() every N s while visible (live chat)
@@ -61,6 +64,8 @@ src/lib/
   db.ts schema.ts seed.ts auth.ts password.ts queries.ts rate-limit.ts   server-only (schema.ts is pure too)
   policy.ts validation.ts icons.ts migrations.ts categories.ts calendar.ts i18n/dict.ts   pure (unit-tested)
   reports.ts              pure: report targets, reasons, decisions, parseReport()
+  quiz.ts                 pure: quiz answers → filter ladder (strict → loose)
+  toast.ts                toast(key) / readToast() (validated against the dictionary)
   board.ts                pure: notice kinds, parseNotice/parseReply, noticeTilt
   community.ts            notices + replies, saved games, GM follows, announceGameIfNew
   waitlist.ts             processWaitlist (expire → offer free seats), heldSeats, join/leave, dropFromWaitlists
@@ -139,6 +144,8 @@ Derived values (seats taken, ratings, expected income) are computed in SQL insid
   1. Add it to `NotificationKind` in `lib/notifications.ts` (and to `COLLAPSE` if it's chatty).
   2. Call `notify({...}, c)` in the action. Pass `c` when inside `tx()`. It never notifies the actor.
   3. Add a case to `describeNotification()` in `lib/notification-view.ts` (shared by the popover and the page) and `notif.*` strings in both dictionaries.
+- **Loading states:** never put `loading.tsx` above a page that can call `notFound()`. Streaming starts first, so the 404 would be sent as 200. Use a route group (`(list)`) to scope it to list pages.
+- **Confirming an action:** `await toast("toast.x")` before `revalidatePath`/`redirect`, and add `toast.x` to both dictionaries.
 - **Seats and the waitlist:** anything that frees or adds seats (cancel a booking, raise `seats_total`, delete or suspend an account) must call `processWaitlist(c, sessionId)`. Anything checking capacity must add `heldSeats(c, sessionId, userId)` to `seats_taken`. Pages call `refreshWaitlists(ids)` before showing seats.
 - **Making something reportable:** add the type to `REPORT_TARGETS` (and the DB CHECK via a migration), a `resolveTarget` case (owner, snapshot, href, who can see it), a `decideReport` "remove" branch, `report.target.*` strings, and render `<ReportButton>` for signed-in non-owners.
 - **Sending an email:** `await sendEmail({ to, subject: t("mail.xSubject"), text: t("mail.xBody", {...}) })` from `lib/mailer.ts`. Write the text in both dictionaries; it's plain text only.

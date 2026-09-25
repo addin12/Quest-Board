@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="220" viewBox="0 0 360 220">
+<defs>
+<radialGradient id="glow" cx="249" cy="100" r="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffd27a" stop-opacity=".55"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>
+<linearGradient id="flame1" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff7a1a"/><stop offset="1" stop-color="#fff0b0"/></linearGradient>
+</defs>
+<rect width="360" height="220" fill="url(#glow)"/>
+<ellipse cx="180" cy="196" rx="170" ry="16" fill="#000" fill-opacity=".14"/>
+<rect x="238" y="96" width="22" height="94" rx="4" fill="#efe0bf"/>
+<path d="M238 104 q11 8 22 0" fill="none" stroke="#d9c69c" stroke-width="3"/>
+<path d="M249 62 q12 18 0 34 q-12 -16 0 -34 Z" fill="url(#flame1)"/>
+<ellipse cx="249" cy="192" rx="32" ry="7" fill="#6b4a2a"/>
+<g transform="translate(96 88)">
+<path d="M52 0 L102 29 L102 85 L52 114 L2 85 L2 29 Z" fill="#8e2b1c"/>
+<path d="M52 0 L81 52 L23 52 Z" fill="#b8402a"/><path d="M23 52 L81 52 L52 114 Z" fill="#6f1f13"/>
+<path d="M2 29 L23 52 L2 85 Z M102 29 L81 52 L102 85 Z" fill="#7a2517"/>
+<path d="M52 0 L102 29 L81 52 Z M52 0 L2 29 L23 52 Z" fill="#a33522"/>
+<text x="52" y="46" font-family="Georgia, serif" font-size="30" font-weight="700" text-anchor="middle" fill="#fbe9c8">1</text>
+</g>
+<g fill="#d8a53c" stroke="#8a6320" stroke-width="2"><ellipse cx="60" cy="186" rx="16" ry="6"/><ellipse cx="300" cy="190" rx="16" ry="6"/></g>
+</svg>

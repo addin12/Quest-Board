@@ -32,13 +32,21 @@ test("P1-6 search treats % and _ literally", async ({ page }) => {
   await expect(page.getByRole("link", { name: /Mercusuar di Pulau Kabut/ })).toBeVisible();
 });
 
+// Must match "login=" in QUESTBOARD_RATE_LIMIT_OVERRIDES (playwright.config.ts). Production uses 10.
+const E2E_LOGIN_LIMIT = 40;
+
 test("P1-9 repeated failed logins are rate limited", async ({ page }) => {
+  test.setTimeout(120_000);
   await page.goto("/login");
   await page.waitForLoadState("networkidle"); // type only once the form has hydrated
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < E2E_LOGIN_LIMIT; i++) {
     await page.getByLabel("Email").fill("brute@force.test");
     await page.getByLabel("Password").fill(`wrong-${i}`);
-    await page.getByRole("button", { name: "Log in" }).click();
+    // Wait for this attempt's response: the error text is already on screen from the last one.
+    await Promise.all([
+      page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/login")),
+      page.getByRole("button", { name: "Log in" }).click(),
+    ]);
     await expect(page.getByText("Incorrect email or password.")).toBeVisible();
   }
   // Failed attempts keep the typed email (React resets forms; the action echoes values back).

@@ -7,7 +7,11 @@ import { describeNotification } from "@/lib/notification-view";
 import { countOpenRequestsForGm } from "@/lib/queries";
 import { getI18n } from "@/lib/i18n/server";
 import { siteOrigin } from "@/lib/site";
-import { logoutAction, setLanguageAction } from "./actions";
+import { logoutAction, setLanguageAction, setThemeAction } from "./actions";
+import { cookies } from "next/headers";
+import { readToast } from "@/lib/toast";
+import { isMsgKey, type T } from "@/lib/i18n/dict";
+import { Toaster } from "@/components/toaster";
 import { Avatar } from "@/components/ui";
 import { I18nProvider } from "@/components/i18n-provider";
 import { Icon } from "@/components/icon";
@@ -39,8 +43,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const unread = user ? countUnread(user.id) : 0;
   const recent = user ? listNotifications(user.id, 8).map((n) => describeNotification(n, t)) : [];
   const openRequests = isGm && user ? countOpenRequestsForGm(user.id) : 0;
+  const themeCookie = (await cookies()).get("qb_theme")?.value;
+  const theme = themeCookie === "light" || themeCookie === "dark" ? themeCookie : "system";
+  const pending = await readToast(isMsgKey);
   return (
-    <html lang={lang} className={`${cinzel.variable} ${alegreya.variable} ${alegreyaSans.variable} h-full antialiased`}>
+    <html lang={lang} data-theme={theme === "system" ? undefined : theme} className={`${cinzel.variable} ${alegreya.variable} ${alegreyaSans.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans max-md:pb-16">
         <I18nProvider lang={lang}>
           <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 btn-primary">
@@ -69,6 +76,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 </Link>
               )}
               <div className="ml-auto flex items-center gap-1">
+                <ThemeSwitcher theme={theme} t={t} />
                 <LanguageSwitcher lang={lang} label={t("lang.switch")} />
                 {user ? (
                   <>
@@ -90,8 +98,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                       <Avatar name={user.name} hue={user.avatar_hue} image={user.avatar_image} size={30} />
                     </Link>
                     <form action={logoutAction}>
-                      <button className="btn-ghost px-2.5 xl:px-3" type="submit" aria-label={t("nav.logout")}>
-                        <Icon name="sign-out-alt" /> <span className="hidden xl:inline">{t("nav.logout")}</span>
+                      <button className="btn-ghost px-2.5 xl:px-3" type="submit" aria-label={t("nav.logout")} title={t("nav.logout")}>
+                        <Icon name="sign-out-alt" /> <span className="hidden 2xl:inline">{t("nav.logout")}</span>
                       </button>
                     </form>
                   </>
@@ -138,9 +146,29 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             </div>
           </footer>
           <MobileTabBar signedIn={!!user} isGm={isGm} />
+          <Toaster toast={pending ? { text: t(pending.key), id: pending.id } : null} closeLabel={t("toast.close")} />
         </I18nProvider>
       </body>
     </html>
+  );
+}
+
+/** Candlelight toggle: Automatic (follows the device) → Parchment (light) → Candlelight (dark). */
+function ThemeSwitcher({ theme, t }: { theme: "system" | "light" | "dark"; t: T }) {
+  const next = theme === "system" ? "light" : theme === "light" ? "dark" : "system";
+  const name = (m: typeof theme) => t(m === "system" ? "theme.system" : m === "light" ? "theme.light" : "theme.dark");
+  return (
+    <form action={setThemeAction}>
+      <input type="hidden" name="theme" value={next} />
+      <button
+        type="submit"
+        className="btn-ghost px-2.5"
+        aria-label={t("theme.switch", { current: name(theme), next: name(next) })}
+        title={t("theme.switch", { current: name(theme), next: name(next) })}
+      >
+        <Icon name={theme === "system" ? "circle-half-stroke" : theme === "light" ? "sun" : "candle-holder"} />
+      </button>
+    </form>
   );
 }
 

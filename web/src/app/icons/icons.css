@@ -2,6 +2,9 @@
 @layer base{.fi{display:inline-flex;align-items:center;justify-content:center;line-height:1;vertical-align:-0.125em}}
 @font-face{font-family:qb-uicons-rr;src:url(./qb-uicons-rr.woff2) format("woff2");font-display:block}
 [class^="fi-rr-"]:before,[class*=" fi-rr-"]:before{font-family:qb-uicons-rr!important;font-style:normal;font-weight:normal!important;font-variant:normal;text-transform:none;line-height:1;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.fi-rr-sun:before{content:"\fd17"}
+.fi-rr-candle-holder:before{content:"\f34c"}
+.fi-rr-circle-half-stroke:before{content:"\f406"}
 .fi-rr-thumbtack:before{content:"\fd95"}
 .fi-rr-bookmark:before{content:"\f28b"}
 .fi-rr-heart:before{content:"\f7a0"}

@@ -13,6 +13,7 @@ import { CalendarLinks } from "@/components/calendar-links";
 import { ResendVerificationButton } from "@/components/account-forms";
 import { myWaitlistDetailed, refreshWaitlists } from "@/lib/waitlist";
 import { WaitlistOffer } from "@/components/waitlist-controls";
+import { MonthCalendar } from "@/components/month-calendar";
 import { leaveWaitlistAction } from "../actions";
 import { listFollowing, listSavedGameIds, myNotices } from "@/lib/community";
 import { getGameCardsByIds } from "@/lib/queries";
@@ -29,7 +30,8 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const user = await requireUser("/dashboard");
   const { t } = await getI18n();
-  const { booked, reset } = await props.searchParams;
+  const { booked, reset, view } = await props.searchParams;
+  const calendarView = view === "calendar";
   const all = listPlayerBookings(user.id);
   const now = new Date();
   const upcoming = all.filter((b) => b.status === "confirmed" && b.session_status === "scheduled" && new Date(b.starts_at) > now);
@@ -66,7 +68,23 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
         </div>
       )}
 
-      <Section icon="calendar" title={t("dash.upcoming", { n: upcoming.length })}>
+      <nav aria-label={t("cal.viewSwitch")} className="mt-6 inline-flex rounded-md border border-border p-0.5 text-sm">
+        <Link href="/dashboard" aria-current={calendarView ? undefined : "page"} className={`inline-flex items-center gap-1.5 rounded px-3 py-1.5 font-semibold ${calendarView ? "text-muted hover:text-text" : "bg-accent text-accent-ink"}`}><Icon name="list-check" /> {t("cal.viewList")}</Link>
+        <Link href="/dashboard?view=calendar" aria-current={calendarView ? "page" : undefined} className={`inline-flex items-center gap-1.5 rounded px-3 py-1.5 font-semibold ${calendarView ? "bg-accent text-accent-ink" : "text-muted hover:text-text"}`}><Icon name="calendar" /> {t("cal.viewCalendar")}</Link>
+      </nav>
+
+      {calendarView && (
+        <div className="mt-6">
+          <MonthCalendar
+            items={[
+              ...upcoming.map((b) => ({ id: `b${b.booking_id}`, title: b.title, href: `/games/${b.slug}`, startsAt: b.starts_at, kind: "booked" as const })),
+              ...waitlist.map((w) => ({ id: `w${w.session_id}`, title: w.title, href: `/games/${w.slug}`, startsAt: w.starts_at, kind: w.status === "offered" ? ("offered" as const) : ("waitlist" as const) })),
+            ]}
+          />
+        </div>
+      )}
+
+      {!calendarView && <Section icon="calendar" title={t("dash.upcoming", { n: upcoming.length })}>
         {upcoming.length === 0 ? (
           <EmptyState title={t("dash.noUpcoming")}>
             <Link href="/games" className="btn-primary mt-3"><Icon name="search" /> {t("nav.findGame")}</Link>
@@ -84,7 +102,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
             </BookingRow>
           ))
         )}
-      </Section>
+      </Section>}
 
       {waitlist.length > 0 && (
         <Section icon="hourglass-end" title={t("wait.sectionTitle", { n: waitlist.length })}>
@@ -203,7 +221,7 @@ function BookingRow({ b, t, children, extra }: { b: PlayerBooking; t: T; childre
   return (
     <div className="card flex flex-wrap items-center gap-4 p-4">
       <Thumb hue={b.cover_hue} image={b.cover_image} />
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 basis-56">
         <Link href={`/games/${b.slug}`} className="font-semibold hover:text-accent">{b.title}</Link>
         <p className="text-sm text-muted">
           <LocalTime iso={b.starts_at} /> · {b.system} · {b.location_type === "online" ? b.platform : b.city} · GM {b.gm_name} ·{" "}

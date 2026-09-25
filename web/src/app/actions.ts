@@ -22,6 +22,7 @@ import { isReportDecision, parseReport } from "@/lib/reports";
 import { heldSeats, joinWaitlist, leaveWaitlist, processWaitlist } from "@/lib/waitlist";
 import { addReply, announceGameIfNew, createNotice, getNotice, setFollowing, setSaved } from "@/lib/community";
 import { parseNotice, parseReply } from "@/lib/board";
+import { toast } from "@/lib/toast";
 import { getI18n } from "@/lib/i18n/server";
 import { siteOrigin } from "@/lib/site";
 
@@ -67,6 +68,17 @@ function safeNext(next: FormDataEntryValue | null): string {
 export async function setLanguageAction(form: FormData) {
   const lang = form.get("lang") === "en" ? "en" : "id";
   (await cookies()).set(LANG_COOKIE, lang, { path: "/", sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
+  revalidatePath("/", "layout");
+}
+
+// ─── Theme ───────────────────────────────────────────────────────────────
+
+export async function setThemeAction(form: FormData) {
+  const v = form.get("theme");
+  const theme = v === "light" || v === "dark" ? v : "system";
+  const jar = await cookies();
+  if (theme === "system") jar.delete("qb_theme");
+  else jar.set("qb_theme", theme, { path: "/", sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
   revalidatePath("/", "layout");
 }
 
@@ -275,6 +287,7 @@ export async function cancelSessionAction(form: FormData) {
       "UPDATE bookings SET status = 'cancelled', cancelled_by = 'gm', cancelled_at = ? WHERE session_id = ? AND status = 'confirmed'",
     ).run(new Date().toISOString(), sessionId);
   });
+  await toast("toast.sessionCancelled");
   revalidatePath("/", "layout");
 }
 
@@ -339,6 +352,7 @@ export async function cancelBookingAction(form: FormData) {
     .run(new Date().toISOString(), b.id);
   notify({ userId: b.gm_id, kind: "booking_cancelled", actorId: user.id, sessionId: b.session_id });
   tx((c) => processWaitlist(c, b.session_id));
+  await toast("toast.seatReleased");
   revalidatePath("/", "layout");
 }
 
@@ -492,7 +506,10 @@ export async function chooseOfferAction(form: FormData) {
   const offer = db().prepare("SELECT 1 FROM gm_request_offers WHERE request_id = ? AND gm_id = ?").get(request.id, gmId);
   if (!offer) throw new Error("Not found");
   const res = db().prepare("UPDATE gm_requests SET status = 'matched', matched_gm_id = ? WHERE id = ? AND status = 'open'").run(gmId, request.id);
-  if (Number(res.changes) > 0) notify({ userId: gmId, kind: "offer_chosen", actorId: user.id, requestId: request.id });
+  if (Number(res.changes) > 0) {
+    notify({ userId: gmId, kind: "offer_chosen", actorId: user.id, requestId: request.id });
+    await toast("toast.gmChosen");
+  }
   revalidatePath("/", "layout");
 }
 
@@ -502,6 +519,7 @@ export async function closeRequestAction(form: FormData) {
   if (!request || request.requester_id !== user.id) throw new Error("Not found");
   // Only open requests can be closed: a matched request keeps its thread and payment details.
   db().prepare("UPDATE gm_requests SET status = 'closed' WHERE id = ? AND status = 'open'").run(request.id);
+  await toast("toast.requestClosed");
   revalidatePath("/", "layout");
 }
 
@@ -569,13 +587,15 @@ async function deleteAccountActionImpl(_: FormState, form: FormData): Promise<Fo
 export async function joinWaitlistAction(form: FormData) {
   const sessionId = Number(form.get("sessionId"));
   const user = await requireUser(`/games/${String(form.get("slug") ?? "")}`);
-  joinWaitlist(sessionId, user.id); // "notFull" etc. just re-render the page with the right button
+  const joined = joinWaitlist(sessionId, user.id); // "notFull" etc. just re-render the page with the right button
+  if (joined === "ok") await toast("toast.waitJoined");
   revalidatePath("/", "layout");
 }
 
 export async function leaveWaitlistAction(form: FormData) {
   const user = await requireUser();
   leaveWaitlist(Number(form.get("sessionId")), user.id);
+  await toast("toast.waitLeft");
   revalidatePath("/", "layout");
 }
 
@@ -590,6 +610,7 @@ export async function markPaidAction(form: FormData) {
   const paid = form.get("paid") === "1";
   db().prepare("UPDATE bookings SET paid_marked_at = ? WHERE id = ?").run(paid ? new Date().toISOString() : null, b.id);
   if (paid) notify({ userId: b.player_id, kind: "payment_confirmed", actorId: user.id, sessionId: b.session_id });
+  await toast(paid ? "toast.paidMarked" : "toast.paidUnmarked");
   revalidatePath("/", "layout");
 }
 
@@ -624,7 +645,8 @@ export async function closeNoticeAction(form: FormData) {
   const post = getNotice(Number(form.get("postId")));
   if (!post || (post.author_id !== user.id && user.role !== "admin")) throw new Error("Not found");
   db().prepare("UPDATE lfg_posts SET status = 'closed' WHERE id = ?").run(post.id);
-  revalidatePath("/board", "layout");
+  await toast("toast.noticeClosed");
+  revalidatePath("/", "layout");
 }
 
 export async function toggleSaveAction(form: FormData) {
@@ -632,6 +654,7 @@ export async function toggleSaveAction(form: FormData) {
   const user = await requireUser(`/games/${String(form.get("slug") ?? "")}`);
   if (!getGameById(gameId)) throw new Error("Not found");
   setSaved(user.id, gameId, form.get("save") === "1");
+  await toast(form.get("save") === "1" ? "toast.saved" : "toast.unsaved");
   revalidatePath("/", "layout");
 }
 
@@ -641,6 +664,7 @@ export async function toggleFollowAction(form: FormData) {
   const gm = db().prepare("SELECT 1 FROM gm_profiles p JOIN users u ON u.id = p.user_id WHERE u.id = ? AND u.deleted_at IS NULL AND u.suspended_at IS NULL").get(gmId);
   if (!gm || gmId === user.id) throw new Error("Not found");
   setFollowing(user.id, gmId, form.get("follow") === "1");
+  await toast(form.get("follow") === "1" ? "toast.followed" : "toast.unfollowed");
   revalidatePath("/", "layout");
 }
 
@@ -664,7 +688,7 @@ export async function decideReportAction(form: FormData) {
   const admin = await requireAdmin();
   const decision = form.get("decision");
   if (!isReportDecision(decision)) throw new Error("Bad decision");
-  decideReport(Number(form.get("reportId")), admin.id, decision, String(form.get("note") ?? "").trim().slice(0, 500));
+  if (decideReport(Number(form.get("reportId")), admin.id, decision, String(form.get("note") ?? "").trim().slice(0, 500))) await toast("toast.reportDecided");
   revalidatePath("/", "layout");
 }
 

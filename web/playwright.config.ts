@@ -24,7 +24,8 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: false,
     timeout: 120_000,
-    // Many specs sign up fresh accounts from one IP; the login limit stays real (P1-9 tests it).
-    env: { QUESTBOARD_DB: "data/e2e.db", QUESTBOARD_DEV_OUTBOX: "true", QUESTBOARD_RATE_LIMIT_OVERRIDES: "signup=500" },
+    // Many specs sign up and log in (as the same demo accounts) from one IP. Limits are raised for
+    // sign-up and login; P1-9 still proves the login limiter works at the raised value (E2E_LOGIN_LIMIT).
+    env: { QUESTBOARD_DB: "data/e2e.db", QUESTBOARD_DEV_OUTBOX: "true", QUESTBOARD_RATE_LIMIT_OVERRIDES: "signup=500,login=40" },
   },
 });

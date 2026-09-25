@@ -7,7 +7,7 @@
 
 ![Beranda](docs/screenshots/light-home.png)
 
-## What's new in v0.11 (in progress: the big upgrade)
+## What's new in v0.11 (the big upgrade)
 Each iteration ships with its own quality check (review, typecheck, lint, unit + e2e + axe, and EN/ID light/dark mobile screenshots).
 - **Iteration 1: Git + CI.** The repo is on branch `main`, and GitHub Actions runs every check on each push.
 - **Iteration 2: sharing & calendars.**
@@ -35,6 +35,15 @@ Each iteration ships with its own quality check (review, typecheck, lint, unit +
     - Posting needs a verified email, and notices and replies can be reported.
   - **Save** games (they show in My games) and **follow** GMs, whose next published game notifies followers once.
   - The phone tab bar now covers widths below 768 px, and the header never wraps (checked from 640 to 1536 px for every role).
+- **Iteration 7: UI/UX polish.**
+  - A **theme switch** in the header (Automatic → Parchment → Candlelight), remembered across visits and applied before the page paints.
+  - **Toasts** confirm quick actions ("Saved to My games", "Seat released"…).
+  - **Loading placeholders** on list pages.
+  - **Filters in a bottom sheet** on phones.
+  - A 4-question **"What kind of adventurer are you?" quiz** (`/quiz`) that relaxes filters step by step when nothing matches.
+  - A **calendar view** on My games.
+  - **Tavern art** on empty states, the 404 ("Natural 1."), and the Hire a GM and Become a GM banners.
+- Indonesian strings added in v0.11 are listed for review in `docs/indonesian-review.md`.
 
 ## What changed in v0.10 (tavern look + notification popover)
 - **Medieval tavern design:** parchment and ink by day, a candlelit dark-oak room at night.

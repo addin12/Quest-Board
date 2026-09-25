@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="150" viewBox="0 0 240 150">
+<ellipse cx="120" cy="132" rx="100" ry="10" fill="#000" fill-opacity=".12"/>
+<g transform="translate(70 34) rotate(-16 40 50)">
+<path d="M58 24 q30 0 30 26 q0 26 -30 26" fill="none" stroke="#5a3a1c" stroke-width="9"/>
+<rect x="0" y="10" width="60" height="80" rx="8" fill="#8a5a2c"/>
+<rect x="0" y="22" width="60" height="7" fill="#3d2610"/><rect x="0" y="72" width="60" height="7" fill="#3d2610"/>
+<rect x="8" y="32" width="6" height="36" rx="3" fill="#fff" fill-opacity=".16"/>
+<ellipse cx="30" cy="10" rx="30" ry="7" fill="#2a1a0d"/>
+</g>
+<g fill="#e8a54b" fill-opacity=".85">
+<ellipse cx="44" cy="122" rx="14" ry="4"/><circle cx="26" cy="116" r="3"/><circle cx="62" cy="112" r="2.4"/>
+</g>
+<g transform="translate(160 86)">
+<path d="M24 0 L47 13 L47 39 L24 52 L1 39 L1 13 Z" fill="#8e2b1c"/>
+<path d="M24 0 L37 24 L11 24 Z" fill="#b8402a"/><path d="M11 24 L37 24 L24 52 Z" fill="#6f1f13"/>
+<path d="M1 13 L11 24 L1 39 Z M47 13 L37 24 L47 39 Z" fill="#7a2517"/>
+<text x="24" y="20" font-family="Georgia, serif" font-size="10" font-weight="700" text-anchor="middle" fill="#fbe9c8">20</text>
+</g>
+</svg>

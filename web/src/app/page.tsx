@@ -36,6 +36,9 @@ export default async function HomePage(props: PageProps<"/">) {
             </div>
             <button className="btn-primary px-6! py-3! text-base!" type="submit">{t("common.search")}</button>
           </form>
+          <p className="mt-4 text-sm">
+            <Link href="/quiz" className="inline-flex items-center gap-1.5 font-semibold text-accent hover:underline"><Icon name="sparkles" /> {t("quiz.homeCta")}</Link>
+          </p>
           <div className="mt-6 flex flex-wrap gap-2">
             {systems.slice(0, 7).map((s) => (
               <Link key={s.system} href={`/games?system=${encodeURIComponent(s.system)}`} className="chip gap-1 bg-black/30! hover:border-accent hover:text-accent">

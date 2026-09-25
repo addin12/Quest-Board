@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
@@ -17,10 +18,18 @@ export default async function BecomeGmPage() {
   const profile = user ? getGmSettings(user.id) : undefined;
 
   return (
+    <>
+    <section className="on-wood relative overflow-hidden border-b-2 border-[#8a6a3a] bg-[#1b1008]">
+      <Image src="/images/tavern/hero.svg" alt="" fill priority sizes="100vw" className="object-cover object-[75%_center] opacity-70" />
+      <div aria-hidden className="absolute inset-0 bg-linear-to-r from-[#140b05]/95 via-[#140b05]/75 to-[#140b05]/30" />
+      <div className="relative mx-auto max-w-5xl px-4 py-14">
+        <p className="eyebrow flex items-center gap-2 text-accent!"><Icon name="hat-wizard" /> {t("becomeGm.eyebrow")}</p>
+        <span aria-hidden className="ornament mt-3 w-40!" />
+        <h1 className="mt-3 max-w-2xl text-4xl font-extrabold">{t("becomeGm.title")}</h1>
+      </div>
+    </section>
     <div className="mx-auto grid max-w-5xl gap-12 px-4 py-12 md:grid-cols-2">
       <div>
-        <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-accent"><Icon name="hat-wizard" /> {t("becomeGm.eyebrow")}</p>
-        <h1 className="mt-2 text-4xl font-bold">{t("becomeGm.title")}</h1>
         <ul className="mt-6 space-y-4">
           {([
             ["coins", "becomeGm.b1Title", "becomeGm.b1Body"],
@@ -63,5 +72,6 @@ export default async function BecomeGmPage() {
         )}
       </div>
     </div>
+    </>
   );
 }

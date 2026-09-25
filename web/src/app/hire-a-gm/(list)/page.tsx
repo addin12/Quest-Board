@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { getI18n } from "@/lib/i18n/server";
 import { listSystemsInUse, searchGms, type GmFilters } from "@/lib/queries";
@@ -58,13 +59,14 @@ export default async function HireAGmPage(props: PageProps<"/hire-a-gm">) {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-border">
-        <div aria-hidden className="absolute inset-0 opacity-60" style={{ background: "radial-gradient(circle at 80% 20%, var(--accent-soft), transparent 45%)" }} />
+      <section className="on-wood relative overflow-hidden border-b-2 border-[#8a6a3a] bg-[#1b1008]">
+        <Image src="/images/tavern/hero.svg" alt="" fill priority sizes="100vw" className="object-cover object-[85%_center] opacity-70" />
+        <div aria-hidden className="absolute inset-0 bg-linear-to-r from-[#140b05]/95 via-[#140b05]/80 to-[#140b05]/40" />
         <div className="relative mx-auto grid max-w-6xl gap-10 px-4 py-16 lg:grid-cols-[1.3fr_1fr] lg:items-center">
           <div>
             <p className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-accent"><Icon name="briefcase" /> {t("hire.eyebrow")}</p>
             <h1 className="text-4xl font-bold leading-tight sm:text-5xl">{t("hire.title")}</h1>
-            <p className="mt-4 max-w-xl text-lg text-muted">{t("hire.lead")}</p>
+            <p className="mt-4 max-w-xl text-lg text-text/90">{t("hire.lead")}</p>
             <div className="mt-7 flex flex-wrap gap-2">
               <Link href="/hire-a-gm/request" className="btn-primary px-5! py-3! text-base!"><Icon name="paper-plane" /> {t("hire.ctaRequest")}</Link>
               <Link href="#directory" className="btn-secondary px-5! py-3! text-base!"><Icon name="search" /> {t("hire.ctaBrowse")}</Link>

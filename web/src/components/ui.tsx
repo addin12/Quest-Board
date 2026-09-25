@@ -199,7 +199,7 @@ export function Notice({ tone = "info", children }: { tone?: "info" | "success" 
 export function EmptyState({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <div className="card flex flex-col items-center gap-2 px-6 py-12 text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-2xl text-accent"><Icon name="dice-d20" /></span>
+      <Image src="/images/tavern/empty-tankard.svg" alt="" width={180} height={112} className="opacity-90" />
       <h3 className="text-lg font-semibold">{title}</h3>
       <div className="max-w-md text-sm text-muted">{children}</div>
     </div>

@@ -2,10 +2,10 @@
 
 This is the decision log. Treat these entries as requirements: they came from the product owner's feedback. Add new decisions at the top of **Decision log** with the date, the decision, and why.
 
-## Current state (v0.10, 2026-09-25)
+## Current state (v0.11, 2026-09-25)
 - A working MVP plus 11 spec docs, in git (`main`) with GitHub Actions CI (`.github/workflows/ci.yml`). There is no remote yet: push to GitHub to turn CI on.
 - Schema version is **12**. Real migrations live in `web/src/lib/migrations.ts`; v4 is the baseline.
-- 62 unit tests and 65 e2e journeys (including 6 axe accessibility sweeps), all passing.
+- 65 unit tests and 74 e2e journeys (including 6 axe accessibility sweeps), all passing.
 - All IMPROVEMENTS P1 items are done. Next up is P2, which needs product-owner approval.
 
 ## Decision log
@@ -36,6 +36,11 @@ This is the decision log. Treat these entries as requirements: they came from th
   - Notices expire after 30 days, and taken-down notices 404 for strangers.
   - Following notifies once per game (`announced_at`); existing games count as announced.
   - The phone tab bar now runs up to `md`.
+- Iteration 7: UX polish.
+  - Theme switch (cookie `qb_theme`), toasts (cookie `qb_toast`), a mobile filter sheet, the quiz, the calendar view and tavern illustrations.
+  - **Loading placeholders only on list pages** (route groups), because they turned 404s into 200s on detail pages.
+  - The log-out label shows only at 2xl, to keep the admin header within 1280 px.
+- The product owner is asked to review `docs/indonesian-review.md` (351 new Indonesian strings).
 
 ### v0.10, 2026-09-25: medieval tavern theme + bell popover (product owner feedback)
 - **Visual identity is now "medieval tavern"** (supersedes v0.1's "warm, bookish" look).

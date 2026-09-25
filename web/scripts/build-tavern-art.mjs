@@ -171,3 +171,49 @@ write("images/tavern/hero.svg", `
 </svg>`);
 
 console.log("tavern art written");
+
+// ── Empty states: a tipped-over tankard, a few drops and a d20. Transparent background. ──
+write("images/tavern/empty-tankard.svg", `
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="150" viewBox="0 0 240 150">
+  <ellipse cx="120" cy="132" rx="100" ry="10" fill="#000" fill-opacity=".12"/>
+  <g transform="translate(70 34) rotate(-16 40 50)">
+    <path d="M58 24 q30 0 30 26 q0 26 -30 26" fill="none" stroke="#5a3a1c" stroke-width="9"/>
+    <rect x="0" y="10" width="60" height="80" rx="8" fill="#8a5a2c"/>
+    <rect x="0" y="22" width="60" height="7" fill="#3d2610"/><rect x="0" y="72" width="60" height="7" fill="#3d2610"/>
+    <rect x="8" y="32" width="6" height="36" rx="3" fill="#fff" fill-opacity=".16"/>
+    <ellipse cx="30" cy="10" rx="30" ry="7" fill="#2a1a0d"/>
+  </g>
+  <g fill="#e8a54b" fill-opacity=".85">
+    <ellipse cx="44" cy="122" rx="14" ry="4"/><circle cx="26" cy="116" r="3"/><circle cx="62" cy="112" r="2.4"/>
+  </g>
+  <g transform="translate(160 86)">
+    <path d="M24 0 L47 13 L47 39 L24 52 L1 39 L1 13 Z" fill="#8e2b1c"/>
+    <path d="M24 0 L37 24 L11 24 Z" fill="#b8402a"/><path d="M11 24 L37 24 L24 52 Z" fill="#6f1f13"/>
+    <path d="M1 13 L11 24 L1 39 Z M47 13 L37 24 L47 39 Z" fill="#7a2517"/>
+    <text x="24" y="20" font-family="Georgia, serif" font-size="10" font-weight="700" text-anchor="middle" fill="#fbe9c8">20</text>
+  </g>
+</svg>`);
+
+// ── 404: a natural 1 on a candlelit table. ──
+write("images/tavern/natural-one.svg", `
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="220" viewBox="0 0 360 220">
+  <defs>
+    <radialGradient id="glow" cx="249" cy="100" r="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffd27a" stop-opacity=".55"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>
+    <linearGradient id="flame1" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff7a1a"/><stop offset="1" stop-color="#fff0b0"/></linearGradient>
+  </defs>
+  <rect width="360" height="220" fill="url(#glow)"/>
+  <ellipse cx="180" cy="196" rx="170" ry="16" fill="#000" fill-opacity=".14"/>
+  <rect x="238" y="96" width="22" height="94" rx="4" fill="#efe0bf"/>
+  <path d="M238 104 q11 8 22 0" fill="none" stroke="#d9c69c" stroke-width="3"/>
+  <path d="M249 62 q12 18 0 34 q-12 -16 0 -34 Z" fill="url(#flame1)"/>
+  <ellipse cx="249" cy="192" rx="32" ry="7" fill="#6b4a2a"/>
+  <g transform="translate(96 88)">
+    <path d="M52 0 L102 29 L102 85 L52 114 L2 85 L2 29 Z" fill="#8e2b1c"/>
+    <path d="M52 0 L81 52 L23 52 Z" fill="#b8402a"/><path d="M23 52 L81 52 L52 114 Z" fill="#6f1f13"/>
+    <path d="M2 29 L23 52 L2 85 Z M102 29 L81 52 L102 85 Z" fill="#7a2517"/>
+    <path d="M52 0 L102 29 L81 52 Z M52 0 L2 29 L23 52 Z" fill="#a33522"/>
+    <text x="52" y="46" font-family="Georgia, serif" font-size="30" font-weight="700" text-anchor="middle" fill="#fbe9c8">1</text>
+  </g>
+  <g fill="#d8a53c" stroke="#8a6320" stroke-width="2"><ellipse cx="60" cy="186" rx="16" ry="6"/><ellipse cx="300" cy="190" rx="16" ry="6"/></g>
+</svg>`);
+console.log("extra art written");

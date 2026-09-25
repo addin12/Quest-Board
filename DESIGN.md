@@ -54,6 +54,13 @@ The full UX spec (flows, screens, sitemap) is in `docs/07-ux-ui-spec.md`. This f
 - **Notification rows:** actor avatar, a kind icon in accent, one sentence and a relative time. Unread rows get an accent border, a faint accent-soft background and a "New" chip.
 - **Contrast:** light-theme `--accent-soft` (#faebe4) and `--success-soft` (#e9f5ec) are tuned so accent/success text on them is ≥ 4.5:1. Re-check with the axe sweep if you touch tokens.
 
+## Theme, toasts, sheets
+- **Theme switch:** icon only (half-circle = Automatic, sun = Parchment, candle = Candlelight). Its accessible name says the current and next theme.
+- **Toast:** a parchment popover pinned bottom-centre (above the phone tab bar), with a success tick, the message and a dismiss ×. It auto-hides after 5 s and is announced politely. Use toasts only for quick, reversible confirmations; errors stay inline next to the field.
+- **Bottom sheet** (filters on < lg): rounded top, parchment, 85 vh max, a title and a × at the top, backdrop, Escape, focus kept inside.
+- **Skeletons:** `skeleton` utility (pulse is off with reduced motion), in the shape of the real content.
+- **Illustrations:** empty states use the tipped tankard, the 404 uses the natural-1 d20, and big page banners reuse the tavern hero with a dark wash on the left for text.
+
 ## Notice Board
 - The board is an `.on-wood .wood-plank` panel with a brass border. Each note is `.parchment .notice`: square-ish corners, a drop shadow, a solid thumbtack at the top centre, and a stable tilt of −1.5° to +1.5° (`noticeTilt(id)`) that straightens on hover and focus.
 - In dark mode, notes are a shade lighter than the oak (#33261a with a #7a5a38 edge) so they read as paper.

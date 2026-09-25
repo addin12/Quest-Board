@@ -29,9 +29,10 @@
   color: var(--text);
 }
 
+/* Dark palette: the OS preference, unless the person picked Light (html[data-theme="light"]). */
 @media (prefers-color-scheme: dark) {
-  :root,
-  .parchment {
+  :root:not([data-theme="light"]),
+  :root:not([data-theme="light"]) .parchment {
     --bg: #16100a;
     --surface: #22180f;
     --surface-2: #2e2217;
@@ -51,6 +52,30 @@
     --page-texture: url("/textures/wood-faint.svg");
   }
 }
+/* …or an explicit Dark choice, whatever the OS says. */
+:root[data-theme="dark"],
+:root[data-theme="dark"] .parchment {
+  --bg: #16100a;
+  --surface: #22180f;
+  --surface-2: #2e2217;
+  --text: #f0e3c6;
+  --muted: #c4ae8b;
+  --border: #4d3825;
+  --accent: #e8a54b;      /* candle amber */
+  --accent-hover: #f2b865;
+  --accent-ink: #1c1208;
+  --accent-soft: #3a2913;
+  --gold: #e8c46c;
+  --success: #9bd08f;
+  --success-soft: #1f2e1a;
+  --danger: #f08e7e;
+  --danger-soft: #3b1b15;
+  --card-shadow: inset 0 0 0 1px rgb(255 220 160 / 0.05), inset 0 0 40px rgb(0 0 0 / 0.35), 0 2px 10px -2px rgb(0 0 0 / 0.6);
+  --page-texture: url("/textures/wood-faint.svg");
+}
+:root { color-scheme: light dark; }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 
 /* Dark-oak surfaces (header, footer, mobile tab bar, home hero) — same in both schemes. */
 .on-wood {
@@ -147,11 +172,17 @@
 }
 /* Dark mode: notes a shade lighter than the oak board, with a warm edge, so they read as paper. */
 @media (prefers-color-scheme: dark) {
-  .notice {
+  :root:not([data-theme="light"]) .notice {
     background-color: #33261a;
     border-color: #7a5a38;
   }
 }
+:root[data-theme="dark"] .notice {
+  background-color: #33261a;
+  border-color: #7a5a38;
+}
+@utility skeleton { @apply animate-pulse rounded-md bg-surface-2; }
+@media (prefers-reduced-motion: reduce) { .animate-pulse { animation: none; } }
 /* ❦ divider: the flourish SVG is a mask, so it takes the current theme's brass colour. */
 @utility ornament {
   @apply block h-4 w-44 bg-gold;
