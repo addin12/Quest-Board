@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "node --test \"tests/unit/*.test.ts\"",
     "test:e2e": "npm run build && playwright test",
     "db:reset": "node scripts/reset-db.mjs",

@@ -3,7 +3,7 @@
 This is the decision log. Treat these entries as requirements: they came from the product owner's feedback. Add new decisions at the top of **Decision log** with the date, the decision, and why.
 
 ## Current state (v0.10, 2026-09-25)
-- A working MVP plus 11 spec docs. It is not a git repository yet (see IMPROVEMENTS.md P2-13).
+- A working MVP plus 11 spec docs, in git (`main`) with GitHub Actions CI (`.github/workflows/ci.yml`). There is no remote yet: push to GitHub to turn CI on.
 - Schema version is **8**. Real migrations live in `web/src/lib/migrations.ts`; v4 is the baseline.
 - 45 unit tests and 39 e2e journeys (including 5 axe accessibility sweeps), all passing.
 - All IMPROVEMENTS P1 items are done. Next up is P2, which needs product-owner approval.

@@ -5,7 +5,7 @@ The full QA strategy and manual checklist are in `docs/09-testing-and-qa.md`.
 ## Suites
 | Command (in `web/`) | What it covers | Notes |
 |---|---|---|
-| `npm run typecheck` | Types, **translation keys** (`MsgKey`), **icon names** | Run first; fastest signal |
+| `npm run typecheck` (runs `next typegen` first) | Types, **translation keys** (`MsgKey`), **icon names** | Run first; fastest signal |
 | `npm run lint` | ESLint (next config) | |
 | `npm test` | `tests/unit/*.test.ts`: policy (IDR, canBook, canCancel, location), validation, i18n parity + default language, icon subset vs registry, **placeholder art exists + is script-free + migration v6 back-fill**, **categories (normalize, systemSlug, dictionary coverage, request/offer/profile validation, migration v7 back-fill)**, D&D editions, crypto | Node's built-in runner with native TS stripping. Imports use `.ts` extensions and relative paths (no `@/`) |
 | `npm run test:e2e` | `next build`, then Playwright on **:3100** against a fresh `data/e2e.db` | Uses installed **Edge**; `PW_CHANNEL=chrome` for Chrome. Default locale `en-US`, timezone `Asia/Jakarta` |

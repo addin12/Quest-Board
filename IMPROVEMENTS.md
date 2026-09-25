@@ -21,8 +21,6 @@ All P1 items are done (2026-09-25). See **Done** below. New P1s go here.
 - **P2-12 · Notifications (L):** in-app notifications are done (v0.9.1). Still to do: email and WhatsApp delivery, plus reminders 24 h and 1 h before a session, in the user's language. Needs a provider and a `users.locale` column.
 
 ## P2: Platform & quality
-- **P2-13 · Put the project in git (S):** `git init` at `Quest Board/`. The `.gitignore` already covers `web/data` and `test-results`. Commit `src/app/icons/*`.
-- **P2-14 · CI (S):** a GitHub Actions workflow running typecheck → lint → unit → build → e2e, using Playwright Chromium on CI via `PW_CHANNEL=chromium`.
 - **P2-16 · No-literal-strings lint (S):** a custom ESLint rule, or `eslint-plugin-i18next` adapted to `t()`, to stop hard-coded JSX text.
 - **P2-17 · SEO basics (S):** `app/sitemap.ts`, `app/robots.ts`, canonical URLs and per-game structured data (`Event`).
 - **P2-18 · Native-speaker review (S):** have a native speaker review all `id` strings in `dict.ts`. Terminology was decided by the product owner (native speaker) in v0.9.2 and is in DESIGN.md. Still to do: a line-by-line read of the remaining strings by the product owner.
@@ -54,6 +52,8 @@ Every item below was done on 2026-09-25 (v0.5). `e2e:hardening` means `web/tests
 | P1-10 | Expired sessions purged on login; session rotated when a player becomes a GM; "Log out on all devices" button on the dashboard | `auth.ts`, `logoutEverywhereAction` | e2e:hardening "log out on all devices" |
 | P1-11 | Security headers: CSP (no-nonce variant from the Next guide), `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, no `X-Powered-By`. HSTS + upgrade-insecure-requests when `QUESTBOARD_ENFORCE_HTTPS=true` | `next.config.ts` | e2e:hardening "security headers" |
 | P1-12 | Anti-scam note under the GM's payment details | game page, `game.scamWarning` | e2e:hardening "anti-scam" |
+| P2-13 · Git | Repo at `Quest Board/` (branch `main`), root `.gitignore` (DBs, build, test output, env), `.gitattributes` (LF) | `.gitignore`, `.gitattributes` | a clean clone installs, typechecks, lints, passes unit tests and builds |
+| P2-14 · CI | GitHub Actions: `npm ci` → typecheck → lint → unit → build + e2e (bundled Chromium; traces uploaded on failure). `typecheck` now runs `next typegen` first, so it works on a fresh checkout | `.github/workflows/ci.yml`, `playwright.config.ts`, `package.json` | verified in a clean clone |
 | P2-8 · Mobile tab bar | Bottom tab bar below `sm`; the signed-in header no longer overflows at 320–390 px | `mobile-tab-bar.tsx`, `layout.tsx` | manual width check at 320/360/390 (EN+ID); axe sweep |
 | P2-15 · Accessibility automation | axe WCAG 2.1 A/AA sweep of public pages (EN/ID × light/dark) and signed-in pages and forms; form errors linked via `errAttrs`; contrast fixes | `tests/e2e/a11y.spec.ts`, `ui.tsx` `errAttrs`, `globals.css` | e2e: a11y ×5 |
 | v0.9.1 · In-app notifications | Bell + `/notifications` for hire-flow and booking events (schema v8) | `lib/notifications.ts`, `notification-bell.tsx`, actions | e2e: hire flow (offer, chosen, message) + "notifications: bookings…" |
