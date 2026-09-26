@@ -174,6 +174,20 @@ export function adminStats() {
   };
 }
 
+/** Launch pulse: activity in the last `days` days. */
+export function launchMetrics(days = 7) {
+  const since = new Date(Date.now() - days * 86_400_000).toISOString();
+  const n = (sql: string) => (db().prepare(sql).get(since) as { n: number }).n;
+  return {
+    signups: n("SELECT COUNT(*) AS n FROM users WHERE created_at >= ? AND deleted_at IS NULL"),
+    gamesPublished: n("SELECT COUNT(*) AS n FROM games WHERE status = 'published' AND COALESCE(announced_at, created_at) >= ?"),
+    seatsBooked: n("SELECT COUNT(*) AS n FROM bookings WHERE status = 'confirmed' AND created_at >= ?"),
+    questions: n("SELECT COUNT(*) AS n FROM game_questions WHERE created_at >= ?"),
+    notices: n("SELECT COUNT(*) AS n FROM lfg_posts WHERE created_at >= ?"),
+    gmRequests: n("SELECT COUNT(*) AS n FROM gm_requests WHERE created_at >= ?"),
+  };
+}
+
 export type AdminGmRow = { id: number; name: string; email: string; headline: string; verified: number; games: number; open_reports: number; suspended: number; created_at: string };
 
 export function listGmsForAdmin(q: string): AdminGmRow[] {

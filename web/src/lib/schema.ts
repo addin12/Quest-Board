@@ -19,7 +19,8 @@
 // v14: game_sessions.cancel_reason (the GM's message to players when cancelling).
 // v15: users.calendar_token (private calendar feed URL).
 // v16: game_questions + game_question_messages (ask the GM before booking), notifications.question_id.
-export const SCHEMA_VERSION = 16;
+// v17: error_log (server errors, shown in /admin/errors).
+export const SCHEMA_VERSION = 17;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -216,6 +217,19 @@ CREATE TABLE IF NOT EXISTS game_question_messages (
   created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_gqm_question ON game_question_messages(question_id, created_at);
+
+-- v17: server errors captured by src/instrumentation.ts (no headers, cookies or query strings).
+CREATE TABLE IF NOT EXISTS error_log (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  message     TEXT NOT NULL,
+  digest      TEXT NOT NULL DEFAULT '',
+  method      TEXT NOT NULL DEFAULT '',
+  path        TEXT NOT NULL DEFAULT '',   -- without the query string (it can hold tokens)
+  route_path  TEXT NOT NULL DEFAULT '',
+  route_type  TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_error_log_created ON error_log(created_at);
 
 -- v13: one row per reminder sent, so each goes out exactly once.
 CREATE TABLE IF NOT EXISTS session_reminders (

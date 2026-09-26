@@ -59,7 +59,7 @@ export default async function QuestionPage(props: PageProps<"/questions/[id]">) 
           </li>
         ))}
       </ul>
-      <div className="mt-4"><QuestionReplyForm questionId={thread.id} /></div>
+      {(isPlayer || user.id === thread.gm_id) && <div className="mt-4"><QuestionReplyForm questionId={thread.id} /></div>}
       {isPlayer && thread.game_status === "published" && (
         <p className="mt-6"><Link href={`/games/${thread.game_slug}`} className="btn-primary"><Icon name="ticket" /> {t("questions.bookCta")}</Link></p>
       )}

@@ -73,7 +73,8 @@ CMD ["npm", "start"]
 | Remove abusive payment details | `UPDATE gm_profiles SET payment_info = '' WHERE user_id = ?;` |
 | Hide a listing | `UPDATE games SET status = 'archived' WHERE slug = ?;` |
 | Expire sessions | `DELETE FROM auth_sessions WHERE expires_at < strftime('%Y-%m-%dT%H:%M:%fZ','now');` |
-| Health check | `GET /api/games?limit=1` returns 200 |
+| Health check | `GET /api/health` returns `{"ok":true,"schema":N}` with 200 when the database answers at the expected schema version, and 503 otherwise. Point your uptime monitor and the container health check at it (Docker: `HEALTHCHECK CMD curl -fsS http://localhost:3000/api/health || exit 1`) |
+| Server errors | Admin console → **Server errors** (`/admin/errors`): errors captured by `src/instrumentation.ts`, grouped, last 30 days (no cookies, headers or query strings are stored). The cron route prunes older rows. The admin home also shows this week's count |
 
 ## 4. Scaling path
 1. **Postgres** (Singapore or Jakarta region):

@@ -320,7 +320,7 @@ async function sendCancellationEmails(playerIds: number[], s: { title: string; s
   const people = db()
     .prepare(`SELECT email, name, locale FROM users WHERE id IN (${playerIds.map(() => "?").join(",")}) AND email_verified_at IS NOT NULL AND deleted_at IS NULL`)
     .all(...playerIds) as { email: string; name: string; locale: "en" | "id" }[];
-  for (const p of people) await sendEmail(cancellationEmail(p, s, reason, origin));
+  await Promise.allSettled(people.map((p) => sendEmail(cancellationEmail(p, s, reason, origin))));
 }
 
 /** Copy one of my games (details, categories, cover) as a new draft, without sessions. */

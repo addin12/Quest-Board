@@ -2,6 +2,7 @@ import { processReminders } from "@/lib/reminders";
 import { refreshAllWaitlists } from "@/lib/waitlist";
 import { pruneNotifications } from "@/lib/notifications";
 import { pruneOutbox } from "@/lib/mailer";
+import { pruneErrorLog } from "@/lib/error-log";
 import { siteOrigin } from "@/lib/site";
 import { timingSafeEqual } from "node:crypto";
 
@@ -24,7 +25,7 @@ async function run(request: Request) {
   if (!authorized(request)) return new Response("Unauthorized", { status: 401 });
   const waitlists = refreshAllWaitlists();
   const emailed = await processReminders(await siteOrigin());
-  const pruned = { notifications: pruneNotifications(), outbox: pruneOutbox() };
+  const pruned = { notifications: pruneNotifications(), outbox: pruneOutbox(), errors: pruneErrorLog() };
   return Response.json({ ok: true, emailed, waitlists, pruned });
 }
 

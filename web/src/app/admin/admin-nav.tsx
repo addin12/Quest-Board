@@ -3,12 +3,13 @@ import type { T } from "@/lib/i18n/dict";
 import { Icon } from "@/components/icon";
 
 /** Tabs shared by the admin pages (each page renders it and does its own requireAdmin()). */
-export function AdminNav({ t, current, openReports }: { t: T; current: "home" | "reports" | "gms" | "users"; openReports: number }) {
+export function AdminNav({ t, current, openReports }: { t: T; current: "home" | "reports" | "gms" | "users" | "errors"; openReports: number }) {
   const tabs = [
     { key: "home", href: "/admin", icon: "chart-histogram", label: t("admin.overview") },
     { key: "reports", href: "/admin/reports", icon: "flag", label: t("admin.reports"), badge: openReports },
     { key: "gms", href: "/admin/gms", icon: "user-check", label: t("admin.gms") },
     { key: "users", href: "/admin/users", icon: "users-alt", label: t("admin.users") },
+    { key: "errors", href: "/admin/errors", icon: "triangle-warning", label: t("admin.errors") },
   ] as const;
   return (
     <div className="mb-8">

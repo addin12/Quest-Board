@@ -62,7 +62,7 @@ test("signed-in pages and forms with errors have no axe violations", async ({ pa
 test("the admin console has no axe violations", async ({ page }) => {
   await login(page, "admin@questboard.test");
   const found: string[] = [];
-  for (const path of ["/admin", "/admin/reports", "/admin/reports?status=resolved", "/admin/gms", "/admin/users"]) {
+  for (const path of ["/admin", "/admin/reports", "/admin/reports?status=resolved", "/admin/gms", "/admin/users", "/admin/errors"]) {
     await page.goto(path);
     found.push(...(await violationsOf(page, path)));
   }

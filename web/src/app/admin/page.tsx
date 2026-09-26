@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
-import { adminStats } from "@/lib/moderation";
+import { adminStats, launchMetrics } from "@/lib/moderation";
+import { countRecentErrors } from "@/lib/error-log";
 import { Icon } from "@/components/icon";
 import { AdminNav } from "./admin-nav";
 
@@ -15,6 +16,16 @@ export default async function AdminHomePage() {
   await requireAdmin();
   const { t } = await getI18n();
   const s = adminStats();
+  const m = launchMetrics(7);
+  const errors = countRecentErrors(7);
+  const pulse = [
+    ["users", m.signups, t("admin.pulseSignups")],
+    ["dice-d20", m.gamesPublished, t("admin.pulseGames")],
+    ["ticket", m.seatsBooked, t("admin.pulseSeats")],
+    ["comment-dots", m.questions, t("admin.pulseQuestions")],
+    ["thumbtack", m.notices, t("admin.pulseNotices")],
+    ["briefcase", m.gmRequests, t("admin.pulseRequests")],
+  ] as const;
   const tiles = [
     { href: "/admin/reports", icon: "flag", n: s.openReports, label: t("admin.statOpenReports"), urgent: s.openReports > 0 },
     { href: "/admin/gms", icon: "user-check", n: s.unverifiedGms, label: t("admin.statUnverified"), urgent: false },
@@ -35,6 +46,24 @@ export default async function AdminHomePage() {
           </Link>
         ))}
       </div>
+
+      <section className="mt-10" aria-labelledby="pulse-h">
+        <h2 id="pulse-h" className="text-xl font-bold">{t("admin.pulseTitle")}</h2>
+        <p className="mt-1 text-sm text-muted">{t("admin.pulseLead")}</p>
+        <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {pulse.map(([icon, n, label]) => (
+            <div key={label} className="card p-4">
+              <dt className="flex items-center gap-1.5 text-xs text-muted"><Icon name={icon} /> {label}</dt>
+              <dd className="mt-1 text-2xl font-bold">{n}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-4 text-sm">
+          <Link href="/admin/errors" className={`inline-flex items-center gap-1.5 hover:underline ${errors > 0 ? "font-semibold text-danger" : "text-muted"}`}>
+            <Icon name="triangle-warning" /> {t("admin.pulseErrors", { n: errors })}
+          </Link>
+        </p>
+      </section>
     </div>
   );
 }

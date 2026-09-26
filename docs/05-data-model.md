@@ -224,3 +224,9 @@ game_question_messages(id, question_id → game_questions, user_id → users, bo
 ALTER TABLE notifications ADD COLUMN question_id INTEGER;  -- kind game_question, collapsed while unread
 ```
 - One thread per player per game; only the player, the game's GM and admins can open it.
+
+## v17: error log
+```sql
+error_log(id, created_at, message ≤ 1000, digest, method, path /* no query string */, route_path, route_type)
+```
+- Written by `src/instrumentation.ts` (`onRequestError`). `redirect()` and `notFound()` aren't logged. Pruned after 30 days by the cron route.
