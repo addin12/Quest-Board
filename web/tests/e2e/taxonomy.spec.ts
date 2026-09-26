@@ -51,3 +51,15 @@ test("new genres, styles and systems have their own pages, in both languages", a
   // Unknown keys are a 404, not an empty page.
   expect((await page.goto("/browse/mechanic/not-a-mechanic"))?.status()).toBe(404);
 });
+
+test("home page: 'Browse by categories' medallions lead to each part of the Browse hub", async ({ page }) => {
+  await page.goto("/");
+  const section = page.locator("section", { has: page.getByRole("heading", { name: "Browse by categories" }) });
+  for (const name of ["Game systems", "Genres", "Play styles", "Mechanics"]) await expect(section.getByRole("link", { name })).toBeVisible();
+  await section.getByRole("link", { name: "Mechanics" }).click();
+  await expect(page).toHaveURL(/\/browse#mechanics$/);
+  await expect(page.locator("#mechanics")).toBeInViewport();
+  await page.goto("/");
+  await section.getByRole("link", { name: "Browse all categories" }).click();
+  await expect(page).toHaveURL(/\/browse$/);
+});

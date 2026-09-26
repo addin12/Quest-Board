@@ -217,3 +217,55 @@ write("images/tavern/natural-one.svg", `
   <g fill="#d8a53c" stroke="#8a6320" stroke-width="2"><ellipse cx="60" cy="186" rx="16" ry="6"/><ellipse cx="300" cy="190" rx="16" ry="6"/></g>
 </svg>`);
 console.log("extra art written");
+
+// ── Category medallions (home page "Browse by categories") ──
+// Flat ink-and-brass illustrations drawn to sit on a parchment circle, in both themes.
+mkdirSync(join(root, "images", "categories"), { recursive: true });
+const INK = "#2b1d10", OX = "#8e2b1c", OX2 = "#b4432c", BRASS = "#c8912b", PAPER = "#f6ead0", TEAL = "#2f5d62";
+const medallion = (body) => `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" stroke-linejoin="round" stroke-linecap="round">
+${body}
+</svg>`;
+
+// Game systems: a shelf of rulebooks.
+write("images/categories/systems.svg", medallion(`
+  <rect x="16" y="92" width="88" height="7" rx="2" fill="${BRASS}" stroke="${INK}" stroke-width="3"/>
+  <rect x="24" y="36" width="15" height="56" rx="1.5" fill="${OX}" stroke="${INK}" stroke-width="3"/>
+  <path d="M24 44h15M24 84h15" stroke="${PAPER}" stroke-width="2.5"/>
+  <rect x="39" y="26" width="17" height="66" rx="1.5" fill="${TEAL}" stroke="${INK}" stroke-width="3"/>
+  <path d="M39 36h17M39 82h17M47.5 50v18" stroke="${PAPER}" stroke-width="2.5"/>
+  <rect x="56" y="40" width="13" height="52" rx="1.5" fill="${BRASS}" stroke="${INK}" stroke-width="3"/>
+  <path d="M56 48h13M56 84h13" stroke="${INK}" stroke-width="2"/>
+  <g transform="rotate(-18 86 92)">
+    <rect x="72" y="34" width="15" height="58" rx="1.5" fill="${OX2}" stroke="${INK}" stroke-width="3"/>
+    <path d="M72 42h15M72 84h15" stroke="${PAPER}" stroke-width="2.5"/>
+  </g>`));
+
+// Genres: a dragon rising from an open storybook.
+write("images/categories/genres.svg", medallion(`
+  <path d="M18 80 Q38 72 60 80 Q82 72 102 80 V100 Q82 92 60 100 Q38 92 18 100 Z" fill="${PAPER}" stroke="${INK}" stroke-width="3"/>
+  <path d="M60 80 V100" stroke="${INK}" stroke-width="3"/>
+  <path d="M26 86 Q36 82 50 86M26 92 Q36 88 50 92M70 86 Q84 82 94 86M70 92 Q84 88 94 92" fill="none" stroke="${INK}" stroke-width="2" opacity=".55"/>
+  <path d="M58 64 L30 34 L40 54 L22 48 L40 66 Z" fill="${TEAL}" stroke="${INK}" stroke-width="3"/>
+  <path d="M64 62 L94 30 L84 52 L102 46 L82 66 Z" fill="${TEAL}" stroke="${INK}" stroke-width="3"/>
+  <path d="M52 82 C46 70 50 58 58 50 C64 44 64 36 60 30 L68 32 L72 26 L74 36 C76 46 70 54 66 60 C62 68 64 76 72 82 Z" fill="${OX}" stroke="${INK}" stroke-width="3"/>
+  <circle cx="67" cy="33" r="1.8" fill="${BRASS}"/>
+  <path d="M72 82 Q84 84 88 76" fill="none" stroke="${INK}" stroke-width="3"/>`));
+
+// Play styles: a potion with a tag (every table brews its own mix).
+write("images/categories/styles.svg", medallion(`
+  <rect x="50" y="14" width="20" height="12" rx="2.5" fill="${BRASS}" stroke="${INK}" stroke-width="3"/>
+  <path d="M53 26 h14 v16 C82 46 90 58 90 72 A30 30 0 0 1 30 72 C30 58 38 46 53 42 Z" fill="${PAPER}" stroke="${INK}" stroke-width="3"/>
+  <path d="M32.5 76 Q45 68 60 75 T87.5 76 A28 28 0 0 1 32.5 76 Z" fill="${OX}" stroke="${INK}" stroke-width="2.5"/>
+  <circle cx="48" cy="86" r="3.5" fill="${PAPER}"/><circle cx="57" cy="93" r="2" fill="${PAPER}"/><circle cx="70" cy="84" r="2.6" fill="${PAPER}"/>
+  <path d="M40 60 Q42 52 50 48" fill="none" stroke="${INK}" stroke-width="2" opacity=".4"/>
+  <path d="M67 32 L84 40" stroke="${INK}" stroke-width="2.5"/>
+  <g transform="rotate(24 90 44)"><path d="M82 36 h18 v14 h-18 l-5 -7 Z" fill="${TEAL}" stroke="${INK}" stroke-width="2.5"/><circle cx="84" cy="43" r="1.8" fill="${PAPER}"/></g>`));
+
+// Mechanics: a d20.
+write("images/categories/mechanics.svg", medallion(`
+  <path d="M60 14 L100 37 V83 L60 106 L20 83 V37 Z" fill="${OX}" stroke="${INK}" stroke-width="3.5"/>
+  <path d="M60 32 L86 76 H34 Z" fill="${OX2}" stroke="${INK}" stroke-width="3"/>
+  <path d="M60 14 V32 M20 37 L60 32 L100 37 M20 37 L34 76 L20 83 M100 37 L86 76 L100 83 M34 76 L60 106 L86 76" fill="none" stroke="${INK}" stroke-width="3"/>
+  <path d="M52 64 h16 l-8 -12 Z" fill="${PAPER}"/>`));
+console.log("category medallions written");

@@ -4,7 +4,6 @@ import { searchGames, listSystemsInUse } from "@/lib/queries";
 import { getI18n } from "@/lib/i18n/server";
 import { GameCard, Notice } from "@/components/ui";
 import { Icon } from "@/components/icon";
-import { GENRES, genreIcon, genreLabelKey } from "@/lib/categories";
 
 export default async function HomePage(props: PageProps<"/">) {
   const { t } = await getI18n();
@@ -78,19 +77,27 @@ export default async function HomePage(props: PageProps<"/">) {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 pt-16">
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
-          <h2 className="flex items-center gap-2 text-2xl font-bold"><Icon name="map" className="text-accent" /> {t("home.browseCategories")}</h2>
-          <Link href="/browse" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">{t("browse.hubTitle")} <Icon name="arrow-right" /></Link>
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {GENRES.map((g) => (
-            <Link key={g.key} href={`/browse/genre/${g.key}`} className="card flex items-center gap-3 p-3 hover:border-accent">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-lg text-accent"><Icon name={genreIcon(g.key)} /></span>
-              <span className="text-sm font-semibold">{t(genreLabelKey(g.key))}</span>
-            </Link>
+      <section className="mx-auto max-w-6xl px-4 pt-16 text-center" aria-labelledby="cats-h">
+        <h2 id="cats-h" className="text-3xl font-bold">{t("home.browseCategories")}</h2>
+        <p className="mt-1 text-muted">{t("home.browseCategoriesLead")}</p>
+        <ul className="mt-8 grid grid-cols-2 gap-x-8 gap-y-8 px-2 sm:grid-cols-4 sm:gap-x-6 sm:px-0">
+          {([
+            ["systems", "browse.systems"],
+            ["genres", "browse.genres"],
+            ["styles", "browse.styles"],
+            ["mechanics", "browse.mechanics"],
+          ] as const).map(([id, label]) => (
+            <li key={id}>
+              <Link href={`/browse#${id}`} className="group flex flex-col items-center gap-3 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
+                <span className="medallion">
+                  <Image src={`/images/categories/${id}.svg`} alt="" width={120} height={120} className="h-[74%] w-[74%] transition-transform duration-200 group-hover:scale-110" />
+                </span>
+                <span className="text-lg font-semibold group-hover:text-accent" style={{ fontFamily: "var(--font-heading)" }}>{t(label)}</span>
+              </Link>
+            </li>
           ))}
-        </div>
+        </ul>
+        <Link href="/browse" className="btn-secondary mt-8">{t("home.browseAllCategories")}</Link>
       </section>
 
       <section className="mx-auto max-w-6xl px-4 pt-16">
