@@ -131,6 +131,9 @@ The full UX spec (flows, screens, sitemap) is in `docs/07-ux-ui-spec.md`. This f
 | link (URL) | **tautan** (*Salin tautan*, *Kirim tautan reset*) | link |
 | deleted account | **Anonim** | Anonymous |
 | Notice Board | **Papan Pengumuman Tavern** | Papan Pengumuman Kedai |
+| genre & style *terms* | **English** for compound TTRPG terms: *High fantasy, Dark fantasy, Gothic horror, Space opera, Roleplay-heavy, Combat-light, West Marches* | Fantasi gelap, Banyak roleplay |
+| genre & style *plain words* | **Indonesian** for everyday words: *Fantasi, Horor, Komedi, Bajak laut, Romansa, Pedesaan* | — |
+| mechanic names | proper nouns, never translated (*d20 System, Powered by the Apocalypse*) | — |
 | beginner | **beginner** · *Beginner-friendly* | pemula |
 | Hire a GM (feature) | **Cari GM** · *Cari Game Master* | Sewa GM |
 | Game Master | **Game Master** / **GM** | — |
