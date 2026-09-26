@@ -64,7 +64,7 @@ export function deleteAccount(userId: number): void {
     c.prepare("DELETE FROM gm_request_offers WHERE gm_id = ? AND request_id IN (SELECT id FROM gm_requests WHERE status = 'open')").run(userId);
 
     c.prepare(
-      `UPDATE users SET email = ?, name = ?, bio = '', avatar_image = '', password_hash = '!', email_verified_at = NULL, deleted_at = ?,
+      `UPDATE users SET email = ?, name = ?, bio = '', avatar_image = '', password_hash = '!', email_verified_at = NULL, deleted_at = ?, calendar_token = NULL,
                         role = CASE WHEN role = 'admin' THEN 'player' ELSE role END
         WHERE id = ?`,
     ).run(`deleted-${userId}@deleted.invalid`, DELETED_NAME, now, userId);

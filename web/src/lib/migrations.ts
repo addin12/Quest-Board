@@ -254,6 +254,10 @@ export const MIGRATIONS: Record<number, string> = {
   14: `
     ALTER TABLE game_sessions ADD COLUMN cancel_reason TEXT NOT NULL DEFAULT '';
   `,
+  15: `
+    ALTER TABLE users ADD COLUMN calendar_token TEXT;
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_users_calendar_token ON users(calendar_token);
+  `,
 };
 
 export type UpgradePlan =

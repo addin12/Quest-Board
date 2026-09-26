@@ -209,3 +209,10 @@ session_reminders(session_id → game_sessions, user_id → users, kind '24h'|'1
 ALTER TABLE game_sessions ADD COLUMN cancel_reason TEXT NOT NULL DEFAULT '';  -- the GM's message when cancelling
 ```
 - Shown to booked players in the `session_cancelled` notification, on My games, and in the cancellation email.
+
+## v15: calendar feed
+```sql
+ALTER TABLE users ADD COLUMN calendar_token TEXT;  -- NULL until created in Settings
+CREATE UNIQUE INDEX uq_users_calendar_token ON users(calendar_token);
+```
+- The token is the feed's only credential (read-only, public details only). "Reset link" replaces it, and account deletion clears it.

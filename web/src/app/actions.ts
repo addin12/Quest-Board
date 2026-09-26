@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies, headers } from "next/headers";
+import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db, tx } from "@/lib/db";
@@ -464,6 +465,15 @@ async function changePasswordActionImpl(_: FormState, form: FormData): Promise<F
   await destroyAllSessions(user.id); // other devices must log in again…
   await createSession(user.id);      // …but this one stays signed in
   return { ok: true };
+}
+
+/** Create (or replace) my private calendar feed link; an old link stops working. */
+export async function resetCalendarFeedAction() {
+  const user = await requireUser("/settings");
+  const token = randomBytes(24).toString("base64url");
+  db().prepare("UPDATE users SET calendar_token = ? WHERE id = ?").run(token, user.id);
+  await toast("toast.calendarLinkReady");
+  revalidatePath("/settings");
 }
 
 // ─── Hire a GM ───────────────────────────────────────────────────────────

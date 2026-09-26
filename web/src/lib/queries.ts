@@ -633,8 +633,8 @@ export function getPaymentInfo(gmId: number): string {
 
 export function getUserSettings(userId: number) {
   return db()
-    .prepare("SELECT id, name, email, bio, role, avatar_hue, avatar_image, email_reminders FROM users WHERE id = ?")
-    .get(userId) as { id: number; name: string; email: string; bio: string; role: string; avatar_hue: number; avatar_image: string; email_reminders: number } | undefined;
+    .prepare("SELECT id, name, email, bio, role, avatar_hue, avatar_image, email_reminders, calendar_token FROM users WHERE id = ?")
+    .get(userId) as { id: number; name: string; email: string; bio: string; role: string; avatar_hue: number; avatar_image: string; email_reminders: number; calendar_token: string | null } | undefined;
 }
 
 /** Public, indexable URLs' data for sitemap.xml: published games and listed GMs. */
@@ -647,4 +647,37 @@ export function sitemapEntries(): { games: { slug: string; created_at: string }[
     )
     .all() as { id: number }[];
   return { games, gms };
+}
+
+export type FeedSession = {
+  id: number; starts_at: string; duration_minutes: number; status: string;
+  title: string; system: string; slug: string; location_type: string; platform: string; city: string;
+};
+
+/** Whose calendar feed a token opens (active accounts only). */
+export function calendarFeedOwner(token: string): { id: number; locale: "en" | "id"; name: string } | undefined {
+  if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return undefined;
+  return db()
+    .prepare("SELECT id, locale, name FROM users WHERE calendar_token = ? AND deleted_at IS NULL AND suspended_at IS NULL")
+    .get(token) as { id: number; locale: "en" | "id"; name: string } | undefined;
+}
+
+/**
+ * Sessions for someone's calendar feed, from 60 days ago onwards: seats they booked (sessions the
+ * GM cancelled stay, marked cancelled) and, for GMs, every session of their own games.
+ */
+export function calendarFeedSessions(userId: number, now = new Date()): FeedSession[] {
+  const since = new Date(now.getTime() - 60 * 86_400_000).toISOString();
+  const cols = "s.id, s.starts_at, s.duration_minutes, s.status, g.title, g.system, g.slug, g.location_type, g.platform, g.city";
+  const rows = db()
+    .prepare(
+      `SELECT ${cols} FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id
+        WHERE b.player_id = ? AND s.starts_at > ? AND (b.status = 'confirmed' OR (b.cancelled_by = 'gm' AND s.status = 'cancelled'))
+       UNION
+       SELECT ${cols} FROM game_sessions s JOIN games g ON g.id = s.game_id
+        WHERE g.gm_id = ? AND s.starts_at > ?
+       ORDER BY starts_at`,
+    )
+    .all(userId, since, userId, since) as FeedSession[];
+  return rows;
 }

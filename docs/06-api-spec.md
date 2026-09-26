@@ -68,8 +68,13 @@ Base URL `https://<host>/api`. No authentication. Returns `application/json`. On
 
 **404 Not Found**: `{ "error": "not_found" }`.
 
+### `GET /api/calendar/{token}.ics`
+A person's private, subscribable iCalendar feed (created and reset in Settings). Seats they booked from 60 days ago onwards, plus every session of their own games for GMs. Sessions the GM cancelled stay in the feed with `STATUS:CANCELLED`. Public details only (title, system, time, online platform or city), never payment details. Events use stable UIDs `session-{id}@questboard`, `REFRESH-INTERVAL` is 1 h, and the calendar name is in the owner's language.
+
+**404 Not Found** for unknown or reset tokens and for deleted or suspended accounts.
+
 ### Planned
-`GET /api/gms/{id}` · `GET /api/systems` · `GET /api/calendar/{token}.ics` (private calendar feed) · rate limiting of 60 requests/min per IP (`429` + `Retry-After`).
+`GET /api/gms/{id}` · `GET /api/systems` · rate limiting of 60 requests/min per IP (`429` + `Retry-After`).
 
 ---
 

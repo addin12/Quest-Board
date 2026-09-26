@@ -17,7 +17,8 @@
 //      notifications.game_id/post_id, reports accept lfg_post/lfg_reply.
 // v13: session reminders (session_reminders) + users.locale / users.email_reminders.
 // v14: game_sessions.cancel_reason (the GM's message to players when cancelling).
-export const SCHEMA_VERSION = 14;
+// v15: users.calendar_token (private calendar feed URL).
+export const SCHEMA_VERSION = 15;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -36,8 +37,10 @@ CREATE TABLE IF NOT EXISTS users (
   deleted_at    TEXT,                      -- set when the person deleted their account; data scrubbed (v9)
   suspended_at  TEXT,                      -- set by a moderator: no login, profile hidden (v10)
   locale        TEXT NOT NULL DEFAULT 'en' CHECK (locale IN ('en','id')), -- language of emails/reminders (v13)
-  email_reminders INTEGER NOT NULL DEFAULT 1 -- email me before my sessions (v13)
+  email_reminders INTEGER NOT NULL DEFAULT 1, -- email me before my sessions (v13)
+  calendar_token TEXT                        -- v15: secret for /api/calendar/<token>.ics; NULL until created
 );
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_calendar_token ON users(calendar_token);
 
 CREATE TABLE IF NOT EXISTS gm_profiles (
   user_id          INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,

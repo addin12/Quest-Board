@@ -9,6 +9,7 @@ export type CalendarEvent = {
   description: string;
   location: string;
   url: string;
+  cancelled?: boolean;  // STATUS:CANCELLED, so subscribed calendars mark or drop it
 };
 
 /** 2026-09-28T12:00:00.000Z → "20260928T120000Z" */
@@ -41,13 +42,30 @@ export function icsFold(line: string): string {
 }
 
 export function buildIcs(e: CalendarEvent, now = new Date()): string {
-  const end = new Date(e.start.getTime() + e.minutes * 60_000);
+  return buildIcsFeed([e], null, now);
+}
+
+/**
+ * A calendar with many events. `name` (X-WR-CALNAME) is set for subscribed feeds; calendar apps
+ * re-fetch roughly every REFRESH-INTERVAL. Cancelled events keep their UID with STATUS:CANCELLED.
+ */
+export function buildIcsFeed(events: CalendarEvent[], name: string | null, now = new Date()): string {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//Quest Board//Sessions//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
+    ...(name ? [`X-WR-CALNAME:${icsEscape(name)}`, "REFRESH-INTERVAL;VALUE=DURATION:PT1H", "X-PUBLISHED-TTL:PT1H"] : []),
+    ...events.flatMap((e) => veventLines(e, now)),
+    "END:VCALENDAR",
+  ];
+  return lines.map(icsFold).join("\r\n") + "\r\n";
+}
+
+function veventLines(e: CalendarEvent, now: Date): string[] {
+  const end = new Date(e.start.getTime() + e.minutes * 60_000);
+  return [
     "BEGIN:VEVENT",
     `UID:${e.uid}`,
     `DTSTAMP:${icsDate(now)}`,
@@ -57,15 +75,11 @@ export function buildIcs(e: CalendarEvent, now = new Date()): string {
     `DESCRIPTION:${icsEscape(e.description)}`,
     `LOCATION:${icsEscape(e.location)}`,
     `URL:${e.url}`,
-    "BEGIN:VALARM",
-    "TRIGGER:-PT1H",
-    "ACTION:DISPLAY",
-    `DESCRIPTION:${icsEscape(e.title)}`,
-    "END:VALARM",
+    ...(e.cancelled
+      ? ["STATUS:CANCELLED"]
+      : ["STATUS:CONFIRMED", "BEGIN:VALARM", "TRIGGER:-PT1H", "ACTION:DISPLAY", `DESCRIPTION:${icsEscape(e.title)}`, "END:VALARM"]),
     "END:VEVENT",
-    "END:VCALENDAR",
   ];
-  return lines.map(icsFold).join("\r\n") + "\r\n";
 }
 
 /** One Quest Board session as a calendar event (public details only — never payment info). */

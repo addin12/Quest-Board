@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildIcs, googleCalendarUrl, icsDate, icsEscape, icsFold, sessionEvent } from "../../src/lib/calendar.ts";
+import { buildIcs, buildIcsFeed, googleCalendarUrl, icsDate, icsEscape, icsFold, sessionEvent } from "../../src/lib/calendar.ts";
 import { makeT } from "../../src/lib/i18n/dict.ts";
 import { parseRepeat, weeklyStarts, MAX_REPEAT_WEEKS } from "../../src/lib/validation.ts";
 
@@ -62,4 +62,17 @@ test("weekly series: parseRepeat clamps, weeklyStarts steps 7 days", () => {
   const first = new Date("2026-10-03T12:00:00.000Z");
   const s = weeklyStarts(first, 3).map((d) => d.toISOString());
   assert.deepEqual(s, ["2026-10-03T12:00:00.000Z", "2026-10-10T12:00:00.000Z", "2026-10-17T12:00:00.000Z"]);
+});
+
+test("buildIcsFeed: many events, a calendar name for subscriptions, cancelled events marked", () => {
+  const base = { minutes: 180, description: "d", location: "Online", url: "https://qb.test/games/x" };
+  const ics = buildIcsFeed([
+    { ...base, uid: "session-1@questboard", start: new Date("2026-10-03T12:00:00Z"), title: "One" },
+    { ...base, uid: "session-2@questboard", start: new Date("2026-10-10T12:00:00Z"), title: "Two", cancelled: true },
+  ], "Quest Board sessions", new Date("2026-09-26T00:00:00Z"));
+  assert.equal(ics.match(/BEGIN:VEVENT/g)?.length, 2);
+  assert.match(ics, /X-WR-CALNAME:Quest Board sessions\r\n/);
+  assert.match(ics, /UID:session-2@questboard\r\n[\s\S]*?STATUS:CANCELLED\r\nEND:VEVENT/);
+  assert.equal(ics.match(/BEGIN:VALARM/g)?.length, 1); // no reminder for the cancelled one
+  assert.ok(ics.endsWith("END:VCALENDAR\r\n"));
 });

@@ -4,10 +4,12 @@ import { requireUser } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
 import { getUserSettings, getGmSettings } from "@/lib/queries";
 import { Icon } from "@/components/icon";
-import { ConfirmButton } from "@/components/submit-button";
 import { PasswordForm, ProfileSettingsForm } from "@/components/settings-forms";
 import { DeleteAccountForm, ResendVerificationButton } from "@/components/account-forms";
-import { logoutEverywhereAction } from "../actions";
+import { logoutEverywhereAction, resetCalendarFeedAction } from "../actions";
+import { CalendarFeedLinks } from "@/components/calendar-feed";
+import { ConfirmButton, SubmitButton } from "@/components/submit-button";
+import { siteOrigin } from "@/lib/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -19,6 +21,7 @@ export default async function SettingsPage() {
   const user = await requireUser("/settings");
   const { t } = await getI18n();
   const me = getUserSettings(user.id)!;
+  const origin = await siteOrigin();
   const isGm = user.role === "gm" || user.role === "admin";
   const gmProfile = isGm ? getGmSettings(user.id) : undefined; // the public page exists once the profile is filled in
 
@@ -38,6 +41,24 @@ export default async function SettingsPage() {
       <section className="card mt-6 p-6" aria-labelledby="profile-h">
         <h2 id="profile-h" className="mb-5 flex items-center gap-2 text-xl font-bold"><Icon name="user-pen" className="text-muted" /> {t("settings.profile")}</h2>
         <ProfileSettingsForm defaults={{ name: me.name, email: me.email, bio: me.bio, hue: me.avatar_hue, avatarImage: me.avatar_image, emailReminders: !!me.email_reminders }} />
+      </section>
+
+      <section className="card mt-6 p-6" aria-labelledby="cal-h">
+        <h2 id="cal-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="calendar-clock" className="text-muted" /> {t("cal.feedTitle")}</h2>
+        <p className="mt-1 mb-4 text-sm text-muted">{t("cal.feedLead")}</p>
+        {me.calendar_token ? (
+          <>
+            <CalendarFeedLinks url={`${origin}/api/calendar/${me.calendar_token}.ics`} />
+            <form action={resetCalendarFeedAction} className="mt-4">
+              <p className="mb-2 text-xs text-muted">{t("cal.feedResetHint")}</p>
+              <ConfirmButton className="btn-ghost" message={t("cal.feedResetConfirm")}><Icon name="key" /> {t("cal.feedReset")}</ConfirmButton>
+            </form>
+          </>
+        ) : (
+          <form action={resetCalendarFeedAction}>
+            <SubmitButton className="btn-primary"><Icon name="calendar-plus" /> {t("cal.feedCreate")}</SubmitButton>
+          </form>
+        )}
       </section>
 
       <section className="card mt-6 p-6" aria-labelledby="gm-h">
