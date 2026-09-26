@@ -63,6 +63,22 @@ export type RateWindow = { windowStart: number; count: number };
  * Fixed-window rate limiting. Given the stored window (if any), decide whether
  * this hit is allowed and return the window to store next.
  */
+/**
+ * The client address from X-Forwarded-For, trusting only the `hops` right-most entries (added by
+ * our own proxies). With no header (direct/local), falls back to X-Real-IP, then "local".
+ */
+export function clientIpFrom(xff: string | null, realIp: string | null, hops = 1): string {
+  const list = (xff ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const n = Number.isInteger(hops) && hops > 0 ? hops : 1;
+  if (list.length > 0) return list[Math.max(0, list.length - n)];
+  return realIp?.trim() || "local";
+}
+
+/** A post-login redirect target on this site: "/path", never "//host", "/\\host" or a control character. */
+export function isSafeNext(v: unknown): v is string {
+  return typeof v === "string" && v.startsWith("/") && !/^\/[\/\\]/.test(v) && !/[\u0000-\u001f\\]/.test(v) && v.length <= 512;
+}
+
 export function fixedWindow(
   prev: RateWindow | undefined,
   nowMs: number,

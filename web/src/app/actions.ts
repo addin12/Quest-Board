@@ -7,7 +7,7 @@ import { db, tx } from "@/lib/db";
 import { SESSION_COOKIE, createSession, destroyAllSessions, destroySession, getCurrentUser, purgeExpiredSessions, requireAdmin, requireGm, requireUser, rotateSession } from "@/lib/auth";
 import { clientIp, hit, purgeOldWindows } from "@/lib/rate-limit";
 import { hashPassword, verifyPassword } from "@/lib/password";
-import { canBook, canCancel, normalizeLocation, slugify } from "@/lib/policy";
+import { canBook, canCancel, isSafeNext, normalizeLocation, slugify } from "@/lib/policy";
 import { isAllowedCover, isAllowedPortrait } from "@/lib/placeholders";
 import { parseGame, parseGmRequest, parseOffer, parseProfile, parseRepeat, parseReview, parseSessionStart, parseSignup, weeklyStarts, type FieldErrors } from "@/lib/validation";
 import { normalizeCategories } from "@/lib/categories";
@@ -57,10 +57,9 @@ function isUniqueViolation(err: unknown): boolean {
   return err instanceof Error && /UNIQUE constraint failed/i.test(err.message);
 }
 
-/** Only allow same-site relative redirects after login. */
+/** Only allow same-site relative redirects after login (see isSafeNext). */
 function safeNext(next: FormDataEntryValue | null): string {
-  const v = typeof next === "string" ? next : "";
-  return v.startsWith("/") && !v.startsWith("//") ? v : "/dashboard";
+  return isSafeNext(next) ? next : "/dashboard";
 }
 
 // ─── Language ────────────────────────────────────────────────────────────
@@ -121,7 +120,8 @@ async function signupActionImpl(_: FormState, form: FormData): Promise<FormState
 async function loginActionImpl(_: FormState, form: FormData): Promise<FormState> {
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const password = String(form.get("password") ?? "");
-  if (!hit("login", `${await clientIp()}:${email}`)) return { error: "err.rateLimited" };
+  const ip = await clientIp();
+  if (!hit("loginIp", ip) || !hit("login", `${ip}:${email}`)) return { error: "err.rateLimited" };
   const user = db().prepare("SELECT id, password_hash, suspended_at FROM users WHERE email = ? AND deleted_at IS NULL").get(email) as
     | { id: number; password_hash: string; suspended_at: string | null }
     | undefined;
@@ -282,6 +282,8 @@ export async function cancelSessionAction(form: FormData) {
   const s = getSessionWithGame(sessionId);
   if (!s) throw new Error("Not found");
   await ownedGameOrThrow(s.game_id);
+  // Past, completed or already-cancelled sessions can't be "cancelled" (players would be told so).
+  if (s.status !== "scheduled" || new Date(s.starts_at) <= new Date()) throw new Error("Only upcoming sessions can be cancelled");
   tx((c) => {
     const booked = c.prepare("SELECT player_id FROM bookings WHERE session_id = ? AND status = 'confirmed'").all(sessionId) as { player_id: number }[];
     for (const b of booked) notify({ userId: b.player_id, kind: "session_cancelled", actorId: s.gm_id, sessionId }, c);
@@ -549,7 +551,8 @@ export async function resendVerificationAction(): Promise<FormState> {
 async function requestPasswordResetActionImpl(_: FormState, form: FormData): Promise<FormState> {
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { fieldErrors: { email: "v.email" } };
-  if (!hit("reset", `${await clientIp()}:${email}`)) return { error: "err.rateLimited" };
+  const ip = await clientIp();
+  if (!hit("resetIp", ip) || !hit("reset", `${ip}:${email}`)) return { error: "err.rateLimited" };
   const user = db().prepare("SELECT id, name FROM users WHERE email = ? AND deleted_at IS NULL").get(email) as { id: number; name: string } | undefined;
   if (user) {
     const { t } = await getI18n();

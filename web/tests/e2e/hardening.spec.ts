@@ -135,3 +135,11 @@ test("forms keep what the user typed after a validation error", async ({ page })
   await expect(page.getByLabel("One-line summary")).toHaveValue("too short");
   await expect(page.getByLabel(/Price per seat/)).toHaveValue("65.000");
 });
+
+test("login never redirects off-site, even with a backslash trick", async ({ page }) => {
+  await page.goto("/login?next=" + encodeURIComponent("/\\evil.example"));
+  await page.getByLabel("Email").fill("player@questboard.test");
+  await page.getByLabel("Password").fill("password123");
+  await page.getByRole("button", { name: /log in/i }).click();
+  await expect(page).toHaveURL(/localhost:\d+\/dashboard$/);
+});

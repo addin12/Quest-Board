@@ -15,7 +15,9 @@
     "placeholders": "node scripts/build-placeholders.mjs",
     "tavern-art": "node scripts/build-tavern-art.mjs",
     "admin": "node scripts/admin.mjs",
-    "app-icons": "node scripts/build-app-icons.mjs"
+    "app-icons": "node scripts/build-app-icons.mjs",
+    "db:backup": "node scripts/db-backup.mjs backup",
+    "db:restore": "node scripts/db-backup.mjs restore"
   },
   "dependencies": {
     "@flaticon/flaticon-uicons": "^3.3.1",

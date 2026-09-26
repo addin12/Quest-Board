@@ -32,7 +32,7 @@ export default defineConfig({
     timeout: 120_000,
     // Many specs sign up and log in (as the same demo accounts) from one IP. Limits are raised for
     // sign-up and login; P1-9 still proves the login limiter works at the raised value (E2E_LOGIN_LIMIT).
-    env: { QUESTBOARD_DB: "data/e2e.db", QUESTBOARD_DEV_OUTBOX: "true", QUESTBOARD_RATE_LIMIT_OVERRIDES: "signup=500,login=40", QUESTBOARD_CRON_SECRET: "e2e-cron-secret" },
+    env: { QUESTBOARD_DB: "data/e2e.db", QUESTBOARD_DEV_OUTBOX: "true", QUESTBOARD_RATE_LIMIT_OVERRIDES: "signup=500,login=40,loginIp=5000,resetIp=500", QUESTBOARD_CRON_SECRET: "e2e-cron-secret" },
   }, {
     command: `node scripts/reset-db.mjs data/e2e-empty.db && npx next start -p ${EMPTY_PORT}`,
     url: `http://localhost:${EMPTY_PORT}`,

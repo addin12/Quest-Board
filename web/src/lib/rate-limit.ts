@@ -1,12 +1,13 @@
 import "server-only";
 import { headers } from "next/headers";
 import { db } from "./db";
-import { fixedWindow } from "./policy";
+import { clientIpFrom, fixedWindow } from "./policy";
 
 // Fixed-window limits per action. Identity is the client IP (for anonymous
 // actions) or the user id. Kept generous so real people never notice them.
 export const LIMITS = {
   login: { limit: 10, windowMs: 10 * 60_000 },   // per IP + email
+  loginIp: { limit: 60, windowMs: 10 * 60_000 }, // per IP, any email (credential stuffing)
   signup: { limit: 10, windowMs: 60 * 60_000 },  // per IP
   chat: { limit: 30, windowMs: 10 * 60_000 },    // per user
   reserve: { limit: 30, windowMs: 10 * 60_000 }, // per user
@@ -15,6 +16,7 @@ export const LIMITS = {
   offer: { limit: 30, windowMs: 60 * 60_000 },   // offers per GM
   password: { limit: 5, windowMs: 15 * 60_000 }, // password changes per user
   reset: { limit: 5, windowMs: 60 * 60_000 },    // "forgot password" emails per IP + email
+  resetIp: { limit: 20, windowMs: 60 * 60_000 }, // per IP, any email (no mass reset emails)
   verify: { limit: 5, windowMs: 60 * 60_000 },   // verification emails per user
   deleteAccount: { limit: 5, windowMs: 60 * 60_000 }, // deletion attempts per user
   report: { limit: 10, windowMs: 60 * 60_000 },  // reports per user
@@ -24,10 +26,14 @@ export const LIMITS = {
 
 export type Bucket = keyof typeof LIMITS;
 
-/** Best-effort client IP. Behind a proxy, only trust X-Forwarded-For if the proxy sets it. */
+/**
+ * Client IP for rate limits. X-Forwarded-For is "client, proxy1, proxy2…" and anyone can put
+ * anything on the left, so we count QUESTBOARD_PROXY_HOPS entries from the right (default 1:
+ * one reverse proxy such as Caddy, nginx or Fly in front of the app). See clientIpFrom().
+ */
 export async function clientIp(): Promise<string> {
   const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "local";
+  return clientIpFrom(h.get("x-forwarded-for"), h.get("x-real-ip"), Number(process.env.QUESTBOARD_PROXY_HOPS ?? 1));
 }
 
 /**

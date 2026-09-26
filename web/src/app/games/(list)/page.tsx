@@ -10,7 +10,7 @@ import { GENRES, MECHANICS, STYLES, genreLabelKey, isGenre, isMechanic, isStyle,
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
-  return { title: t("browse.title") };
+  return { title: t("browse.title"), description: t("meta.gamesDescription") };
 }
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";

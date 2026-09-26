@@ -30,6 +30,8 @@ Requires **Node ≥ 22.13** (developed on 24). No database server or native buil
 | `QUESTBOARD_CONTACT_EMAIL` | unset | Contact address shown on the Terms and Privacy pages |
 | `QUESTBOARD_LEGAL_FINAL` | `false` | Set `true` once a lawyer has approved the legal texts (hides the "draft" notice) |
 | `QUESTBOARD_BASE_URL` | request host | Public origin (e.g. `https://questboard.id`) for share links, `.ics` files and Open Graph tags. **Set it in production**, or links follow the Host header (a warning is logged once) |
+| `QUESTBOARD_PROXY_HOPS` | `1` | How many reverse proxies you run in front of the app (Caddy/nginx/Fly = 1; a CDN in front of nginx = 2). Rate limits use the client address that many entries from the right of `X-Forwarded-For`, so visitors can't fake their IP. **Run the app behind a proxy that sets `X-Forwarded-For`**, or all visitors share one limit |
+| `QUESTBOARD_BACKUP_DIR` / `QUESTBOARD_BACKUP_KEEP` | `data/backups` / `14` | Where `npm run db:backup` writes, and how many backups it keeps |
 | `QUESTBOARD_CRON_SECRET` | unset | Enables `/api/cron/reminders` (session reminders, 24 h and 1 h before). Call it every 5–10 minutes with `Authorization: Bearer <secret>`, e.g. a crontab line `*/5 * * * * curl -fsS -H "Authorization: Bearer $SECRET" https://questboard.id/api/cron/reminders`. Unset: the route 404s and reminders are only checked (at most once a minute) while people browse the site |
 
 There are **no payment or API keys** to configure.
@@ -63,12 +65,13 @@ CMD ["npm", "start"]
 
 | Task | How |
 |---|---|
-| Backup | `sqlite3 questboard.db ".backup 'backup-$(date +%F).db'"` nightly, kept 30 days off-box |
-| Restore | Stop the app → replace the DB file (remove `-wal`/`-shm`) → start |
-| Verify a GM | `UPDATE gm_profiles SET verified = 1 WHERE user_id = ?;` |
+| **First admin (launch day)** | Start the app once (it creates the database), then `npm run admin -- create you@example.com "Your Name"`. It prints a one-time password: log in and change it in Settings. Production has **no** demo admin |
+| More admins | `npm run admin -- promote <email>` (an existing account) · `npm run admin -- demote <email>` · `npm run admin -- list`. The last admin can't be demoted |
+| Backup | `npm run db:backup` — a checked copy (`VACUUM INTO` + integrity check) that is safe while the app runs, rotated to the newest 14. Schedule it nightly, e.g. `15 2 * * * cd /app && npm run db:backup`, and copy `data/backups` off the server (object storage, another machine) |
+| Restore | Stop the app → `npm run db:restore -- data/backups/questboard-<time>.db --yes` (the current database is kept as `*.before-restore-<time>.db`) → start. Test a restore on a copy before you need one |
+| Verify a GM | Admin console → GMs (`/admin/gms`) |
 | Remove abusive payment details | `UPDATE gm_profiles SET payment_info = '' WHERE user_id = ?;` |
 | Hide a listing | `UPDATE games SET status = 'archived' WHERE slug = ?;` |
-| Make an admin | `UPDATE users SET role = 'admin' WHERE email = ?;` |
 | Expire sessions | `DELETE FROM auth_sessions WHERE expires_at < strftime('%Y-%m-%dT%H:%M:%fZ','now');` |
 | Health check | `GET /api/games?limit=1` returns 200 |
 
