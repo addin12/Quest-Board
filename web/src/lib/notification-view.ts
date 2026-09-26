@@ -56,6 +56,8 @@ export function describeNotification(n: NotificationSource, t: T): NotificationV
     case "payment_confirmed": return { ...base, href: "/dashboard", icon: "wallet", text: t("notif.paymentConfirmed", { name: who, title: game }) };
     case "lfg_reply": return { ...base, href: n.post_id ? `/board/${n.post_id}` : "/board", icon: "thumbtack", text: t("notif.lfgReply", { name: who, title: n.post_title ?? "" }) };
     case "followed_gm_game": return { ...base, href: gameHref, icon: "dice-d20", text: t("notif.followedGame", { name: who, title: game }) };
+    case "session_reminder_24h": return { ...base, actor: null, href: gameHref, icon: "calendar-clock", text: t("notif.reminder24", { title: game }) };
+    case "session_reminder_1h": return { ...base, actor: null, href: gameHref, icon: "hourglass-end", text: t("notif.reminder1", { title: game }) };
     case "report_resolved": return { ...base, actor: null, href: "/notifications", icon: "shield-check", text: t("notif.reportResolved") };
   }
 }

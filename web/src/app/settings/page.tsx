@@ -36,7 +36,7 @@ export default async function SettingsPage() {
 
       <section className="card mt-6 p-6" aria-labelledby="profile-h">
         <h2 id="profile-h" className="mb-5 flex items-center gap-2 text-xl font-bold"><Icon name="user-pen" className="text-muted" /> {t("settings.profile")}</h2>
-        <ProfileSettingsForm defaults={{ name: me.name, email: me.email, bio: me.bio, hue: me.avatar_hue, avatarImage: me.avatar_image }} />
+        <ProfileSettingsForm defaults={{ name: me.name, email: me.email, bio: me.bio, hue: me.avatar_hue, avatarImage: me.avatar_image, emailReminders: !!me.email_reminders }} />
       </section>
 
       <section className="card mt-6 p-6" aria-labelledby="gm-h">

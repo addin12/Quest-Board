@@ -30,6 +30,7 @@ Requires **Node ≥ 22.13** (developed on 24). No database server or native buil
 | `QUESTBOARD_CONTACT_EMAIL` | unset | Contact address shown on the Terms and Privacy pages |
 | `QUESTBOARD_LEGAL_FINAL` | `false` | Set `true` once a lawyer has approved the legal texts (hides the "draft" notice) |
 | `QUESTBOARD_BASE_URL` | request host | Public origin (e.g. `https://questboard.id`) for share links, `.ics` files and Open Graph tags. **Set it in production**, or links follow the Host header (a warning is logged once) |
+| `QUESTBOARD_CRON_SECRET` | unset | Enables `/api/cron/reminders` (session reminders, 24 h and 1 h before). Call it every 5–10 minutes with `Authorization: Bearer <secret>`, e.g. a crontab line `*/5 * * * * curl -fsS -H "Authorization: Bearer $SECRET" https://questboard.id/api/cron/reminders`. Unset: the route 404s and reminders are only checked (at most once a minute) while people browse the site |
 
 There are **no payment or API keys** to configure.
 

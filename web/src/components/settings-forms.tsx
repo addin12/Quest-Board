@@ -8,7 +8,7 @@ import { useI18n } from "./i18n-provider";
 import { PortraitPicker } from "./portrait-picker";
 import { Icon } from "./icon";
 
-type ProfileDefaults = { name: string; email: string; bio: string; hue: number; avatarImage: string };
+type ProfileDefaults = { name: string; email: string; bio: string; hue: number; avatarImage: string; emailReminders: boolean };
 
 /** Display name, profile picture, bio and UI language — for players and GMs. */
 export function ProfileSettingsForm({ defaults }: { defaults: ProfileDefaults }) {
@@ -52,6 +52,10 @@ export function ProfileSettingsForm({ defaults }: { defaults: ProfileDefaults })
           <option value="id">Bahasa Indonesia</option>
         </select>
       </div>
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" name="emailReminders" value="1" defaultChecked={v ? v.emailReminders === "1" : defaults.emailReminders} className="mt-1 accent-[var(--accent)]" />
+        <span><Icon name="calendar-clock" className="mr-1 text-muted" />{t("settings.emailReminders")}</span>
+      </label>
       {state?.ok && <Notice tone="success">{t("settings.saved")}</Notice>}
       {state?.error && <Notice tone="danger">{t(state.error)}</Notice>}
       <SubmitButton pendingText={t("common.saving")}><Icon name="check" /> {t("settings.save")}</SubmitButton>

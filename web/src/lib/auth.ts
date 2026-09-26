@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { db } from "./db";
 import { hashToken, newSessionToken } from "./password";
+import { getLang } from "./i18n/server";
 
 export const SESSION_COOKIE = "qb_session";
 const SESSION_DAYS = 30;
@@ -62,12 +63,15 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   if (!token) return null;
   const row = db()
     .prepare(
-      `SELECT u.id, u.email, u.name, u.role, u.avatar_hue, u.avatar_image, u.email_verified_at, s.expires_at
+      `SELECT u.id, u.email, u.name, u.role, u.avatar_hue, u.avatar_image, u.email_verified_at, u.locale, s.expires_at
          FROM auth_sessions s JOIN users u ON u.id = s.user_id
         WHERE s.token_hash = ? AND u.deleted_at IS NULL AND u.suspended_at IS NULL`,
     )
-    .get(hashToken(token)) as (Omit<CurrentUser, "email_verified"> & { email_verified_at: string | null; expires_at: string }) | undefined;
+    .get(hashToken(token)) as (Omit<CurrentUser, "email_verified"> & { email_verified_at: string | null; locale: string; expires_at: string }) | undefined;
   if (!row || new Date(row.expires_at) < new Date()) return null;
+  // Emails and reminders go out in the language the person last used the site in.
+  const lang = await getLang();
+  if (row.locale !== lang) db().prepare("UPDATE users SET locale = ? WHERE id = ?").run(lang, row.id);
   return {
     id: row.id, email: row.email, name: row.name, role: row.role, avatar_hue: row.avatar_hue, avatar_image: row.avatar_image,
     email_verified: !!row.email_verified_at,

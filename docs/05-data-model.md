@@ -165,7 +165,7 @@ Every account uses the password `password123`.
 |---|---|
 | `bookings.paid_marked_at` (GM-only toggle) | Help GMs track who has paid (still off-platform) |
 | Tags/systems → join tables | Faceted search |
-| `users.locale` | Remember language across devices and use it for notifications |
+| ~~`users.locale`~~ | **Done in v13:** used for reminder emails |
 | `notifications`, `waitlist_entries`, `reports`, `game_images` | Reminders, waitlists, moderation, covers |
 | ~~Versioned migrations~~ | **Done in v5:** `PRAGMA user_version` ledger + ordered `MIGRATIONS`, with production refusing to reset |
 
@@ -192,3 +192,14 @@ notifications(id, user_id → users, kind, actor_id → users NULL, request_id �
               session_id → game_sessions NULL, created_at, read_at NULL)
 INDEX (user_id, read_at, created_at)
 ```
+
+## v13 (v0.12): session reminders
+```sql
+ALTER TABLE users ADD COLUMN locale TEXT NOT NULL DEFAULT 'en' CHECK (locale IN ('en','id'));
+ALTER TABLE users ADD COLUMN email_reminders INTEGER NOT NULL DEFAULT 1;
+session_reminders(session_id → game_sessions, user_id → users, kind '24h'|'1h', sent_at,
+                  PRIMARY KEY (session_id, user_id, kind))
+```
+- `users.locale` follows the language the person last used the site in (synced on each signed-in request), so emails and reminders arrive in that language.
+- A `session_reminders` row is claimed (`INSERT OR IGNORE`) before anything is sent, so each reminder goes out exactly once even if two runs overlap.
+- Notification kinds `session_reminder_24h` / `session_reminder_1h` go to booked players and the GM. Emails only go to verified addresses with `email_reminders = 1`.

@@ -401,7 +401,8 @@ async function updateProfileActionImpl(_: FormState, form: FormData): Promise<Fo
   if (!isAllowedPortrait(avatarImage, user.avatar_image)) fieldErrors.avatarImage = "v.portrait";
   if (parsed.ok && (user.role === "gm" || user.role === "admin") && parsed.value.bio.length < 30) fieldErrors.bio = "v.bio";
   if (!parsed.ok || Object.keys(fieldErrors).length) return { fieldErrors, error: "err.fixFields" };
-  db().prepare("UPDATE users SET name = ?, bio = ?, avatar_image = ? WHERE id = ?").run(parsed.value.name, parsed.value.bio, avatarImage, user.id);
+  db().prepare("UPDATE users SET name = ?, bio = ?, avatar_image = ?, email_reminders = ? WHERE id = ?")
+    .run(parsed.value.name, parsed.value.bio, avatarImage, form.get("emailReminders") === "1" ? 1 : 0, user.id);
   const lang = form.get("language");
   if (lang === "id" || lang === "en") (await cookies()).set(LANG_COOKIE, lang, { path: "/", sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
   revalidatePath("/", "layout");

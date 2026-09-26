@@ -4,7 +4,7 @@ import { db } from "./db";
 
 // In-app notifications (schema v8). Rows are written by server actions right
 // after the event; the header bell shows the unread count and /notifications
-// lists them. Email/WhatsApp delivery is a later step (IMPROVEMENTS P2-12).
+// lists them. Session reminders are also emailed (lib/reminders.ts).
 
 export type NotificationKind =
   | "request_direct"     // → GM: a player sent them a direct request
@@ -19,7 +19,9 @@ export type NotificationKind =
   | "waitlist_offer"     // → player: a seat opened up and is held for them
   | "payment_confirmed"  // → player: the GM marked their seat as paid
   | "lfg_reply"          // → notice author: someone replied on the Notice Board (collapsed while unread)
-  | "followed_gm_game";  // → follower: a GM they follow published a new game
+  | "followed_gm_game"   // → follower: a GM they follow published a new game
+  | "session_reminder_24h" // → booked players + GM: the session is within 24 hours (lib/reminders.ts)
+  | "session_reminder_1h";  // → booked players + GM: the session starts within the hour
 
 /** Kinds that update one unread row instead of piling up (chatty events). */
 const COLLAPSE: ReadonlySet<NotificationKind> = new Set(["request_message", "lfg_reply"]);

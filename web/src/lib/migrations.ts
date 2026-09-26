@@ -240,6 +240,17 @@ export const MIGRATIONS: Record<number, string> = {
     );
     CREATE INDEX IF NOT EXISTS idx_gm_follows_gm ON gm_follows(gm_id);
   `,
+  13: `
+    ALTER TABLE users ADD COLUMN locale TEXT NOT NULL DEFAULT 'en' CHECK (locale IN ('en','id'));
+    ALTER TABLE users ADD COLUMN email_reminders INTEGER NOT NULL DEFAULT 1;
+    CREATE TABLE IF NOT EXISTS session_reminders (
+      session_id INTEGER NOT NULL REFERENCES game_sessions(id) ON DELETE CASCADE,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind       TEXT NOT NULL CHECK (kind IN ('24h','1h')),
+      sent_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+      PRIMARY KEY (session_id, user_id, kind)
+    );
+  `,
 };
 
 export type UpgradePlan =

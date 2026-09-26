@@ -81,7 +81,7 @@ export function exportAccount(userId: number) {
   const one = (sql: string, ...args: (string | number)[]) => db().prepare(sql).get(...args);
   return {
     exported_at: new Date().toISOString(),
-    account: one("SELECT id, email, name, role, bio, avatar_image, email_verified_at, created_at FROM users WHERE id = ?", userId),
+    account: one("SELECT id, email, name, role, bio, avatar_image, email_verified_at, locale, email_reminders, created_at FROM users WHERE id = ?", userId),
     gm_profile: one("SELECT headline, systems, years_experience, location, verified, payment_info FROM gm_profiles WHERE user_id = ?", userId) ?? null,
     bookings: q(
       `SELECT b.id, g.title AS game, s.starts_at, b.status, b.cancelled_by, b.price_idr, b.created_at

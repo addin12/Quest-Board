@@ -7,6 +7,7 @@ import { describeNotification } from "@/lib/notification-view";
 import { countOpenRequestsForGm } from "@/lib/queries";
 import { getI18n } from "@/lib/i18n/server";
 import { siteOrigin } from "@/lib/site";
+import { maybeProcessReminders } from "@/lib/reminders";
 import { logoutAction, setLanguageAction, setThemeAction } from "./actions";
 import { cookies } from "next/headers";
 import { readToast } from "@/lib/toast";
@@ -40,6 +41,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const [user, { lang, t }] = await Promise.all([getCurrentUser(), getI18n()]);
   const isGm = user?.role === "gm" || user?.role === "admin";
+  maybeProcessReminders(await siteOrigin()); // fallback when no scheduler calls /api/cron/reminders
   const unread = user ? countUnread(user.id) : 0;
   const recent = user ? listNotifications(user.id, 8).map((n) => describeNotification(n, t)) : [];
   const openRequests = isGm && user ? countOpenRequestsForGm(user.id) : 0;

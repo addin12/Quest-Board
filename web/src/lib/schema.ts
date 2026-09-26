@@ -15,7 +15,8 @@
 // v11: waitlist + bookings.paid_marked_at (GM "paid ✓").
 // v12: Tavern Notice Board (lfg_posts, lfg_replies), saved_games, gm_follows, games.announced_at,
 //      notifications.game_id/post_id, reports accept lfg_post/lfg_reply.
-export const SCHEMA_VERSION = 12;
+// v13: session reminders (session_reminders) + users.locale / users.email_reminders.
+export const SCHEMA_VERSION = 13;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -32,7 +33,9 @@ CREATE TABLE IF NOT EXISTS users (
   created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   email_verified_at TEXT,                  -- NULL until the emailed link is opened (v9)
   deleted_at    TEXT,                      -- set when the person deleted their account; data scrubbed (v9)
-  suspended_at  TEXT                       -- set by a moderator: no login, profile hidden (v10)
+  suspended_at  TEXT,                      -- set by a moderator: no login, profile hidden (v10)
+  locale        TEXT NOT NULL DEFAULT 'en' CHECK (locale IN ('en','id')), -- language of emails/reminders (v13)
+  email_reminders INTEGER NOT NULL DEFAULT 1 -- email me before my sessions (v13)
 );
 
 CREATE TABLE IF NOT EXISTS gm_profiles (
@@ -188,6 +191,15 @@ CREATE TABLE IF NOT EXISTS notifications (
   post_id     INTEGER                    -- v12: lfg_reply
 );
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read_at, created_at);
+
+-- v13: one row per reminder sent, so each goes out exactly once.
+CREATE TABLE IF NOT EXISTS session_reminders (
+  session_id INTEGER NOT NULL REFERENCES game_sessions(id) ON DELETE CASCADE,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind       TEXT NOT NULL CHECK (kind IN ('24h','1h')),
+  sent_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY (session_id, user_id, kind)
+);
 
 CREATE TABLE IF NOT EXISTS auth_tokens (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
