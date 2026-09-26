@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireGm } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
-import { countOpenRequestsForGm, gmDashboardStats, listGmGames } from "@/lib/queries";
+import { countOpenRequestsForGm, getGmSettings, gmDashboardStats, listGmGames } from "@/lib/queries";
 import { formatIdr } from "@/lib/policy";
 import { EmptyState, Stars, Thumb, priceLabel } from "@/components/ui";
 import { LocalTime } from "@/components/local-time";
@@ -16,6 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function GmDashboardPage() {
   const gm = await requireGm();
+  const hasProfile = !!getGmSettings(gm.id)?.headline; // the public page exists once the profile is filled in
   const { t } = await getI18n();
   const stats = gmDashboardStats(gm.id);
   const games = listGmGames(gm.id, true);
@@ -27,7 +28,8 @@ export default async function GmDashboardPage() {
         <div>
           <h1 className="flex items-center gap-2 text-3xl font-bold"><Icon name="hat-wizard" className="text-accent" /> {t("nav.gmDashboard")}</h1>
           <p className="mt-1 text-muted">
-            {t("gmDash.lead")} <Link href={`/gms/${gm.id}`} className="text-accent hover:underline">{t("gmDash.viewProfile")}</Link> ·{" "}
+            {t("gmDash.lead")}{" "}
+            {hasProfile && <><Link href={`/gms/${gm.id}`} className="text-accent hover:underline">{t("gmDash.viewProfile")}</Link> ·{" "}</>}
             <Link href="/become-a-gm" className="text-accent hover:underline">{t("gmDash.editProfile")}</Link>
           </p>
         </div>

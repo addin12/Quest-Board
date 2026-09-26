@@ -79,6 +79,7 @@ test("people can't report their own content", async ({ page }) => {
 });
 
 test("a scam report leads to suspension: login blocked, profile hidden, game archived, players told", async ({ browser }) => {
+  test.setTimeout(90_000); // several accounts and the whole moderation flow; slow under a full run
   const gmEmail = unique("scammer");
   const gm = await newPage(browser);
   const slug = await createGmWithGame(gm, "Sam Scammer", gmEmail, "Too Good To Be True");

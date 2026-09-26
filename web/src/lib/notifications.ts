@@ -92,6 +92,12 @@ export function listNotifications(userId: number, limit = 50): NotificationRow[]
     .all(userId, limit) as NotificationRow[];
 }
 
+/** Housekeeping (from the cron route): read notifications older than `days` are dropped. */
+export function pruneNotifications(days = 180): number {
+  const cutoff = new Date(Date.now() - days * 86_400_000).toISOString();
+  return Number(db().prepare("DELETE FROM notifications WHERE read_at IS NOT NULL AND created_at < ?").run(cutoff).changes);
+}
+
 export function countUnread(userId: number): number {
   return (db().prepare("SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND read_at IS NULL").get(userId) as { n: number }).n;
 }

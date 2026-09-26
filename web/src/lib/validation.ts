@@ -215,6 +215,9 @@ export function parseGame(raw: Record<string, unknown>): Parsed<GameInput> {
   };
 }
 
+/** Sessions can be scheduled up to two years ahead. */
+export const MAX_SCHEDULE_DAYS = 730;
+
 export function parseSessionStart(dateTimeLocal: unknown, tzOffsetMinutes: unknown, now: Date): Parsed<Date> {
   // `datetime-local` gives "YYYY-MM-DDTHH:mm" in the GM's wall-clock time.
   // The browser sends its timezone offset (Date#getTimezoneOffset) so we can convert to UTC.
@@ -225,6 +228,7 @@ export function parseSessionStart(dateTimeLocal: unknown, tzOffsetMinutes: unkno
   const utcMs = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) + offset * 60_000;
   const d = new Date(utcMs);
   if (d.getTime() <= now.getTime()) return { ok: false, errors: { startsAt: "v.startsFuture" } };
+  if (d.getTime() > now.getTime() + MAX_SCHEDULE_DAYS * 86_400_000) return { ok: false, errors: { startsAt: "v.startsTooFar" } };
   return { ok: true, value: d };
 }
 

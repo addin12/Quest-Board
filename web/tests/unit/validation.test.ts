@@ -100,3 +100,11 @@ test("token hashing is deterministic", () => {
   assert.equal(hashToken("abc"), hashToken("abc"));
   assert.equal(hashToken("abc").length, 64);
 });
+
+test("parseSessionStart refuses dates more than two years ahead (typos like the year 20266)", () => {
+  const now = new Date("2026-09-26T00:00:00Z");
+  assert.equal(parseSessionStart("2028-09-20T19:00", "-420", now).ok, true);
+  const far = parseSessionStart("2028-10-01T19:00", "-420", now);
+  assert.equal(far.ok, false);
+  if (!far.ok) assert.equal(far.errors.startsAt, "v.startsTooFar");
+});

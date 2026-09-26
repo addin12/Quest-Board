@@ -535,7 +535,7 @@ export async function closeRequestAction(form: FormData) {
 async function sendVerificationEmail(userId: number, email: string, name: string) {
   const { t } = await getI18n();
   const link = `${await siteOrigin()}/verify-email?token=${issueToken(userId, "verify")}`;
-  await sendEmail({ to: email, subject: t("mail.verifySubject"), text: t("mail.verifyBody", { name, link }) });
+  await sendEmail({ to: email, subject: t("mail.verifySubject"), text: t("mail.verifyBody", { name, link }), secret: link });
 }
 
 /** Settings / banner: send the verification link again. */
@@ -557,7 +557,7 @@ async function requestPasswordResetActionImpl(_: FormState, form: FormData): Pro
   if (user) {
     const { t } = await getI18n();
     const link = `${await siteOrigin()}/reset-password?token=${issueToken(user.id, "reset")}`;
-    await sendEmail({ to: email, subject: t("mail.resetSubject"), text: t("mail.resetBody", { name: user.name, link }) });
+    await sendEmail({ to: email, subject: t("mail.resetSubject"), text: t("mail.resetBody", { name: user.name, link }), secret: link });
   }
   return { ok: true };
 }

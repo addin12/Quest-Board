@@ -26,7 +26,10 @@ test("P2-12 session reminders: in-app + email in the person's language, once eac
     // The scheduler endpoint needs the secret.
     expect((await request.get("/api/cron/reminders")).status()).toBe(401);
     expect((await request.get("/api/cron/reminders", { headers: { Authorization: "Bearer wrong" } })).status()).toBe(401);
-    expect((await request.post("/api/cron/reminders", { headers: AUTH })).ok()).toBe(true);
+    const cron = await (await request.post("/api/cron/reminders", { headers: AUTH })).json();
+    expect(cron.ok).toBe(true);
+    expect(typeof cron.waitlists).toBe("number"); // expired offers are passed on here too
+    expect(cron.pruned).toEqual({ notifications: expect.any(Number), outbox: expect.any(Number) });
 
     // The player (Indonesian) and the GM (English) each got exactly one 24h email.
     let mails = mailsSince(mark);

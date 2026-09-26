@@ -57,6 +57,18 @@ export function dropFromWaitlists(c: DatabaseSync, userId: number): void {
   for (const r of rows) processWaitlist(c, r.session_id);
 }
 
+/** Every upcoming session that has people waiting or holding an offer (for the cron route). */
+export function refreshAllWaitlists(): number {
+  const ids = (db()
+    .prepare(
+      `SELECT DISTINCT w.session_id AS id FROM waitlist w JOIN game_sessions s ON s.id = w.session_id
+        WHERE w.status IN ('waiting','offered') AND s.status = 'scheduled'`,
+    )
+    .all() as { id: number }[]).map((r) => r.id);
+  refreshWaitlists(ids);
+  return ids.length;
+}
+
 /** Convenience wrapper for pages: bring a set of sessions up to date. */
 export function refreshWaitlists(sessionIds: number[]): void {
   if (sessionIds.length === 0) return;

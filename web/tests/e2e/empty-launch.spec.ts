@@ -33,3 +33,19 @@ test("launch day: there is no demo admin — admins come from `npm run admin`", 
   await page.getByRole("button", { name: /log in/i }).click();
   await expect(page.getByText(/incorrect|wrong|invalid/i).first()).toBeVisible();
 });
+
+test("outside dev, the email outbox never keeps a working verification link", async ({ page }) => {
+  const email = `first-${Date.now()}@example.com`;
+  await page.goto("/signup");
+  await page.getByLabel(/display name/i).fill("First Visitor");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill("password123");
+  await page.getByRole("button", { name: /create account|sign up/i }).click();
+  await expect(page).toHaveURL(/\/dashboard/);
+  const { DatabaseSync } = await import("node:sqlite");
+  const db = new DatabaseSync("data/e2e-empty.db", { readOnly: true });
+  const row = db.prepare("SELECT body_text FROM email_outbox WHERE to_address = ?").get(email) as { body_text: string };
+  db.close();
+  expect(row.body_text).toContain("[link removed]");
+  expect(row.body_text).not.toMatch(/token=/);
+});

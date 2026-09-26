@@ -190,13 +190,14 @@ export function listGmsForAdmin(q: string): AdminGmRow[] {
     .all(like, like) as AdminGmRow[];
 }
 
-export type AdminUserRow = { id: number; name: string; email: string; role: string; suspended_at: string | null; created_at: string; open_reports: number };
+export type AdminUserRow = { id: number; name: string; email: string; role: string; suspended_at: string | null; created_at: string; open_reports: number; has_gm_profile: number };
 
 export function listUsersForAdmin(q: string): AdminUserRow[] {
   const like = `%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`;
   return db()
     .prepare(
       `SELECT u.id, u.name, u.email, u.role, u.suspended_at, u.created_at,
+              EXISTS (SELECT 1 FROM gm_profiles p WHERE p.user_id = u.id AND p.headline <> '') AS has_gm_profile,
               (SELECT COUNT(*) FROM reports r WHERE r.target_owner_id = u.id AND r.status = 'open') AS open_reports
          FROM users u
         WHERE u.deleted_at IS NULL AND (u.name LIKE ? ESCAPE '\\' OR u.email LIKE ? ESCAPE '\\')

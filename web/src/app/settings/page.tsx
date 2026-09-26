@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
-import { getUserSettings } from "@/lib/queries";
+import { getUserSettings, getGmSettings } from "@/lib/queries";
 import { Icon } from "@/components/icon";
 import { ConfirmButton } from "@/components/submit-button";
 import { PasswordForm, ProfileSettingsForm } from "@/components/settings-forms";
@@ -20,6 +20,7 @@ export default async function SettingsPage() {
   const { t } = await getI18n();
   const me = getUserSettings(user.id)!;
   const isGm = user.role === "gm" || user.role === "admin";
+  const gmProfile = isGm ? getGmSettings(user.id) : undefined; // the public page exists once the profile is filled in
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
@@ -46,7 +47,7 @@ export default async function SettingsPage() {
             <p className="mt-1 mb-4 text-sm text-muted">{t("settings.gmLead")}</p>
             <div className="flex flex-wrap gap-2">
               <Link href="/become-a-gm" className="btn-primary"><Icon name="pencil" /> {t("gmDash.editProfile")}</Link>
-              <Link href={`/gms/${user.id}`} className="btn-secondary"><Icon name="eye" /> {t("gmDash.viewProfile")}</Link>
+              {gmProfile?.headline && <Link href={`/gms/${user.id}`} className="btn-secondary"><Icon name="eye" /> {t("gmDash.viewProfile")}</Link>}
               <Link href="/gm/requests" className="btn-secondary"><Icon name="inbox" /> {t("gmRequests.title")}</Link>
             </div>
           </>

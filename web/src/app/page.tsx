@@ -49,7 +49,7 @@ export default async function HomePage(props: PageProps<"/">) {
       </section>
 
       <section className="mx-auto max-w-6xl px-4 pt-14">
-        <div className="mb-6 flex items-end justify-between">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
           <h2 className="flex items-center gap-2 text-2xl font-bold"><Icon name="hourglass-end" className="text-accent" /> {t("home.soon")}</h2>
           <Link href="/games" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">{t("home.browseAll")} <Icon name="arrow-right" /></Link>
         </div>
@@ -128,7 +128,7 @@ export default async function HomePage(props: PageProps<"/">) {
 
       {beginner.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 pt-16">
-          <div className="mb-6 flex items-end justify-between gap-4">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
             <div>
               <h2 className="flex items-center gap-2 text-2xl font-bold"><Icon name="seedling" className="text-success" /> {t("home.newTitle")}</h2>
               <p className="mt-1 text-sm text-muted">{t("home.newBody")}</p>

@@ -6,11 +6,15 @@ import { db } from "./db";
 // it is also delivered through Resend's HTTP API (no SDK dependency). Delivery errors
 // are recorded on the row and never break the user's request.
 
-export type Email = { to: string; subject: string; text: string };
+/** `secret`: a one-time link inside `text` (reset/verify) that must not be stored readable. */
+export type Email = { to: string; subject: string; text: string; secret?: string };
 
 export async function sendEmail(mail: Email): Promise<void> {
+  // The outbox is an audit trail, not a copy of live credentials: outside dev/e2e (where the
+  // dev outbox page needs working links) the one-time link is blanked before it is stored.
+  const stored = mail.secret && !devOutboxEnabled() ? mail.text.split(mail.secret).join("[link removed]") : mail.text;
   const id = Number(
-    db().prepare("INSERT INTO email_outbox (to_address, subject, body_text) VALUES (?, ?, ?)").run(mail.to, mail.subject, mail.text).lastInsertRowid,
+    db().prepare("INSERT INTO email_outbox (to_address, subject, body_text) VALUES (?, ?, ?)").run(mail.to, mail.subject, stored).lastInsertRowid,
   );
   const key = process.env.RESEND_API_KEY;
   const from = process.env.QUESTBOARD_MAIL_FROM;
@@ -28,6 +32,12 @@ export async function sendEmail(mail: Email): Promise<void> {
     db().prepare("UPDATE email_outbox SET error = ? WHERE id = ?").run(String(err).slice(0, 500), id);
     console.error("[quest-board] email delivery failed", err);
   }
+}
+
+/** Housekeeping (from the cron route): drop outbox rows older than `days`. */
+export function pruneOutbox(days = 30): number {
+  const cutoff = new Date(Date.now() - days * 86_400_000).toISOString();
+  return Number(db().prepare("DELETE FROM email_outbox WHERE created_at < ?").run(cutoff).changes);
 }
 
 /** The dev outbox page is on outside production, or when explicitly enabled (e2e). */
