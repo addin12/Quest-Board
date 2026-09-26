@@ -290,6 +290,21 @@ export const MIGRATIONS: Record<number, string> = {
     );
     CREATE INDEX IF NOT EXISTS idx_error_log_created ON error_log(created_at);
   `,
+  18: `
+    ALTER TABLE users ADD COLUMN terms_accepted_at TEXT;
+    ALTER TABLE users ADD COLUMN terms_version TEXT NOT NULL DEFAULT '';
+    CREATE TABLE IF NOT EXISTS feedback (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      email      TEXT NOT NULL DEFAULT '',     -- optional reply address (signed-out senders)
+      kind       TEXT NOT NULL CHECK (kind IN ('bug','idea','other')),
+      body       TEXT NOT NULL,
+      page       TEXT NOT NULL DEFAULT '',     -- where they came from (path only)
+      status     TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new','done')),
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status, created_at);
+  `,
 };
 
 export type UpgradePlan =

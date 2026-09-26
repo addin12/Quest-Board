@@ -23,6 +23,7 @@ export const LIMITS = {
   notice: { limit: 5, windowMs: 24 * 60 * 60_000 }, // notice-board posts per user per day
   noticeReply: { limit: 30, windowMs: 60 * 60_000 }, // notice-board replies per user
   question: { limit: 20, windowMs: 60 * 60_000 }, // new questions to GMs per user
+  feedback: { limit: 5, windowMs: 60 * 60_000 }, // feedback messages per user (or IP when signed out)
 } as const;
 
 export type Bucket = keyof typeof LIMITS;

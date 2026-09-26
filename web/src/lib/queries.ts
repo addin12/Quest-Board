@@ -694,3 +694,18 @@ export function gmEarningRows(gmId: number): import("./earnings").EarningRow[] {
     )
     .all(gmId) as import("./earnings").EarningRow[];
 }
+
+/** Steps a new GM needs before their first booking (the GM dashboard checklist). */
+export function gmOnboarding(gmId: number) {
+  const s = getGmSettings(gmId);
+  const n = (sql: string) => (db().prepare(sql).get(gmId) as { n: number }).n;
+  const firstGame = db().prepare("SELECT id, slug FROM games WHERE gm_id = ? AND status <> 'archived' ORDER BY id LIMIT 1").get(gmId) as { id: number; slug: string } | undefined;
+  return {
+    profile: !!s?.headline && (s?.bio ?? "").length >= 30,
+    payment: !!s?.payment_info,
+    published: n("SELECT COUNT(*) AS n FROM games WHERE gm_id = ? AND status = 'published'") > 0,
+    session: n("SELECT COUNT(*) AS n FROM game_sessions s JOIN games g ON g.id = s.game_id WHERE g.gm_id = ?") > 0,
+    booking: n("SELECT COUNT(*) AS n FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id WHERE g.gm_id = ?") > 0,
+    firstGame,
+  };
+}

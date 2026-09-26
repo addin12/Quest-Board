@@ -22,7 +22,8 @@ export type NotificationKind =
   | "followed_gm_game"   // → follower: a GM they follow published a new game
   | "session_reminder_24h" // → booked players + GM: the session is within 24 hours (lib/reminders.ts)
   | "session_reminder_1h"   // → booked players + GM: the session starts within the hour
-  | "game_question";       // → GM or player: a message in a pre-booking question thread (collapsed while unread)
+  | "game_question"        // → GM or player: a message in a pre-booking question thread (collapsed while unread)
+  | "feedback_new";        // → admins: someone sent feedback
 
 /** Kinds that update one unread row instead of piling up (chatty events). */
 const COLLAPSE: ReadonlySet<NotificationKind> = new Set(["request_message", "lfg_reply", "game_question"]);

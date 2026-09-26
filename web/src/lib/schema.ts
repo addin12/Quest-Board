@@ -20,7 +20,8 @@
 // v15: users.calendar_token (private calendar feed URL).
 // v16: game_questions + game_question_messages (ask the GM before booking), notifications.question_id.
 // v17: error_log (server errors, shown in /admin/errors).
-export const SCHEMA_VERSION = 17;
+// v18: feedback (the footer's "Send feedback" form) + users.terms_accepted_at / terms_version (consent record).
+export const SCHEMA_VERSION = 18;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -40,7 +41,9 @@ CREATE TABLE IF NOT EXISTS users (
   suspended_at  TEXT,                      -- set by a moderator: no login, profile hidden (v10)
   locale        TEXT NOT NULL DEFAULT 'en' CHECK (locale IN ('en','id')), -- language of emails/reminders (v13)
   email_reminders INTEGER NOT NULL DEFAULT 1, -- email me before my sessions (v13)
-  calendar_token TEXT                        -- v15: secret for /api/calendar/<token>.ics; NULL until created
+  calendar_token TEXT,                       -- v15: secret for /api/calendar/<token>.ics; NULL until created
+  terms_accepted_at TEXT,                    -- v18: when they agreed to the Terms & Privacy Policy at sign-up
+  terms_version  TEXT NOT NULL DEFAULT ''    -- v18: which version of those texts (LEGAL_VERSION)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_users_calendar_token ON users(calendar_token);
 
@@ -230,6 +233,19 @@ CREATE TABLE IF NOT EXISTS error_log (
   route_type  TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_error_log_created ON error_log(created_at);
+
+-- v18: feedback from the footer form ("Send feedback").
+CREATE TABLE IF NOT EXISTS feedback (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  email      TEXT NOT NULL DEFAULT '',     -- optional reply address (signed-out senders)
+  kind       TEXT NOT NULL CHECK (kind IN ('bug','idea','other')),
+  body       TEXT NOT NULL,
+  page       TEXT NOT NULL DEFAULT '',     -- where they came from (path only)
+  status     TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new','done')),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status, created_at);
 
 -- v13: one row per reminder sent, so each goes out exactly once.
 CREATE TABLE IF NOT EXISTS session_reminders (

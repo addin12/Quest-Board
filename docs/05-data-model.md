@@ -230,3 +230,11 @@ ALTER TABLE notifications ADD COLUMN question_id INTEGER;  -- kind game_question
 error_log(id, created_at, message ≤ 1000, digest, method, path /* no query string */, route_path, route_type)
 ```
 - Written by `src/instrumentation.ts` (`onRequestError`). `redirect()` and `notFound()` aren't logged. Pruned after 30 days by the cron route.
+
+## v18: feedback and consent record
+```sql
+feedback(id, user_id → users NULL, email, kind bug|idea|other, body ≤ 2000, page, status new|done, created_at)
+ALTER TABLE users ADD COLUMN terms_accepted_at TEXT;             -- set at sign-up
+ALTER TABLE users ADD COLUMN terms_version TEXT NOT NULL DEFAULT '';  -- lib/legal.ts LEGAL_VERSION
+```
+- Bump `LEGAL_VERSION` whenever the Terms or Privacy Policy change materially. Existing accounts keep the version they agreed to.

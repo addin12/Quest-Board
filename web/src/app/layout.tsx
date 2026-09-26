@@ -143,6 +143,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <Link href="/how-it-works#gms" className="hover:text-text">{t("footer.noCommission")}</Link>
                 <Link href="/terms" className="hover:text-text">{t("legal.terms.title")}</Link>
                 <Link href="/privacy" className="hover:text-text">{t("legal.privacy.title")}</Link>
+                <Link href="/feedback" className="hover:text-text">{t("feedback.title")}</Link>
               </div>
             </div>
             <div className="mx-auto max-w-6xl border-t border-border px-4 py-4 text-xs text-muted">

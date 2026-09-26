@@ -25,6 +25,7 @@ import { heldSeats, joinWaitlist, leaveWaitlist, processWaitlist } from "@/lib/w
 import { addReply, announceGameIfNew, createNotice, getNotice, setFollowing, setSaved } from "@/lib/community";
 import { parseNotice, parseReply } from "@/lib/board";
 import { toast } from "@/lib/toast";
+import { LEGAL_VERSION } from "@/lib/legal";
 import { askQuestion, getQuestionThread, replyQuestion } from "@/lib/questions";
 import { getI18n } from "@/lib/i18n/server";
 import { siteOrigin } from "@/lib/site";
@@ -104,8 +105,8 @@ async function signupActionImpl(_: FormState, form: FormData): Promise<FormState
     userId = tx((c) => {
       const id = Number(
         c
-          .prepare("INSERT INTO users (email, password_hash, name, role, avatar_hue) VALUES (?, ?, ?, ?, ?)")
-          .run(email, hashPassword(password), name, role, Math.floor(Math.random() * 360)).lastInsertRowid,
+          .prepare("INSERT INTO users (email, password_hash, name, role, avatar_hue, terms_accepted_at, terms_version) VALUES (?, ?, ?, ?, ?, ?, ?)")
+          .run(email, hashPassword(password), name, role, Math.floor(Math.random() * 360), new Date().toISOString(), LEGAL_VERSION).lastInsertRowid,
       );
       if (role === "gm") c.prepare("INSERT INTO gm_profiles (user_id) VALUES (?)").run(id);
       return id;
@@ -465,6 +466,7 @@ async function changePasswordActionImpl(_: FormState, form: FormData): Promise<F
   db().prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hashPassword(next), user.id);
   await destroyAllSessions(user.id); // other devices must log in again…
   await createSession(user.id);      // …but this one stays signed in
+  await sendPasswordChangedEmail(user.email, user.name);
   return { ok: true };
 }
 
@@ -584,6 +586,14 @@ async function sendVerificationEmail(userId: number, email: string, name: string
   await sendEmail({ to: email, subject: t("mail.verifySubject"), text: t("mail.verifyBody", { name, link }), secret: link });
 }
 
+/** "Your password was changed — if this wasn't you…" (after a change or a reset). */
+async function sendPasswordChangedEmail(email: string, name: string) {
+  const { t, lang } = await getI18n();
+  const when = new Date().toLocaleString(lang === "id" ? "id-ID" : "en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }) + " WIB";
+  const link = `${await siteOrigin()}/forgot-password`;
+  await sendEmail({ to: email, subject: t("mail.passwordChangedSubject"), text: t("mail.passwordChangedBody", { name, when, link }) });
+}
+
 /** Settings / banner: send the verification link again. */
 export async function resendVerificationAction(): Promise<FormState> {
   const user = await requireUser("/settings");
@@ -618,6 +628,8 @@ async function resetPasswordActionImpl(_: FormState, form: FormData): Promise<Fo
   db().prepare("UPDATE users SET password_hash = ?, email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?").run(hashPassword(next), new Date().toISOString(), userId);
   await destroyAllSessions(userId); // anyone holding an old session is signed out
   await createSession(userId);
+  const who = db().prepare("SELECT email, name FROM users WHERE id = ?").get(userId) as { email: string; name: string };
+  await sendPasswordChangedEmail(who.email, who.name);
   redirect("/dashboard?reset=1");
 }
 
@@ -754,6 +766,38 @@ async function replyQuestionActionImpl(_: FormState, form: FormData): Promise<Fo
   replyQuestion(thread, user.id, m.body);
   revalidatePath(`/questions/${thread.id}`);
   return { ok: true };
+}
+
+// ─── Feedback ────────────────────────────────────────────────────────────
+
+async function sendFeedbackActionImpl(_: FormState, form: FormData): Promise<FormState> {
+  const user = await getCurrentUser();
+  const kind = form.get("kind");
+  const body = String(form.get("body") ?? "").trim();
+  const email = user ? "" : String(form.get("email") ?? "").trim().toLowerCase().slice(0, 200);
+  const page = String(form.get("page") ?? "").split("?")[0].slice(0, 200);
+  const fieldErrors: FieldErrors = {};
+  if (kind !== "bug" && kind !== "idea" && kind !== "other") fieldErrors.kind = "v.feedbackKind";
+  if (body.length < 10 || body.length > 2000) fieldErrors.body = "v.feedbackBody";
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fieldErrors.email = "v.email";
+  if (Object.keys(fieldErrors).length) return { fieldErrors, error: "err.fixFields" };
+  if (!hit("feedback", user ? String(user.id) : await clientIp())) return { error: "err.rateLimited" };
+  tx((c) => {
+    c.prepare("INSERT INTO feedback (user_id, email, kind, body, page) VALUES (?, ?, ?, ?, ?)").run(user?.id ?? null, email, String(kind), body, isSafeNext(page) ? page : "");
+    const admins = c.prepare("SELECT id FROM users WHERE role = 'admin' AND deleted_at IS NULL AND suspended_at IS NULL").all() as { id: number }[];
+    for (const a of admins) notify({ userId: a.id, kind: "feedback_new", actorId: user?.id ?? null }, c);
+  });
+  return { ok: true };
+}
+
+export async function sendFeedbackAction(prev: FormState, form: FormData): Promise<FormState> {
+  return withEcho(form, () => sendFeedbackActionImpl(prev, form));
+}
+
+export async function markFeedbackDoneAction(form: FormData) {
+  await requireAdmin();
+  db().prepare("UPDATE feedback SET status = ? WHERE id = ?").run(form.get("done") === "1" ? "done" : "new", Number(form.get("feedbackId")));
+  revalidatePath("/admin/feedback");
 }
 
 // ─── Reports & moderation ────────────────────────────────────────────────

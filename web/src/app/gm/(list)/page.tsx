@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireGm } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
-import { countOpenRequestsForGm, getGmSettings, gmDashboardStats, listGmGames } from "@/lib/queries";
+import { countOpenRequestsForGm, getGmSettings, gmDashboardStats, gmOnboarding, listGmGames } from "@/lib/queries";
 import { formatIdr } from "@/lib/policy";
 import { countAwaitingForGm } from "@/lib/questions";
 import { EmptyState, Stars, Thumb, priceLabel } from "@/components/ui";
@@ -23,6 +23,16 @@ export default async function GmDashboardPage() {
   const stats = gmDashboardStats(gm.id);
   const games = listGmGames(gm.id, true);
   const openRequests = countOpenRequestsForGm(gm.id);
+  const ob = gmOnboarding(gm.id);
+  const steps = [
+    { done: ob.profile, label: t("onboard.profile"), href: "/become-a-gm" },
+    { done: ob.payment, label: t("onboard.payment"), href: "/become-a-gm" },
+    { done: gm.email_verified, label: t("onboard.verify"), href: "/settings" },
+    { done: ob.published, label: t("onboard.publish"), href: ob.firstGame ? `/gm/games/${ob.firstGame.id}/edit` : "/gm/games/new" },
+    { done: ob.session, label: t("onboard.session"), href: ob.firstGame ? `/gm/games/${ob.firstGame.id}` : "/gm/games/new" },
+    { done: ob.booking, label: t("onboard.booking"), href: ob.firstGame ? `/games/${ob.firstGame.slug}` : "/gm/games/new" },
+  ];
+  const doneCount = steps.filter((s) => s.done).length;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
@@ -47,6 +57,30 @@ export default async function GmDashboardPage() {
           <Link href="/gm/games/new" className="btn-primary"><Icon name="plus" /> {t("gmDash.newGame")}</Link>
         </div>
       </div>
+
+      {doneCount < steps.length && (
+        <section className="card mt-8 p-5" aria-labelledby="onboard-h">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="onboard-h" className="text-lg font-bold">{t("onboard.title")}</h2>
+            <span className="text-sm text-muted">{t("onboard.progress", { done: doneCount, total: steps.length })}</span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
+            <div className="h-full rounded-full bg-accent" style={{ width: `${(doneCount / steps.length) * 100}%` }} />
+          </div>
+          <ol className="mt-4 grid gap-2 sm:grid-cols-2">
+            {steps.map((s) => (
+              <li key={s.label}>
+                {s.done ? (
+                  <span className="flex items-center gap-2 text-sm text-muted line-through"><Icon name="check-circle" solid className="text-success" /> {s.label}</span>
+                ) : (
+                  <Link href={s.href} className="flex items-center gap-2 text-sm font-semibold text-accent hover:underline"><Icon name="arrow-right" /> {s.label}</Link>
+                )}
+              </li>
+            ))}
+          </ol>
+          <p className="mt-3 text-xs text-muted">{t("onboard.hint")}</p>
+        </section>
+      )}
 
       <dl className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
         <Stat icon="dice-d20" label={t("gmDash.liveGames")} value={String(stats.live_games)} />

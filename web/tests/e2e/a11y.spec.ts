@@ -22,7 +22,7 @@ async function violationsOf(page: Page, label: string): Promise<string[]> {
   return violations.map((v) => `${label} → ${v.id} (${v.impact}): ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`);
 }
 
-const PUBLIC_PAGES = ["/", "/games", "/games/mercusuar-di-pulau-kabut", "/browse", "/browse/genre/horror", "/hire-a-gm", "/gms/1", "/login", "/signup", "/how-it-works", "/terms", "/privacy", "/forgot-password", "/board", "/quiz", "/quiz?mood=spooky&where=online&budget=any&experience=new"];
+const PUBLIC_PAGES = ["/", "/feedback", "/games", "/games/mercusuar-di-pulau-kabut", "/browse", "/browse/genre/horror", "/hire-a-gm", "/gms/1", "/login", "/signup", "/how-it-works", "/terms", "/privacy", "/forgot-password", "/board", "/quiz", "/quiz?mood=spooky&where=online&budget=any&experience=new"];
 
 for (const scheme of ["light", "dark"] as const) {
   for (const lang of ["en", "id"] as const) {
@@ -62,7 +62,7 @@ test("signed-in pages and forms with errors have no axe violations", async ({ pa
 test("the admin console has no axe violations", async ({ page }) => {
   await login(page, "admin@questboard.test");
   const found: string[] = [];
-  for (const path of ["/admin", "/admin/reports", "/admin/reports?status=resolved", "/admin/gms", "/admin/users", "/admin/errors"]) {
+  for (const path of ["/admin", "/admin/reports", "/admin/reports?status=resolved", "/admin/gms", "/admin/users", "/admin/errors", "/admin/feedback"]) {
     await page.goto(path);
     found.push(...(await violationsOf(page, path)));
   }

@@ -61,6 +61,7 @@ export function describeNotification(n: NotificationSource, t: T): NotificationV
     case "session_reminder_24h": return { ...base, actor: null, href: gameHref, icon: "calendar-clock", text: t("notif.reminder24", { title: game }) };
     case "session_reminder_1h": return { ...base, actor: null, href: gameHref, icon: "hourglass-end", text: t("notif.reminder1", { title: game }) };
     case "game_question": return { ...base, href: n.question_id ? `/questions/${n.question_id}` : "/notifications", icon: "comment-dots", text: t("notif.gameQuestion", { name: who, title: game }) };
+    case "feedback_new": return { ...base, actor: null, href: "/admin/feedback", icon: "comment", text: t("notif.feedbackNew") };
     case "report_resolved": return { ...base, actor: null, href: "/notifications", icon: "shield-check", text: t("notif.reportResolved") };
   }
 }

@@ -4,7 +4,7 @@ The code is launch-ready (see IMPROVEMENTS.md, "Launch ·" rows). What's left ne
 
 ## Before launch: decisions and accounts
 
-- [ ] **Legal pages.** Read Terms and Privacy (`/terms`, `/privacy`) in both languages. Ideally a lawyer checks them against UU PDP 27/2022. Then set `QUESTBOARD_LEGAL_FINAL=true`.
+- [ ] **Legal pages.** Read Terms and Privacy (`/terms`, `/privacy`) in both languages. Ideally a lawyer checks them against UU PDP 27/2022. Then set `QUESTBOARD_LEGAL_FINAL=true`. Also update `LEGAL_VERSION` in `web/src/lib/legal.ts` (for example to the approval date), so new sign-ups record which version they agreed to.
 - [ ] **Contact email** for questions and data requests (UU PDP expects one): set `QUESTBOARD_CONTACT_EMAIL`.
 - [ ] **Domain**, e.g. `questboard.id`. Set `QUESTBOARD_BASE_URL=https://…`.
 - [ ] **Hosting:** one small server with a persistent disk, close to Indonesia (Jakarta or Singapore), behind a reverse proxy with HTTPS (Caddy is simplest). Set `QUESTBOARD_ENFORCE_HTTPS=true` and `QUESTBOARD_PROXY_HOPS` to match.
