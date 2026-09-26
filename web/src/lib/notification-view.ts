@@ -1,4 +1,4 @@
-import type { T } from "./i18n/dict";
+import { shownName, type T } from "./i18n/dict";
 import type { RegularIcon } from "./icons";
 import type { NotificationKind } from "./notifications";
 
@@ -32,7 +32,7 @@ export type NotificationView = {
 };
 
 export function describeNotification(n: NotificationSource, t: T): NotificationView {
-  const who = n.actor_name ?? "—";
+  const who = n.actor_name ? shownName(n.actor_name, t) : "—";
   const request = n.request_title ?? "";
   const game = n.game_title ?? "";
   const requestHref = n.request_id ? `/hire-a-gm/requests/${n.request_id}` : "/dashboard";
@@ -41,7 +41,7 @@ export function describeNotification(n: NotificationSource, t: T): NotificationV
     id: n.id,
     createdAt: n.created_at,
     unread: !n.read_at,
-    actor: n.actor_name ? { name: n.actor_name, hue: n.actor_hue ?? 200, image: n.actor_image } : null,
+    actor: n.actor_name ? { name: who, hue: n.actor_hue ?? 200, image: n.actor_image } : null,
   };
   switch (n.kind) {
     case "request_direct": return { ...base, href: requestHref, icon: "briefcase", text: t("notif.requestDirect", { name: who, title: request }) };

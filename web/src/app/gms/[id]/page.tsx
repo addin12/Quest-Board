@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getI18n } from "@/lib/i18n/server";
+import { shownName } from "@/lib/i18n/dict";
 import { getGmProfile, listGmGames, listGmReviews } from "@/lib/queries";
 import { isOnlineLocation, splitList } from "@/lib/policy";
 import { Avatar, EmptyState, GameCard, Stars, VerifiedBadge } from "@/components/ui";
@@ -88,7 +89,7 @@ export default async function GmProfilePage(props: PageProps<"/gms/[id]">) {
                   <p className="flex gap-0.5 text-sm text-gold" role="img" aria-label={t("reviews.starsLabel", { n: r.rating })}>{Array.from({ length: r.rating }, (_, i) => <Icon key={i} name="star" solid />)}</p>
                   {r.body && <p className="mt-1 text-sm">“{r.body}”</p>}
                   <p className="mt-2 text-xs text-muted">
-                    {r.player_name} · <Link href={`/games/${r.game_slug}`} className="hover:text-accent">{r.game_title}</Link>
+                    {shownName(r.player_name, t)} · <Link href={`/games/${r.game_slug}`} className="hover:text-accent">{r.game_title}</Link>
                   </p>
                 </li>
               ))}

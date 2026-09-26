@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
+import { shownName } from "@/lib/i18n/dict";
 import { getNotice, listReplies } from "@/lib/community";
 import { Avatar, Notice, languageLabel } from "@/components/ui";
 import { LocalTime } from "@/components/local-time";
@@ -51,7 +52,7 @@ export default async function NoticePage(props: PageProps<"/board/[id]">) {
         </p>
         <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{n.title}</h1>
         <p className="mt-2 flex items-center gap-2 text-sm text-muted">
-          <Avatar name={n.author_name} hue={n.author_hue} image={n.author_image} size={24} /> {n.author_name} · <LocalTime iso={n.created_at} />
+          <Avatar name={n.author_name} hue={n.author_hue} image={n.author_image} size={24} /> {shownName(n.author_name, t)} · <LocalTime iso={n.created_at} />
         </p>
         <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
           {n.system && <div className="flex items-center gap-2"><dt className="sr-only">{t("browse.system")}</dt><Icon name="dice-d20" className="text-muted" /><dd>{n.system}</dd></div>}
@@ -80,7 +81,7 @@ export default async function NoticePage(props: PageProps<"/board/[id]">) {
             <li key={r.id} className="flex gap-3">
               <Avatar name={r.name} hue={r.avatar_hue} image={r.avatar_image} size={32} />
               <div className="min-w-0">
-                <p className="text-sm"><span className="font-semibold">{r.name}</span>{r.author_id === n.author_id && <span className="ml-1.5 rounded bg-accent-soft px-1.5 text-xs font-semibold text-accent">{t("board.author")}</span>}<span className="ml-2 text-xs text-muted"><LocalTime iso={r.created_at} /></span></p>
+                <p className="text-sm"><span className="font-semibold">{shownName(r.name, t)}</span>{r.author_id === n.author_id && <span className="ml-1.5 rounded bg-accent-soft px-1.5 text-xs font-semibold text-accent">{t("board.author")}</span>}<span className="ml-2 text-xs text-muted"><LocalTime iso={r.created_at} /></span></p>
                 <p className="whitespace-pre-line text-sm">{r.body}</p>
                 {user && r.author_id !== user.id && <ReportButton targetType="lfg_reply" targetId={r.id} className="mt-1" />}
               </div>

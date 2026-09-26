@@ -3,9 +3,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { db, tx } from "./db";
 import { notify } from "./notifications";
 import { dropFromWaitlists, processWaitlist } from "./waitlist";
-
-/** Name shown for deleted accounts wherever their old reviews and messages appear. */
-export const DELETED_NAME = "Anonymous";
+import { DELETED_NAME } from "./i18n/dict";
 
 /**
  * Archive a game: hide it, cancel its upcoming sessions and release (and notify) every

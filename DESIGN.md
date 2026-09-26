@@ -119,7 +119,7 @@ The full UX spec (flows, screens, sitemap) is in `docs/07-ux-ui-spec.md`. This f
 | Money | `Rp 75.000` · "Free" | `Rp 75.000` · "Gratis" |
 | Dates | "Sat, 26 Sept, 19:00 GMT+7" | "Sab, 26 Sep, 19.00 WIB" |
 
-**Indonesian glossary** (decided by the product owner, a native speaker, 2026-09-25; use it for every new string):
+**Indonesian glossary** (decided by the product owner, a native speaker, 2026-09-25, and updated after their line-by-line review on 2026-09-26; use it for every new string):
 | Concept | Use | Don't use |
 |---|---|---|
 | table (a game group) | **table** · *table-mu*, *table-nya* | meja |
@@ -127,7 +127,10 @@ The full UX spec (flows, screens, sitemap) is in `docs/07-ux-ui-spec.md`. This f
 | campaign | **campaign** | kampanye |
 | seat · to book one | **kursi** · **pesan kursi** / *memesan kursi* | seat, booking |
 | message / chat | **chat** (*Chat baru dari…*, *Chat table*) | pesan (reserved for booking) |
-| in person | **offline** | tatap muka |
+| in person | **luring** (*Luring di Bandung*, *game luring*) | offline, tatap muka |
+| link (URL) | **tautan** (*Salin tautan*, *Kirim tautan reset*) | link |
+| deleted account | **Anonim** | Anonymous |
+| Notice Board | **Papan Pengumuman Tavern** | Papan Pengumuman Kedai |
 | beginner | **beginner** · *Beginner-friendly* | pemula |
 | Hire a GM (feature) | **Cari GM** · *Cari Game Master* | Sewa GM |
 | Game Master | **Game Master** / **GM** | — |

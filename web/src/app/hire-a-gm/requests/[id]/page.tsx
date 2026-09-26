@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
+import { shownName } from "@/lib/i18n/dict";
 import { markRequestRead } from "@/lib/notifications";
 import { getGmRequest, getGmSettings, getOffer, getPaymentInfo, listOffers, listRequestMessages } from "@/lib/queries";
 import { Avatar, Notice, Stars, VerifiedBadge, priceLabel } from "@/components/ui";
@@ -86,7 +87,7 @@ export default async function RequestPage(props: PageProps<"/hire-a-gm/requests/
               <li key={m.id} className="flex gap-3">
                 <Avatar name={m.name} hue={m.avatar_hue} image={m.avatar_image} size={32} />
                 <div className="min-w-0">
-                  <p className="text-sm"><span className="font-semibold">{m.name}</span><span className="ml-2 text-xs text-muted"><LocalTime iso={m.created_at} /></span></p>
+                  <p className="text-sm"><span className="font-semibold">{shownName(m.name, t)}</span><span className="ml-2 text-xs text-muted"><LocalTime iso={m.created_at} /></span></p>
                   <p className="whitespace-pre-line text-sm">{m.body}</p>
                   {m.user_id !== user.id && <ReportButton targetType="request_message" targetId={m.id} className="mt-1" />}
                 </div>

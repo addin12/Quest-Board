@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
+import { shownName } from "@/lib/i18n/dict";
 import {
   canReview,
   getGameBySlug,
@@ -138,7 +139,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                       <Avatar name={m.name} hue={m.avatar_hue} image={m.avatar_image} size={32} />
                       <div className="min-w-0">
                         <p className="text-sm">
-                          <span className="font-semibold">{m.name}</span>
+                          <span className="font-semibold">{shownName(m.name, t)}</span>
                           {m.is_gm ? <span className="ml-1.5 rounded bg-accent-soft px-1.5 text-xs font-semibold text-accent">GM</span> : null}
                           <span className="ml-2 text-xs text-muted"><LocalTime iso={m.created_at} /></span>
                         </p>
@@ -167,7 +168,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                       <Avatar name={r.player_name} hue={r.player_hue} image={r.player_image} size={32} />
                       <div>
                         <p className="text-sm font-semibold">
-                          {r.player_name}{" "}
+                          {shownName(r.player_name, t)}{" "}
                           <Rating n={r.rating} label={t("reviews.starsLabel", { n: r.rating })} />
                         </p>
                         {r.body && <p className="mt-1 text-sm">{r.body}</p>}

@@ -15,7 +15,7 @@ All P1 items are done (2026-09-25). See **Done** below. New P1s go here.
 ## P2: Platform & quality
 - **P2-16 · No-literal-strings lint (S):** a custom ESLint rule, or `eslint-plugin-i18next` adapted to `t()`, to stop hard-coded JSX text.
 - **P2-17 · SEO basics (S):** `app/sitemap.ts`, `app/robots.ts`, canonical URLs and per-game structured data (`Event`).
-- **P2-18 · Native-speaker review (S):** have a native speaker review all `id` strings in `dict.ts`. Terminology was decided by the product owner (native speaker) in v0.9.2 and is in DESIGN.md. Still to do: a line-by-line read of the remaining strings by the product owner.
+- **P2-18 · Native-speaker review (S):** have a native speaker review all `id` strings in `dict.ts`. Terminology was decided by the product owner (native speaker) in v0.9.2 and is in DESIGN.md. **Done 2026-09-26:** the product owner reviewed all 351 v0.11 strings line by line (17 rewritten), then made the terminology consistent across the app: *luring*, *tautan*, *Anonim* and *Papan Pengumuman Tavern*.
 
 ## P3: Later
 - **P3-1 · Postgres (L):** Neon or Supabase in the Singapore region. Swap `db.ts`, rewrite `strftime`, and replace `BEGIN IMMEDIATE` with `SELECT … FOR UPDATE`.

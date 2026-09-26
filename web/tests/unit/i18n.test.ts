@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_LANG, DICTIONARIES, LANGS, makeT } from "../../src/lib/i18n/dict.ts";
+import { DEFAULT_LANG, DELETED_NAME, DICTIONARIES, LANGS, makeT, shownName } from "../../src/lib/i18n/dict.ts";
 
 const placeholders = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
 
@@ -31,4 +31,10 @@ test("makeT interpolates and pluralises", () => {
 test("English is the default language and listed first", () => {
   assert.equal(DEFAULT_LANG, "en");
   assert.equal(LANGS[0], "en");
+});
+
+test("deleted accounts are shown under a localized name", () => {
+  assert.equal(shownName(DELETED_NAME, makeT("id")), "Anonim");
+  assert.equal(shownName(DELETED_NAME, makeT("en")), "Anonymous");
+  assert.equal(shownName("Sari", makeT("id")), "Sari");
 });
