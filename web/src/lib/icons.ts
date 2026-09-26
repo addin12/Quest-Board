@@ -23,6 +23,8 @@ export const REGULAR_ICONS = [
   // settings & hire-a-GM
   "settings", "user-pen", "key", "lock", "inbox", "briefcase", "family", "party-horn", "clipboard-list",
   "comment-dots", "hand-wave", "users-alt",
+  // more genres, styles & mechanics
+  "axe-battle", "scroll", "tombstone", "moon-stars", "bat", "camping", "building", "satellite", "planet-ringed", "hat-cowboy", "gears", "hand-fist", "star-shooting", "door-open", "skull-crossbones", "helmet-battle", "horse", "umbrella", "wheat", "chess-queen", "spy", "laugh-beam", "confetti", "hands-heart", "trophy", "smile", "book-open-reader", "hexagon", "chess-rook", "route", "dice", "moon", "dungeon", "bomb", "dice-d6", "dagger", "microchip", "dice-alt", "rocket-lunch", "lamp", "robot", "dice-four",
 ] as const;
 
 /** Solid-rounded style (`fi-sr-*`) for filled accents. */

@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "./db";
 import { escapeLike } from "./policy";
-import { isGenre, isStyle, systemSlug } from "./categories";
+import { getMechanic, isGenre, isMechanic, isStyle, mechanicsForSystem, systemSlug } from "./categories";
 import { SYSTEMS } from "./validation";
 
 // Read-side queries. All SQL uses positional parameters.
@@ -68,6 +68,8 @@ export type GameFilters = {
   city?: string;
   /** One GM's games. */
   gm?: number;
+  /** Games whose system is built on this mechanic (categories.ts MECHANICS). */
+  mechanic?: string;
   maxPrice?: number;
   free?: boolean;
   sort?: "soonest" | "price_asc" | "price_desc" | "rating" | "newest";
@@ -87,6 +89,11 @@ function gameFilterSql(f: GameFilters): { where: string[]; args: (string | numbe
   }
   if (f.system) { where.push("g.system = ?"); args.push(f.system); }
   if (f.gm && Number.isInteger(f.gm)) { where.push("g.gm_id = ?"); args.push(f.gm); }
+  if (f.mechanic && isMechanic(f.mechanic)) {
+    const systems = getMechanic(f.mechanic).systems;
+    where.push(`g.system IN (${systems.map(() => "?").join(",")})`);
+    args.push(...systems);
+  }
   // Category CSVs are matched with delimiters so "sci-fi" never matches "sci-fi-horror".
   if (f.genre && isGenre(f.genre)) { where.push("(',' || g.genres || ',') LIKE ?"); args.push(`%,${f.genre},%`); }
   if (f.style && isStyle(f.style)) { where.push("(',' || g.styles || ',') LIKE ?"); args.push(`%,${f.style},%`); }
@@ -140,14 +147,16 @@ export function listCitiesInUse(): { city: string; n: number }[] {
 export type SystemSummary = { system: string; slug: string; n: number; cover: string; hue: number };
 
 /** Published-game counts per system, genre and style (for the Browse hub). */
-export function categorySummary(): { systems: SystemSummary[]; genres: Record<string, number>; styles: Record<string, number> } {
+export function categorySummary(): { systems: SystemSummary[]; genres: Record<string, number>; styles: Record<string, number>; mechanics: Record<string, number> } {
   const rows = db()
     .prepare("SELECT system, genres, styles, cover_image, cover_hue FROM games WHERE status = 'published' ORDER BY created_at")
     .all() as { system: string; genres: string; styles: string; cover_image: string; cover_hue: number }[];
   const systems = new Map<string, SystemSummary>();
   const genres: Record<string, number> = {};
   const styles: Record<string, number> = {};
+  const mechanics: Record<string, number> = {};
   for (const r of rows) {
+    for (const m of mechanicsForSystem(r.system)) mechanics[m.key] = (mechanics[m.key] ?? 0) + 1;
     const cur = systems.get(r.system) ?? { system: r.system, slug: systemSlug(r.system), n: 0, cover: "", hue: r.cover_hue };
     cur.n++;
     if (!cur.cover && r.cover_image) cur.cover = r.cover_image;
@@ -155,7 +164,7 @@ export function categorySummary(): { systems: SystemSummary[]; genres: Record<st
     for (const g of r.genres.split(",").filter(Boolean)) genres[g] = (genres[g] ?? 0) + 1;
     for (const st of r.styles.split(",").filter(Boolean)) styles[st] = (styles[st] ?? 0) + 1;
   }
-  return { systems: [...systems.values()].sort((a, b) => b.n - a.n || a.system.localeCompare(b.system)), genres, styles };
+  return { systems: [...systems.values()].sort((a, b) => b.n - a.n || a.system.localeCompare(b.system)), genres, styles, mechanics };
 }
 
 /** Resolve a system URL slug to its name: any system with published games, or a known system (even with none yet). */
@@ -474,7 +483,7 @@ export type GmDirectoryRow = {
   sessions_hosted: number; live_games: number; min_price: number | null; genres: string; styles: string; languages: string;
 };
 
-export type GmFilters = { q?: string; system?: string; genre?: string; style?: string; where?: string; language?: string; verified?: boolean };
+export type GmFilters = { q?: string; system?: string; genre?: string; style?: string; mechanic?: string; where?: string; language?: string; verified?: boolean };
 
 /** GMs with a filled-in profile, filtered for the "Hire a GM" directory. */
 export function searchGms(f: GmFilters, limit = 48): GmDirectoryRow[] {
@@ -485,6 +494,11 @@ export function searchGms(f: GmFilters, limit = 48): GmDirectoryRow[] {
   if (f.system) {
     where.push("(p.systems LIKE ? ESCAPE '\\' OR EXISTS (SELECT 1 FROM games g WHERE g.gm_id = u.id AND g.status = 'published' AND g.system = ?))");
     args.push(like(f.system), f.system);
+  }
+  if (f.mechanic && isMechanic(f.mechanic)) {
+    const systems = getMechanic(f.mechanic).systems;
+    where.push(`EXISTS (SELECT 1 FROM games g WHERE g.gm_id = u.id AND g.status = 'published' AND g.system IN (${systems.map(() => "?").join(",")}))`);
+    args.push(...systems);
   }
   if (f.genre && isGenre(f.genre)) {
     where.push("EXISTS (SELECT 1 FROM games g WHERE g.gm_id = u.id AND g.status = 'published' AND (',' || g.genres || ',') LIKE ?)");

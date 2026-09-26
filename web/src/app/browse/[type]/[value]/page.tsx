@@ -5,15 +5,15 @@ import { getI18n } from "@/lib/i18n/server";
 import type { T } from "@/lib/i18n/dict";
 import { countGames, searchGames, searchGms, systemFromSlug, type GameFilters } from "@/lib/queries";
 import {
-  GENRES, STYLES, genreDescKey, genreIcon, genreLabelKey, isGenre, isStyle,
-  styleDescKey, styleIcon, styleLabelKey, systemDescKey, systemSlug,
+  GENRES, MECHANICS, STYLES, genreDescKey, genreIcon, genreLabelKey, getMechanic, isGenre, isMechanic, isStyle,
+  mechanicDescKey, styleDescKey, styleIcon, styleLabelKey, systemDescKey, systemSlug,
 } from "@/lib/categories";
 import type { RegularIcon } from "@/lib/icons";
 import { EmptyState, GameCard } from "@/components/ui";
 import { GmCard } from "@/components/gm-card";
 import { Icon } from "@/components/icon";
 
-type Resolved = { title: string; desc: string; icon: RegularIcon; filter: GameFilters; gmFilter: { system?: string; genre?: string; style?: string }; gamesHref: string };
+type Resolved = { title: string; desc: string; icon: RegularIcon; filter: GameFilters; gmFilter: { system?: string; genre?: string; style?: string; mechanic?: string }; gamesHref: string; systems?: readonly string[] };
 
 /** Turn /browse/<type>/<value> into a heading, blurb and filters (or null → 404). */
 function resolve(type: string, value: string, t: T): Resolved | null {
@@ -22,6 +22,13 @@ function resolve(type: string, value: string, t: T): Resolved | null {
   }
   if (type === "style" && isStyle(value)) {
     return { title: t(styleLabelKey(value)), desc: t(styleDescKey(value)), icon: styleIcon(value), filter: { style: value }, gmFilter: { style: value }, gamesHref: `/games?style=${value}` };
+  }
+  if (type === "mechanic" && isMechanic(value)) {
+    const m = getMechanic(value);
+    return {
+      title: m.name, desc: t(mechanicDescKey(value)), icon: m.icon, filter: { mechanic: value }, gmFilter: { mechanic: value },
+      gamesHref: `/games?mechanic=${value}`, systems: m.systems,
+    };
   }
   if (type === "system") {
     const system = systemFromSlug(value);
@@ -50,10 +57,11 @@ export default async function CategoryPage(props: PageProps<"/browse/[type]/[val
   const games = searchGames({ ...r.filter, sort: "soonest" }, 24);
   const total = countGames(r.filter);
   const gms = searchGms(r.gmFilter, 3);
-  const typeLabel = t(type === "genre" ? "browse.genre" : type === "style" ? "browse.style" : "browse.system");
+  const typeLabel = t(type === "genre" ? "browse.genre" : type === "style" ? "browse.style" : type === "mechanic" ? "browse.mechanic" : "browse.system");
   const siblings =
     type === "genre" ? GENRES.filter((g) => g.key !== value).map((g) => ({ href: `/browse/genre/${g.key}`, label: t(genreLabelKey(g.key)), icon: genreIcon(g.key) }))
     : type === "style" ? STYLES.filter((s) => s.key !== value).map((s) => ({ href: `/browse/style/${s.key}`, label: t(styleLabelKey(s.key)), icon: styleIcon(s.key) }))
+    : type === "mechanic" ? MECHANICS.filter((m) => m.key !== value).map((m) => ({ href: `/browse/mechanic/${m.key}`, label: m.name, icon: m.icon as RegularIcon }))
     : [];
 
   return (
@@ -61,7 +69,7 @@ export default async function CategoryPage(props: PageProps<"/browse/[type]/[val
       <nav className="flex items-center gap-1.5 text-sm text-muted" aria-label={t("common.breadcrumb")}>
         <Link href="/browse" className="hover:text-text">{t("browse.hubTitle")}</Link>
         <Icon name="arrow-right" className="text-xs" />
-        <Link href={`/browse#${type === "system" ? "systems" : type === "genre" ? "genres" : "styles"}`} className="hover:text-text">{typeLabel}</Link>
+        <Link href={`/browse#${type === "system" ? "systems" : type === "genre" ? "genres" : type === "mechanic" ? "mechanics" : "styles"}`} className="hover:text-text">{typeLabel}</Link>
       </nav>
       <header className="mt-3 flex flex-wrap items-start gap-4">
         <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-soft text-2xl text-accent"><Icon name={r.icon} /></span>
@@ -72,6 +80,17 @@ export default async function CategoryPage(props: PageProps<"/browse/[type]/[val
         </div>
         <Link href={r.gamesHref} className="btn-secondary"><Icon name="filter" /> {t("browse.moreFilters")}</Link>
       </header>
+
+      {r.systems && (
+        <section className="mt-6" aria-labelledby="mech-systems">
+          <h2 id="mech-systems" className="text-sm font-semibold text-muted">{t("browse.mechanicSystems")}</h2>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {r.systems.map((s) => (
+              <Link key={s} href={`/browse/system/${systemSlug(s)}`} className="chip gap-1 hover:border-accent hover:text-accent"><Icon name="dice-d20" /> {s}</Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="mt-8">
         <h2 className="mb-4 text-xl font-bold">{t("browse.gamesIn", { n: total })}</h2>

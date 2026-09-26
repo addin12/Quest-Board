@@ -6,7 +6,7 @@ import { parseIdr } from "@/lib/policy";
 import { EmptyState, GameCard } from "@/components/ui";
 import { Icon } from "@/components/icon";
 import { FilterSheet } from "@/components/filter-sheet";
-import { GENRES, STYLES, genreLabelKey, isGenre, isStyle, styleLabelKey } from "@/lib/categories";
+import { GENRES, MECHANICS, STYLES, genreLabelKey, isGenre, isMechanic, isStyle, styleLabelKey } from "@/lib/categories";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -32,6 +32,7 @@ export default async function BrowsePage(props: PageProps<"/games">) {
     level: one(sp.level) || undefined,
     city: one(sp.city).slice(0, 60) || undefined,
     gm: Number(one(sp.gm)) || undefined,
+    mechanic: isMechanic(one(sp.mechanic)) ? one(sp.mechanic) : undefined,
     genre: isGenre(one(sp.genre)) ? one(sp.genre) : undefined,
     style: isStyle(one(sp.style)) ? one(sp.style) : undefined,
     maxPrice: maxPriceRaw ? (parseIdr(maxPriceRaw) ?? undefined) : undefined,
@@ -105,6 +106,13 @@ export default async function BrowsePage(props: PageProps<"/games">) {
                 {STYLES.map((s) => <option key={s.key} value={s.key}>{t(styleLabelKey(s.key))}</option>)}
               </select>
             </div>
+          </div>
+          <div>
+            <label htmlFor="mechanic" className="label flex items-center gap-1.5"><Icon name="dice" className="text-muted" /> {t("browse.mechanic")}</label>
+            <select id="mechanic" name="mechanic" defaultValue={filters.mechanic ?? ""} className="input">
+              <option value="">{t("browse.allMechanics")}</option>
+              {MECHANICS.map((m) => <option key={m.key} value={m.key}>{m.name}</option>)}
+            </select>
           </div>
           <fieldset>
             <legend className="label flex items-center gap-1.5"><Icon name="language" className="text-muted" /> {t("browse.language")}</legend>

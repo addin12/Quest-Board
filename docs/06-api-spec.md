@@ -27,6 +27,7 @@ Base URL `https://<host>/api`. No authentication. Returns `application/json`. On
 | `free` | `1` | Only free games |
 | `sort` | `soonest` \| `rating` \| `price_asc` \| `price_desc` \| `newest` | Default `soonest` |
 | `city` | string ≤ 60 | In-person games in this city (case-insensitive) |
+| `mechanic` | mechanic key | Games whose system uses this mechanic, e.g. `d20-system`, `powered-by-the-apocalypse` (see `MECHANICS` in `lib/categories.ts`) |
 | `limit` | 1–100 | Default 30 |
 | `offset` | integer ≥ 0 | Skip this many results (paging). Default 0 |
 

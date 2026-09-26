@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getI18n } from "@/lib/i18n/server";
 import { listSystemsInUse, searchGms, type GmFilters } from "@/lib/queries";
-import { GENRES, STYLES, genreIcon, genreLabelKey, isGenre, isStyle, styleIcon, styleLabelKey } from "@/lib/categories";
+import { GENRES, MECHANICS, STYLES, genreIcon, genreLabelKey, isGenre, isMechanic, isStyle, styleIcon, styleLabelKey } from "@/lib/categories";
 import type { MsgKey } from "@/lib/i18n/dict";
 import type { RegularIcon } from "@/lib/icons";
 import { EmptyState } from "@/components/ui";
@@ -25,6 +25,7 @@ export default async function HireAGmPage(props: PageProps<"/hire-a-gm">) {
     system: one(sp.system) || undefined,
     genre: isGenre(one(sp.genre)) ? one(sp.genre) : undefined,
     style: isStyle(one(sp.style)) ? one(sp.style) : undefined,
+    mechanic: isMechanic(one(sp.mechanic)) ? one(sp.mechanic) : undefined,
     where: one(sp.where).slice(0, 60) || undefined,
     language: one(sp.language) || undefined,
     verified: one(sp.verified) === "1",
@@ -110,6 +111,7 @@ export default async function HireAGmPage(props: PageProps<"/hire-a-gm">) {
           <Select id="system" label={t("browse.system")} value={filters.system} any={t("browse.anySystem")} options={systems.map((s) => [s.system, s.system])} />
           <Select id="genre" label={t("browse.genre")} value={filters.genre} any={t("common.any")} options={GENRES.map((g) => [g.key, t(genreLabelKey(g.key))])} />
           <Select id="style" label={t("browse.style")} value={filters.style} any={t("common.any")} options={STYLES.map((s) => [s.key, t(styleLabelKey(s.key))])} />
+          <Select id="mechanic" label={t("browse.mechanic")} value={filters.mechanic} any={t("browse.allMechanics")} options={MECHANICS.map((m) => [m.key, m.name])} />
           <Select id="language" label={t("browse.language")} value={filters.language} any={t("common.any")} options={[["id", "Bahasa Indonesia"], ["en", "English"]]} />
           <div className="lg:col-span-2">
             <label htmlFor="where" className="label">{t("browse.where")}</label>
@@ -140,12 +142,12 @@ export default async function HireAGmPage(props: PageProps<"/hire-a-gm">) {
       <section className="mx-auto max-w-6xl px-4 pt-14">
         <div className="grid gap-8 md:grid-cols-2">
           <ChipGroup title={t("browse.genres")} href="/browse#genres" more={t("browse.allGenres")}>
-            {GENRES.map((g) => (
+            {GENRES.slice(0, 12).map((g) => (
               <Link key={g.key} href={`/hire-a-gm?genre=${g.key}#directory`} className="chip gap-1 hover:border-accent hover:text-accent"><Icon name={genreIcon(g.key)} /> {t(genreLabelKey(g.key))}</Link>
             ))}
           </ChipGroup>
           <ChipGroup title={t("browse.styles")} href="/browse#styles" more={t("browse.allStyles")}>
-            {STYLES.map((s) => (
+            {STYLES.slice(0, 10).map((s) => (
               <Link key={s.key} href={`/hire-a-gm?style=${s.key}#directory`} className="chip gap-1 hover:border-accent hover:text-accent"><Icon name={styleIcon(s.key)} /> {t(styleLabelKey(s.key))}</Link>
             ))}
           </ChipGroup>

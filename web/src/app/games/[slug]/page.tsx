@@ -17,7 +17,7 @@ import { canBook, splitList } from "@/lib/policy";
 import { Avatar, Cover, Stars, Notice, VerifiedBadge, languageLabel, priceLabel } from "@/components/ui";
 import { Icon } from "@/components/icon";
 import type { RegularIcon } from "@/lib/icons";
-import { genreIcon, genreLabelKey, isGenre, isStyle, parseCategoryCsv, styleIcon, styleLabelKey, systemSlug } from "@/lib/categories";
+import { genreIcon, genreLabelKey, isGenre, isStyle, mechanicsForSystem, parseCategoryCsv, styleIcon, styleLabelKey, systemSlug } from "@/lib/categories";
 import { LocalTime } from "@/components/local-time";
 import { MessageForm, ReviewForm } from "@/components/forms";
 import { ShareButtons } from "@/components/share-buttons";
@@ -112,6 +112,9 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                     <Link key={s} href={`/browse/style/${s}`} className="chip gap-1 hover:text-accent"><Icon name={styleIcon(s)} /> {t(styleLabelKey(s))}</Link>
                   ))}
                   <Link href={`/browse/system/${systemSlug(game.system)}`} className="chip gap-1 hover:text-accent"><Icon name="dice-d20" /> {game.system}</Link>
+                  {mechanicsForSystem(game.system).map((m) => (
+                    <Link key={m.key} href={`/browse/mechanic/${m.key}`} className="chip gap-1 hover:text-accent" title={t("game.mechanics")}><Icon name={m.icon} /> {m.name}</Link>
+                  ))}
                 </div>
               )}
               {splitList(game.tags).length > 0 && (

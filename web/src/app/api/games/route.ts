@@ -12,6 +12,7 @@ export async function GET(request: Request) {
     language: p.get("language") || undefined,
     level: p.get("level") || undefined,
     city: p.get("city")?.slice(0, 60) || undefined,
+    mechanic: p.get("mechanic") || undefined,
     maxPrice: p.get("maxPrice") ? Number(p.get("maxPrice")) : undefined,
     free: p.get("free") === "1",
     sort: (["soonest", "price_asc", "price_desc", "rating", "newest"] as const).find((s) => s === sort) ?? "soonest",

@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getI18n } from "@/lib/i18n/server";
 import { categorySummary, idleKnownSystems } from "@/lib/queries";
-import { GENRES, STYLES, genreDescKey, genreIcon, genreLabelKey, styleDescKey, styleIcon, styleLabelKey, systemDescKey, systemSlug } from "@/lib/categories";
+import { GENRES, MECHANICS, STYLES, genreDescKey, genreIcon, genreLabelKey, mechanicDescKey, styleDescKey, styleIcon, styleLabelKey, systemDescKey, systemSlug } from "@/lib/categories";
 import type { RegularIcon } from "@/lib/icons";
 import { Icon } from "@/components/icon";
 
@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 /** Browse hub: game systems, genres and play styles. */
 export default async function BrowseHubPage() {
   const { t } = await getI18n();
-  const { systems, genres, styles } = categorySummary();
+  const { systems, genres, styles, mechanics } = categorySummary();
   const idle = idleKnownSystems();
 
   return (
@@ -26,6 +26,7 @@ export default async function BrowseHubPage() {
         <a href="#systems" className="chip gap-1 hover:text-accent"><Icon name="dice-d20" /> {t("browse.systems")}</a>
         <a href="#genres" className="chip gap-1 hover:text-accent"><Icon name="dragon" /> {t("browse.genres")}</a>
         <a href="#styles" className="chip gap-1 hover:text-accent"><Icon name="theater-masks" /> {t("browse.styles")}</a>
+        <a href="#mechanics" className="chip gap-1 hover:text-accent"><Icon name="dice" /> {t("browse.mechanics")}</a>
       </nav>
 
       <section id="systems" className="mt-10 scroll-mt-24">
@@ -52,14 +53,15 @@ export default async function BrowseHubPage() {
           })}
         </div>
         {idle.length > 0 && (
-          <div className="mt-5">
-            <p className="text-sm text-muted">{t("browse.moreSystems")}</p>
+          <details className="group mt-5">
+            <summary className="cursor-pointer text-sm font-semibold text-accent hover:underline">{t("browse.moreSystemsAll", { n: idle.length })}</summary>
+            <p className="mt-2 text-sm text-muted">{t("browse.moreSystems")}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {idle.map((s) => (
                 <Link key={s} href={`/browse/system/${systemSlug(s)}`} className="chip gap-1 hover:border-accent hover:text-accent"><Icon name="dice-d20" /> {s}</Link>
               ))}
             </div>
-          </div>
+          </details>
         )}
       </section>
 
@@ -69,6 +71,7 @@ export default async function BrowseHubPage() {
         title={t("browse.genres")}
         items={GENRES.map((g) => ({ href: `/browse/genre/${g.key}`, icon: genreIcon(g.key), label: t(genreLabelKey(g.key)), desc: t(genreDescKey(g.key)), n: genres[g.key] ?? 0 }))}
         countLabel={(n) => t("browse.gameCount", { n })}
+        emptyLabel={t("browse.noGamesYet")}
       />
       <CategoryGrid
         id="styles"
@@ -76,20 +79,33 @@ export default async function BrowseHubPage() {
         title={t("browse.styles")}
         items={STYLES.map((s) => ({ href: `/browse/style/${s.key}`, icon: styleIcon(s.key), label: t(styleLabelKey(s.key)), desc: t(styleDescKey(s.key)), n: styles[s.key] ?? 0 }))}
         countLabel={(n) => t("browse.gameCount", { n })}
+        emptyLabel={t("browse.noGamesYet")}
+      />
+      <CategoryGrid
+        id="mechanics"
+        icon="dice"
+        title={t("browse.mechanics")}
+        items={MECHANICS.map((m) => ({ href: `/browse/mechanic/${m.key}`, icon: m.icon as RegularIcon, label: m.name, desc: t(mechanicDescKey(m.key)), n: mechanics[m.key] ?? 0 }))}
+        countLabel={(n) => t("browse.gameCount", { n })}
+        emptyLabel={t("browse.noGamesYet")}
       />
     </div>
   );
 }
 
-function CategoryGrid({ id, icon, title, items, countLabel }: {
-  id: string; icon: RegularIcon; title: string; countLabel: (n: number) => string;
+/** Categories with games get a card; the rest are compact chips below (the page stays scannable). */
+function CategoryGrid({ id, icon, title, items, countLabel, emptyLabel }: {
+  id: string; icon: RegularIcon; title: string; countLabel: (n: number) => string; emptyLabel: string;
   items: { href: string; icon: RegularIcon; label: string; desc: string; n: number }[];
 }) {
+  const withGames = items.filter((c) => c.n > 0).sort((a, b) => b.n - a.n);
+  const empty = items.filter((c) => c.n === 0);
   return (
     <section id={id} className="mt-12 scroll-mt-24">
       <h2 className="flex items-center gap-2 text-2xl font-bold"><Icon name={icon} className="text-accent" /> {title}</h2>
+      {empty.length > 0 && withGames.length === 0 && <p className="mt-2 text-sm text-muted">{emptyLabel}</p>}
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((c) => (
+        {withGames.map((c) => (
           <Link key={c.href} href={c.href} className="card flex gap-3 p-4 hover:border-accent">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-xl text-accent"><Icon name={c.icon} /></span>
             <span className="min-w-0">
@@ -102,6 +118,16 @@ function CategoryGrid({ id, icon, title, items, countLabel }: {
           </Link>
         ))}
       </div>
+      {empty.length > 0 && (
+        <div className="mt-4">
+          {withGames.length > 0 && <p className="text-sm text-muted">{emptyLabel}</p>}
+          <div className="mt-2 flex flex-wrap gap-2">
+            {empty.map((c) => (
+              <Link key={c.href} href={c.href} title={c.desc} className="chip gap-1 hover:border-accent hover:text-accent"><Icon name={c.icon} /> {c.label}</Link>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

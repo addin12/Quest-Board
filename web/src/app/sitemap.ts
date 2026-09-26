@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { listSystemsInUse, sitemapEntries } from "@/lib/queries";
-import { GENRES, STYLES, systemSlug } from "@/lib/categories";
+import { GENRES, MECHANICS, STYLES, systemSlug } from "@/lib/categories";
 import { localizedPath } from "@/lib/seo";
 import { siteOrigin } from "@/lib/site";
 
@@ -21,6 +21,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...listSystemsInUse().map((s) => ({ path: `/browse/system/${systemSlug(s.system)}`, changeFrequency: "weekly" as const, priority: 0.5 })),
     ...GENRES.map((g) => ({ path: `/browse/genre/${g.key}`, changeFrequency: "weekly" as const, priority: 0.5 })),
     ...STYLES.map((s) => ({ path: `/browse/style/${s.key}`, changeFrequency: "weekly" as const, priority: 0.5 })),
+    ...MECHANICS.map((m) => ({ path: `/browse/mechanic/${m.key}`, changeFrequency: "weekly" as const, priority: 0.5 })),
   ];
   const languages = (path: string) => ({ en: origin + localizedPath(path, "en"), id: origin + localizedPath(path, "id") });
   return pages.flatMap(({ path, ...rest }) =>

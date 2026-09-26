@@ -2,8 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import {
-  GENRES, MAX_PER_GAME, STYLES, SYSTEM_BLURBS, genreDescKey, genreLabelKey, normalizeCategories,
-  parseCategoryCsv, styleDescKey, styleLabelKey, systemDescKey, systemSlug,
+  GENRES, MAX_PER_GAME, MECHANICS, STYLES, SYSTEM_BLURBS, genreDescKey, genreLabelKey, mechanicDescKey, mechanicsForSystem,
+  normalizeCategories, parseCategoryCsv, styleDescKey, styleLabelKey, systemDescKey, systemSlug,
 } from "../../src/lib/categories.ts";
 import { DICTIONARIES } from "../../src/lib/i18n/dict.ts";
 import { MIGRATIONS } from "../../src/lib/migrations.ts";
@@ -95,4 +95,26 @@ test("migration 7 back-fills demo categories without touching GM-edited games", 
   assert.equal(rows[1].genres, "");
   const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[]).map((r) => r.name);
   for (const t of ["gm_requests", "gm_request_offers", "gm_request_messages"]) assert.ok(tables.includes(t));
+});
+
+test("mechanics: every listed system is a known system, each has a description in both languages", () => {
+  const known = new Set<string>(SYSTEMS);
+  for (const m of MECHANICS) {
+    assert.ok(m.systems.length > 0, m.key);
+    for (const s of m.systems) assert.ok(known.has(s), `${m.key}: unknown system "${s}"`);
+    for (const lang of ["en", "id"] as const) assert.ok(DICTIONARIES[lang][mechanicDescKey(m.key)], `${lang} mechanicDesc.${m.key}`);
+    assert.equal(systemSlug(m.key), m.key, "mechanic keys are URL slugs");
+  }
+  assert.equal(new Set(MECHANICS.map((m) => m.key)).size, MECHANICS.length);
+  assert.deepEqual(mechanicsForSystem("D&D 5e (2014)").map((m) => m.key), ["d20-system"]);
+  assert.deepEqual(mechanicsForSystem("Shadowdark RPG").map((m) => m.key).sort(), ["d20-system", "osr"]);
+  assert.deepEqual(mechanicsForSystem("Some homebrew"), []);
+});
+
+test("the taxonomy covers StartPlaying's lists: 40 genres, 17 styles, 17 mechanics, ~100 systems", () => {
+  assert.equal(GENRES.length, 40);
+  assert.equal(STYLES.length, 17);
+  assert.equal(MECHANICS.length, 17);
+  assert.ok(SYSTEMS.length >= 99);
+  assert.equal(new Set(SYSTEMS).size, SYSTEMS.length, "no duplicate systems");
 });
