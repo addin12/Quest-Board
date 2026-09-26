@@ -73,12 +73,20 @@ export default async function HireAGmPage(props: PageProps<"/hire-a-gm">) {
               <Link href="#directory" className="btn-secondary px-5! py-3! text-base!"><Icon name="search" /> {t("hire.ctaBrowse")}</Link>
             </div>
           </div>
+          {all.length >= 3 ? (
           <dl className="grid grid-cols-2 gap-3">
             <Stat icon="hat-wizard" value={String(all.length)} label={t("hire.statGms")} />
             <Stat icon="dice-d20" value={String(hosted)} label={t("hire.statSessions")} />
             <Stat icon="star" value={avg ? avg.toFixed(1) : "—"} label={t("hire.statRating")} />
             <Stat icon="percentage" value="0%" label={t("hire.statCommission")} />
           </dl>
+          ) : (
+            // Too few GMs for numbers to reassure anyone yet: lead with what's always true.
+            <dl className="grid grid-cols-2 gap-3 self-center">
+              <Stat icon="percentage" value="0%" label={t("hire.statCommission")} />
+              <Stat icon="wallet" value="100%" label={t("hire.statToGm")} />
+            </dl>
+          )}
         </div>
       </section>
 
@@ -128,8 +136,8 @@ export default async function HireAGmPage(props: PageProps<"/hire-a-gm">) {
         </form>
         <div className="mt-6">
           {gms.length === 0 ? (
-            <EmptyState title={t("hire.noGmsTitle")}>
-              <p>{t("hire.noGmsBody")}</p>
+            <EmptyState title={t(filtered ? "hire.noGmsTitle" : "hire.noGmsYetTitle")}>
+              <p>{t(filtered ? "hire.noGmsBody" : "hire.noGmsYetBody")}</p>
               <Link href="/hire-a-gm/request" className="btn-primary mt-4"><Icon name="paper-plane" /> {t("hire.ctaRequest")}</Link>
             </EmptyState>
           ) : (

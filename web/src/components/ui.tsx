@@ -196,6 +196,21 @@ export function Notice({ tone = "info", children }: { tone?: "info" | "success" 
   );
 }
 
+/** Shown while the marketplace has no games yet (launch): what to do instead of an empty grid. */
+export function LaunchCard({ t }: { t: T }) {
+  return (
+    <div className="card flex flex-col items-center gap-2 px-6 py-10 text-center">
+      <Image src="/images/tavern/empty-tankard.svg" alt="" width={180} height={112} className="opacity-90" />
+      <h3 className="text-lg font-semibold">{t("launch.title")}</h3>
+      <p className="max-w-lg text-sm text-muted">{t("launch.body")}</p>
+      <div className="mt-3 flex flex-wrap justify-center gap-2">
+        <Link href="/become-a-gm" className="btn-primary"><Icon name="hat-wizard" /> {t("launch.gmCta")}</Link>
+        <Link href="/board" className="btn-secondary"><Icon name="thumbtack" /> {t("launch.boardCta")}</Link>
+      </div>
+    </div>
+  );
+}
+
 export function EmptyState({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <div className="card flex flex-col items-center gap-2 px-6 py-12 text-center">

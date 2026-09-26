@@ -83,7 +83,8 @@ export default async function BoardPage(props: PageProps<"/board">) {
             <div className="parchment notice mx-auto max-w-md p-8 text-center">
               <Icon name="thumbtack" solid className="text-2xl text-accent" />
               <p className="mt-2 text-lg font-bold">{t("board.emptyTitle")}</p>
-              <p className="mt-1 text-sm text-muted">{t("board.emptyBody")}</p>
+              <p className="mt-1 text-sm text-muted">{t(kind || q || where || language ? "board.emptyBody" : "board.emptyBodyNew")}</p>
+              <Link href="/board/new" className="btn-primary mt-4"><Icon name="thumbtack" /> {t("board.pin")}</Link>
             </div>
           ) : (
             <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

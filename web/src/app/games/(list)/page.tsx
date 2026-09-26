@@ -3,7 +3,7 @@ import Link from "next/link";
 import { countGames, getGmProfile, listCitiesInUse, searchGames, listSystemsInUse, type GameFilters } from "@/lib/queries";
 import { getI18n } from "@/lib/i18n/server";
 import { parseIdr } from "@/lib/policy";
-import { EmptyState, GameCard } from "@/components/ui";
+import { EmptyState, GameCard, LaunchCard } from "@/components/ui";
 import { Icon } from "@/components/icon";
 import { FilterSheet } from "@/components/filter-sheet";
 import { GENRES, MECHANICS, STYLES, genreLabelKey, isGenre, isMechanic, isStyle, styleLabelKey } from "@/lib/categories";
@@ -169,7 +169,9 @@ export default async function BrowsePage(props: PageProps<"/games">) {
         </div>
 
         <section aria-label={t("browse.results")}>
-          {games.length === 0 ? (
+          {games.length === 0 && active === 0 ? (
+            <LaunchCard t={t} />
+          ) : games.length === 0 ? (
             <EmptyState title={t("browse.emptyTitle")}>
               {t("browse.emptyBody")} <Link href="/games" className="text-accent underline">{t("browse.clearAll")}</Link>
             </EmptyState>

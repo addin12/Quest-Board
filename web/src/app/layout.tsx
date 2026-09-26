@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { Alegreya, Alegreya_Sans, Cinzel } from "next/font/google";
 import { getCurrentUser } from "@/lib/auth";
@@ -27,6 +27,9 @@ import "./icons/icons.css";
 const cinzel = Cinzel({ variable: "--font-cinzel", subsets: ["latin"] });
 const alegreya = Alegreya({ variable: "--font-alegreya", subsets: ["latin"] });
 const alegreyaSans = Alegreya_Sans({ variable: "--font-alegreya-sans", subsets: ["latin"], weight: ["400", "500", "700", "800"] });
+
+/** Browser UI colour (address bar on phones): the dark-wood header. */
+export const viewport: Viewport = { themeColor: "#2a1a0e" };
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t, lang } = await getI18n();

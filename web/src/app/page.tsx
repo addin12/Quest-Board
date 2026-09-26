@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { searchGames, listSystemsInUse } from "@/lib/queries";
 import { getI18n } from "@/lib/i18n/server";
-import { GameCard, Notice } from "@/components/ui";
+import { GameCard, LaunchCard, Notice } from "@/components/ui";
 import { Icon } from "@/components/icon";
 
 export default async function HomePage(props: PageProps<"/">) {
@@ -53,9 +53,13 @@ export default async function HomePage(props: PageProps<"/">) {
           <h2 className="flex items-center gap-2 text-2xl font-bold"><Icon name="hourglass-end" className="text-accent" /> {t("home.soon")}</h2>
           <Link href="/games" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">{t("home.browseAll")} <Icon name="arrow-right" /></Link>
         </div>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {soonest.map((g) => <GameCard key={g.id} game={g} t={t} />)}
-        </div>
+        {soonest.length > 0 ? (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {soonest.map((g) => <GameCard key={g.id} game={g} t={t} />)}
+          </div>
+        ) : (
+          <LaunchCard t={t} />
+        )}
       </section>
 
       <section className="mx-auto max-w-6xl px-4 pt-16">
