@@ -19,6 +19,7 @@ export type NotificationSource = {
   game_slug: string | null;
   post_id?: number | null;
   post_title?: string | null;
+  cancel_reason?: string | null; // session_cancelled: the GM's message
 };
 
 export type NotificationView = {
@@ -50,7 +51,7 @@ export function describeNotification(n: NotificationSource, t: T): NotificationV
     case "request_message": return { ...base, href: requestHref, icon: "comment-dots", text: t("notif.requestMessage", { name: who, title: request }) };
     case "booking_new": return { ...base, href: "/gm", icon: "user-add", text: t("notif.bookingNew", { name: who, title: game }) };
     case "booking_cancelled": return { ...base, href: "/gm", icon: "user", text: t("notif.bookingCancelled", { name: who, title: game }) };
-    case "session_cancelled": return { ...base, href: gameHref, icon: "calendar", text: t("notif.sessionCancelled", { title: game }) };
+    case "session_cancelled": return { ...base, href: gameHref, icon: "calendar", text: n.cancel_reason ? t("notif.sessionCancelledReason", { title: game, reason: n.cancel_reason }) : t("notif.sessionCancelled", { title: game }) };
     case "report_new": return { ...base, href: "/admin/reports", icon: "flag", text: t("notif.reportNew", { name: who }) };
     case "waitlist_offer": return { ...base, href: gameHref, icon: "ticket", text: t("notif.waitlistOffer", { title: game }) };
     case "payment_confirmed": return { ...base, href: "/dashboard", icon: "wallet", text: t("notif.paymentConfirmed", { name: who, title: game }) };

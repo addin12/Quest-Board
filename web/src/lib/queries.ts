@@ -338,6 +338,7 @@ export type PlayerBooking = {
   starts_at: string;
   duration_minutes: number;
   session_status: string;
+  cancel_reason: string;
   game_id: number;
   slug: string;
   title: string;
@@ -354,7 +355,7 @@ export type PlayerBooking = {
 export function listPlayerBookings(playerId: number): PlayerBooking[] {
   return db()
     .prepare(
-      `SELECT b.id AS booking_id, b.status, b.cancelled_by, b.price_idr, b.paid_marked_at, s.id AS session_id, s.starts_at, s.duration_minutes, s.status AS session_status,
+      `SELECT b.id AS booking_id, b.status, b.cancelled_by, b.price_idr, b.paid_marked_at, s.id AS session_id, s.starts_at, s.duration_minutes, s.status AS session_status, s.cancel_reason,
               g.id AS game_id, g.slug, g.title, g.system, g.cover_hue, g.cover_image, g.platform, g.location_type, g.city, u.name AS gm_name,
               EXISTS (SELECT 1 FROM reviews r WHERE r.game_id = g.id AND r.player_id = b.player_id) AS has_review
          FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id JOIN users u ON u.id = g.gm_id

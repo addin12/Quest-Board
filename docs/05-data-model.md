@@ -203,3 +203,9 @@ session_reminders(session_id → game_sessions, user_id → users, kind '24h'|'1
 - `users.locale` follows the language the person last used the site in (synced on each signed-in request), so emails and reminders arrive in that language.
 - A `session_reminders` row is claimed (`INSERT OR IGNORE`) before anything is sent, so each reminder goes out exactly once even if two runs overlap.
 - Notification kinds `session_reminder_24h` / `session_reminder_1h` go to booked players and the GM. Emails only go to verified addresses with `email_reminders = 1`.
+
+## v14: cancellation messages
+```sql
+ALTER TABLE game_sessions ADD COLUMN cancel_reason TEXT NOT NULL DEFAULT '';  -- the GM's message when cancelling
+```
+- Shown to booked players in the `session_cancelled` notification, on My games, and in the cancellation email.

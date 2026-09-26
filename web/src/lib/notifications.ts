@@ -68,6 +68,7 @@ export type NotificationRow = {
   game_title: string | null;
   game_slug: string | null;
   starts_at: string | null;
+  cancel_reason: string | null;
   post_id: number | null;
   post_title: string | null;
 };
@@ -78,7 +79,7 @@ export function listNotifications(userId: number, limit = 50): NotificationRow[]
       `SELECT n.id, n.kind, n.created_at, n.read_at,
               a.name AS actor_name, a.avatar_hue AS actor_hue, a.avatar_image AS actor_image,
               n.request_id, r.title AS request_title,
-              g.title AS game_title, g.slug AS game_slug, s.starts_at, n.post_id, lp.title AS post_title
+              g.title AS game_title, g.slug AS game_slug, s.starts_at, s.cancel_reason, n.post_id, lp.title AS post_title
          FROM notifications n
          LEFT JOIN users a ON a.id = n.actor_id
          LEFT JOIN gm_requests r ON r.id = n.request_id

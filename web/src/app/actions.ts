@@ -15,6 +15,7 @@ import { canReview, getGameById, getGmRequest, getGmSettings, getSessionWithGame
 import { LANG_COOKIE, type MsgKey } from "@/lib/i18n/dict";
 import { markAllRead, notify } from "@/lib/notifications";
 import { sendEmail } from "@/lib/mailer";
+import { cancellationEmail } from "@/lib/session-mail";
 import { consumeToken, issueToken, peekToken } from "@/lib/tokens";
 import { archiveGame, deleteAccount } from "@/lib/account";
 import { createReport, decideReport, setGmVerified, suspendUser, unsuspendUser } from "@/lib/moderation";
@@ -284,15 +285,19 @@ export async function cancelSessionAction(form: FormData) {
   await ownedGameOrThrow(s.game_id);
   // Past, completed or already-cancelled sessions can't be "cancelled" (players would be told so).
   if (s.status !== "scheduled" || new Date(s.starts_at) <= new Date()) throw new Error("Only upcoming sessions can be cancelled");
-  tx((c) => {
+  const reason = String(form.get("reason") ?? "").trim().replace(/\s+/g, " ").slice(0, 300);
+  const booked = tx((c) => {
     const booked = c.prepare("SELECT player_id FROM bookings WHERE session_id = ? AND status = 'confirmed'").all(sessionId) as { player_id: number }[];
     for (const b of booked) notify({ userId: b.player_id, kind: "session_cancelled", actorId: s.gm_id, sessionId }, c);
-    c.prepare("UPDATE game_sessions SET status = 'cancelled' WHERE id = ?").run(sessionId);
+    c.prepare("UPDATE game_sessions SET status = 'cancelled', cancel_reason = ? WHERE id = ?").run(reason, sessionId);
     c.prepare("UPDATE waitlist SET status = 'expired' WHERE session_id = ? AND status IN ('waiting','offered')").run(sessionId);
     c.prepare(
       "UPDATE bookings SET status = 'cancelled', cancelled_by = 'gm', cancelled_at = ? WHERE session_id = ? AND status = 'confirmed'",
     ).run(new Date().toISOString(), sessionId);
+    return booked;
   });
+  // Players might otherwise turn up: tell them by email too, in their own language.
+  await sendCancellationEmails(booked.map((b) => b.player_id), s, reason);
   await toast("toast.sessionCancelled");
   revalidatePath("/", "layout");
 }
@@ -305,6 +310,36 @@ export async function completeSessionAction(form: FormData) {
   if (new Date(s.starts_at) > new Date()) throw new Error("Session has not started yet");
   db().prepare("UPDATE game_sessions SET status = 'completed' WHERE id = ? AND status = 'scheduled'").run(sessionId);
   revalidatePath("/", "layout");
+}
+
+async function sendCancellationEmails(playerIds: number[], s: { title: string; slug: string; starts_at: string }, reason: string) {
+  if (playerIds.length === 0) return;
+  const origin = await siteOrigin();
+  const people = db()
+    .prepare(`SELECT email, name, locale FROM users WHERE id IN (${playerIds.map(() => "?").join(",")}) AND email_verified_at IS NOT NULL AND deleted_at IS NULL`)
+    .all(...playerIds) as { email: string; name: string; locale: "en" | "id" }[];
+  for (const p of people) await sendEmail(cancellationEmail(p, s, reason, origin));
+}
+
+/** Copy one of my games (details, categories, cover) as a new draft, without sessions. */
+export async function duplicateGameAction(form: FormData) {
+  const { gm, game } = await ownedGameOrThrow(Number(form.get("gameId")));
+  const { t } = await getI18n();
+  const title = t("manage.copyTitle", { title: game.title }).slice(0, 100);
+  const id = Number(
+    db()
+      .prepare(
+        `INSERT INTO games (gm_id, slug, title, system, summary, description, format, location_type, language, platform, city,
+           price_idr, seats_total, experience_level, min_age, content_warnings, safety_tools, tags, cover_hue, cover_image, genres, styles, status)
+         SELECT ?, ?, ?, system, summary, description, format, location_type, language, platform, city,
+           price_idr, seats_total, experience_level, min_age, content_warnings, safety_tools, tags, cover_hue, cover_image, genres, styles, 'draft'
+           FROM games WHERE id = ?`,
+      )
+      .run(game.gm_id === gm.id ? gm.id : game.gm_id, uniqueSlug(title), title, game.id).lastInsertRowid,
+  );
+  await toast("toast.gameDuplicated");
+  revalidatePath("/", "layout");
+  redirect(`/gm/games/${id}/edit`);
 }
 
 // ─── Bookings (player) ───────────────────────────────────────────────────

@@ -10,7 +10,7 @@ import { LocalTime } from "@/components/local-time";
 import { Icon } from "@/components/icon";
 import { AddSessionForm } from "@/components/forms";
 import { ConfirmButton, SubmitButton } from "@/components/submit-button";
-import { archiveGameAction, cancelSessionAction, completeSessionAction, markPaidAction } from "@/app/actions";
+import { archiveGameAction, cancelSessionAction, completeSessionAction, duplicateGameAction, markPaidAction } from "@/app/actions";
 import { waitingCounts } from "@/lib/waitlist";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -79,12 +79,18 @@ export default async function ManageGamePage(props: PageProps<"/gm/games/[id]">)
           <div className="space-y-3">
             {upcoming.map((s) => (
               <SessionCard key={s.id} s={s} seatsTotal={game.seats_total} t={t} paid={paidOn} waiting={waiting.get(s.id) ?? 0}>
-                <form action={cancelSessionAction}>
-                  <input type="hidden" name="sessionId" value={s.id} />
-                  <ConfirmButton className="btn-danger py-1.5!" message={t("manage.cancelConfirm", { n: s.seats_taken })}>
-                    <Icon name="cross-circle" /> {t("manage.cancelSession")}
-                  </ConfirmButton>
-                </form>
+                <details className="group w-full sm:w-auto">
+                  <summary className="btn-danger cursor-pointer list-none py-1.5! [&::-webkit-details-marker]:hidden"><Icon name="cross-circle" /> {t("manage.cancelSession")}</summary>
+                  <form action={cancelSessionAction} className="mt-2 space-y-2 sm:w-80">
+                    <input type="hidden" name="sessionId" value={s.id} />
+                    <label htmlFor={`reason-${s.id}`} className="label">{t("manage.cancelReason")}</label>
+                    <textarea id={`reason-${s.id}`} name="reason" rows={2} maxLength={300} className="input" placeholder={t("manage.cancelReasonPh")} />
+                    <p className="text-xs text-muted">{t("manage.cancelReasonHint")}</p>
+                    <ConfirmButton className="btn-danger py-1.5!" message={t("manage.cancelConfirm", { n: s.seats_taken })}>
+                      <Icon name="cross-circle" /> {t("manage.cancelConfirmButton")}
+                    </ConfirmButton>
+                  </form>
+                </details>
               </SessionCard>
             ))}
           </div>
@@ -105,6 +111,15 @@ export default async function ManageGamePage(props: PageProps<"/gm/games/[id]">)
           </div>
         </section>
       )}
+
+      <section className="mt-12 border-t border-border pt-6">
+        <h2 className="flex items-center gap-2 text-lg font-semibold"><Icon name="plus" className="text-muted" /> {t("manage.duplicateTitle")}</h2>
+        <p className="mb-3 text-sm text-muted">{t("manage.duplicateBody")}</p>
+        <form action={duplicateGameAction}>
+          <input type="hidden" name="gameId" value={game.id} />
+          <SubmitButton className="btn-secondary"><Icon name="plus" /> {t("manage.duplicate")}</SubmitButton>
+        </form>
+      </section>
 
       <section className="mt-12 border-t border-border pt-6">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-danger"><Icon name="triangle-warning" /> {t("manage.danger")}</h2>

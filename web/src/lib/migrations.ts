@@ -251,6 +251,9 @@ export const MIGRATIONS: Record<number, string> = {
       PRIMARY KEY (session_id, user_id, kind)
     );
   `,
+  14: `
+    ALTER TABLE game_sessions ADD COLUMN cancel_reason TEXT NOT NULL DEFAULT '';
+  `,
 };
 
 export type UpgradePlan =

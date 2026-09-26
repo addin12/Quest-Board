@@ -175,6 +175,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
             <BookingRow key={b.booking_id} b={b} t={t}>
               <span className="text-xs text-muted">
                 {b.cancelled_by === "gm" || b.session_status === "cancelled" ? t("dash.cancelledByGm") : t("dash.cancelledByYou")}
+                {b.session_status === "cancelled" && b.cancel_reason && <span className="mt-0.5 block italic">“{b.cancel_reason}”</span>}
               </span>
             </BookingRow>
           ))}

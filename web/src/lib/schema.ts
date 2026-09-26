@@ -16,7 +16,8 @@
 // v12: Tavern Notice Board (lfg_posts, lfg_replies), saved_games, gm_follows, games.announced_at,
 //      notifications.game_id/post_id, reports accept lfg_post/lfg_reply.
 // v13: session reminders (session_reminders) + users.locale / users.email_reminders.
-export const SCHEMA_VERSION = 13;
+// v14: game_sessions.cancel_reason (the GM's message to players when cancelling).
+export const SCHEMA_VERSION = 14;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -90,7 +91,8 @@ CREATE TABLE IF NOT EXISTS game_sessions (
   game_id          INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
   starts_at        TEXT NOT NULL,              -- ISO-8601 UTC
   duration_minutes INTEGER NOT NULL DEFAULT 180,
-  status           TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled','completed','cancelled'))
+  status           TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled','completed','cancelled')),
+  cancel_reason    TEXT NOT NULL DEFAULT ''    -- v14: the GM's message to booked players when cancelling
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_game ON game_sessions(game_id, starts_at);
 
