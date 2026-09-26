@@ -127,7 +127,7 @@ The full UX spec (flows, screens, sitemap) is in `docs/07-ux-ui-spec.md`. This f
 | campaign | **campaign** | kampanye |
 | seat · to book one | **kursi** · **pesan kursi** / *memesan kursi* | seat, booking |
 | message / chat | **chat** (*Chat baru dari…*, *Chat table*) | pesan (reserved for booking) |
-| in person | **luring** (*Luring di Bandung*, *game luring*) | offline, tatap muka |
+| in person | **luring** (*Luring di Bandung*, *game luring*). Exception: search-engine descriptions say *offline*, which is what people type into Google | offline, tatap muka |
 | link (URL) | **tautan** (*Salin tautan*, *Kirim tautan reset*) | link |
 | deleted account | **Anonim** | Anonymous |
 | Notice Board | **Papan Pengumuman Tavern** | Papan Pengumuman Kedai |

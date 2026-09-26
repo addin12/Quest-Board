@@ -1313,7 +1313,7 @@ const id: Record<MsgKey, string> = {
   "home.gmCtaBody": "Tentukan harga sendiri dan ambil semuanya — Quest Board tidak memotong komisi. Kami bantu soal promosi, kursi, dan daftar pemain.",
 
   "browse.title": "Cari game",
-  "meta.gamesDescription": "Jelajahi table TTRPG yang masih buka di Indonesia berdasarkan sistem, genre, bahasa, harga, dan tingkat pengalaman — online atau luring.",
+  "meta.gamesDescription": "Jelajahi table TTRPG yang masih buka di Indonesia berdasarkan sistem, genre, bahasa, harga, dan tingkat pengalaman — online atau offline.",
   "browse.count": "{n} game mencari pemain",
   "browse.filters": "Saring game",
   "browse.searchPlaceholder": "Judul, tag, GM atau kota",
