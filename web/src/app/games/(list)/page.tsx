@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { countGames, listCitiesInUse, searchGames, listSystemsInUse, type GameFilters } from "@/lib/queries";
+import { countGames, getGmProfile, listCitiesInUse, searchGames, listSystemsInUse, type GameFilters } from "@/lib/queries";
 import { getI18n } from "@/lib/i18n/server";
 import { parseIdr } from "@/lib/policy";
 import { EmptyState, GameCard } from "@/components/ui";
@@ -31,6 +31,7 @@ export default async function BrowsePage(props: PageProps<"/games">) {
     language: one(sp.language) || undefined,
     level: one(sp.level) || undefined,
     city: one(sp.city).slice(0, 60) || undefined,
+    gm: Number(one(sp.gm)) || undefined,
     genre: isGenre(one(sp.genre)) ? one(sp.genre) : undefined,
     style: isStyle(one(sp.style)) ? one(sp.style) : undefined,
     maxPrice: maxPriceRaw ? (parseIdr(maxPriceRaw) ?? undefined) : undefined,
@@ -42,6 +43,9 @@ export default async function BrowsePage(props: PageProps<"/games">) {
   const games = searchGames(filters, page * PAGE_SIZE);
   const systems = listSystemsInUse();
   const cities = listCitiesInUse();
+  const gmFilter = filters.gm ? getGmProfile(filters.gm) : undefined;
+  const withoutGm = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) if (k !== "gm" && k !== "page" && one(v)) withoutGm.set(k, one(v));
   const active = Object.entries(sp).filter(([k, v]) => k !== "sort" && k !== "page" && one(v)).length;
   const hasMore = games.length < total && page < MAX_PAGE;
   const more = new URLSearchParams();
@@ -56,12 +60,20 @@ export default async function BrowsePage(props: PageProps<"/games">) {
         <Link href="/browse" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline"><Icon name="map" /> {t("browse.byCategory")}</Link>
       </div>
       <p className="mt-1 text-muted">{t("browse.count", { n: total })}</p>
+      {gmFilter && (
+        <p className="mt-3">
+          <Link href={`/games${withoutGm.size ? `?${withoutGm}` : ""}`} className="chip gap-1.5 border-accent! bg-accent-soft! text-accent!">
+            <Icon name="hat-wizard" /> {t("profile.gamesBy", { name: gmFilter.name })} <Icon name="cross-circle" label={t("browse.clear")} />
+          </Link>
+        </p>
+      )}
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[260px_1fr]">
         <div className="h-fit lg:sticky lg:top-24">
         <FilterSheet active={active}>
         <form className="card space-y-5 p-5 max-lg:rounded-none max-lg:border-0 max-lg:shadow-none" aria-label={t("browse.filters")}>
           <p className="eyebrow flex items-center gap-1.5 max-lg:hidden"><Icon name="filter" /> {t("browse.filters")}</p>
+          {gmFilter && <input type="hidden" name="gm" value={gmFilter.id} />}
           <div>
             <label htmlFor="q" className="label">{t("common.search")}</label>
             <div className="relative">

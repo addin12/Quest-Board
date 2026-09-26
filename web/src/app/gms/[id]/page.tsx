@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getI18n } from "@/lib/i18n/server";
 import { shownName } from "@/lib/i18n/dict";
-import { getGmProfile, listGmGames, listGmReviews } from "@/lib/queries";
+import { countGames, getGmProfile, listGmGames, listGmReviews } from "@/lib/queries";
 import { isOnlineLocation, splitList } from "@/lib/policy";
 import { Avatar, EmptyState, GameCard, Stars, VerifiedBadge } from "@/components/ui";
 import { Icon } from "@/components/icon";
@@ -18,7 +18,7 @@ export async function generateMetadata(props: PageProps<"/gms/[id]">): Promise<M
   const { id } = await props.params;
   const gm = getGmProfile(Number(id));
   const { t } = await getI18n();
-  return gm ? { title: t("profile.metaTitle", { name: gm.name }), description: gm.headline, alternates: { canonical: `/gms/${gm.id}` } } : {};
+  return gm ? { title: t("profile.metaTitle", { name: gm.name }), description: gm.headline } : {};
 }
 
 export default async function GmProfilePage(props: PageProps<"/gms/[id]">) {
@@ -26,7 +26,9 @@ export default async function GmProfilePage(props: PageProps<"/gms/[id]">) {
   const { t } = await getI18n();
   const gm = getGmProfile(Number(id));
   if (!gm) notFound();
-  const games = listGmGames(gm.id);
+  // A profile shows the newest dozen; the rest are one click away (paged browse list).
+  const games = listGmGames(gm.id, false, 12);
+  const totalGames = games.length < 12 ? games.length : countGames({ gm: gm.id });
   const reviews = listGmReviews(gm.id);
 
   const viewer = await getCurrentUser();
@@ -72,9 +74,16 @@ export default async function GmProfilePage(props: PageProps<"/gms/[id]">) {
             {games.length === 0 ? (
               <EmptyState title={t("profile.noGames")} />
             ) : (
-              <div className="grid gap-5 sm:grid-cols-2">
-                {games.map((g) => <GameCard key={g.id} game={g} t={t} />)}
-              </div>
+              <>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  {games.map((g) => <GameCard key={g.id} game={g} t={t} />)}
+                </div>
+                {totalGames > games.length && (
+                  <p className="mt-6 text-center">
+                    <Link href={`/games?gm=${gm.id}`} className="btn-secondary">{t("browse.seeAll", { n: totalGames })} <Icon name="arrow-right" /></Link>
+                  </p>
+                )}
+              </>
             )}
           </section>
         </div>

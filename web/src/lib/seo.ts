@@ -65,3 +65,32 @@ export const NO_INDEX_PATHS = [
   "/api/", "/admin", "/dashboard", "/gm/", "/settings", "/book/", "/notifications", "/dev",
   "/hire-a-gm/request", "/reset-password", "/verify-email", "/forgot-password",
 ];
+
+/** Strip a /en or /id language prefix: "/id/games/x" → "/games/x", "/en" → "/". */
+export function unprefixedPath(path: string): string {
+  return path.replace(/^\/(en|id)(?=\/|$)/, "") || "/";
+}
+
+/** The language URL of a path: ("/games/x", "id") → "/id/games/x"; ("/", "en") → "/en". */
+export function localizedPath(path: string, lang: "en" | "id"): string {
+  return `/${lang}${path === "/" ? "" : path}`;
+}
+
+/**
+ * canonical + hreflang for a public page: the canonical URL is the language URL of what's
+ * being shown; both languages are listed as alternates, and the unprefixed URL (cookie
+ * language, English by default) is x-default. Private pages get none.
+ */
+export function languageAlternates(rawPath: string, lang: "en" | "id") {
+  const path = unprefixedPath(rawPath);
+  if (NO_INDEX_PATHS.some((p) => path.startsWith(p))) return undefined;
+  return {
+    canonical: localizedPath(path, lang),
+    languages: { en: localizedPath(path, "en"), id: localizedPath(path, "id"), "x-default": path },
+  };
+}
+
+/** robots.txt disallow list, including the language-prefixed variants. */
+export function disallowedPaths(): string[] {
+  return NO_INDEX_PATHS.flatMap((p) => [p, `/en${p}`, `/id${p}`]);
+}

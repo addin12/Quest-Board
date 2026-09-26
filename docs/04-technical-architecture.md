@@ -78,10 +78,11 @@ tests/e2e/                   # Playwright journeys (EN and ID locales)
 
 **ADR-6 · Concurrency.** Reservations run in `BEGIN IMMEDIATE`, with a partial unique index on active seats.
 
-**ADR-7 · i18n without URL prefixes.** The locale lives in a cookie rather than `/id/...` or `/en/...` routes.
-- *Pros:* no route duplication, and links stay stable when the language changes.
-- *Cons:* search engines index one language per URL (English, the default).
-- *Revisit:* if SEO for English queries matters, add `[lang]` route segments + `hreflang` (Next's i18n guide pattern). The dictionary and `getI18n()` can be reused unchanged.
+**ADR-7 · i18n with a cookie, plus language URLs by rewrite (updated in v0.12).** The locale lives in a cookie, and `/id/...` and `/en/...` also exist as language URLs for search engines.
+- `src/proxy.ts` strips the prefix with a rewrite and passes the language in `x-qb-lang` (read first by `getLang()`), so no route is duplicated. Visiting a language URL also sets the cookie.
+- Every public page gets a canonical language URL plus `hreflang` for `en`, `id` and `x-default` (the plain URL) from the root layout (`languageAlternates()`; the proxy passes the path in `x-qb-path`). The sitemap lists both languages, and robots.txt also blocks the prefixed private pages.
+- Links inside pages stay unprefixed; the cookie keeps the language after the first click. The switcher on a language URL moves to the other language's URL.
+- *Why not `app/[lang]`:* it would move every route, link and redirect for the same SEO result.
 
 **ADR-8 · Typed translation keys.** `MsgKey = keyof typeof en`, and `id` is `Record<MsgKey, string>`. A missing Indonesian string or a mistyped key is a **compile error**. A unit test also checks that both languages use the same `{placeholders}`. Server components call `t` from `getI18n()`, and client components use `useI18n()`. Server actions return **keys**, never sentences, so errors render in the viewer's language.
 

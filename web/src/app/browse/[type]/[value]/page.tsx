@@ -39,7 +39,7 @@ export async function generateMetadata(props: PageProps<"/browse/[type]/[value]"
   const { type, value } = await props.params;
   const { t } = await getI18n();
   const r = resolve(type, value, t);
-  return r ? { title: r.title, description: r.desc, alternates: { canonical: `/browse/${type}/${value}` } } : {};
+  return r ? { title: r.title, description: r.desc } : {};
 }
 
 export default async function CategoryPage(props: PageProps<"/browse/[type]/[value]">) {

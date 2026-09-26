@@ -72,7 +72,7 @@ test("P2-17 robots.txt, sitemap.xml, canonical URLs and Event data for search en
   expect(xml).not.toContain("/dashboard");
 
   await page.goto("/games/mercusuar-di-pulau-kabut");
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/games\/mercusuar-di-pulau-kabut$/);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/en\/games\/mercusuar-di-pulau-kabut$/);
   const raw = await page.locator('script[type="application/ld+json"]').first().textContent();
   const events = JSON.parse(raw ?? "[]") as Record<string, unknown>[];
   expect(events.length).toBeGreaterThan(0);

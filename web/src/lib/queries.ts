@@ -66,6 +66,8 @@ export type GameFilters = {
   level?: string;
   /** In-person games in this city (case-insensitive). */
   city?: string;
+  /** One GM's games. */
+  gm?: number;
   maxPrice?: number;
   free?: boolean;
   sort?: "soonest" | "price_asc" | "price_desc" | "rating" | "newest";
@@ -84,6 +86,7 @@ function gameFilterSql(f: GameFilters): { where: string[]; args: (string | numbe
     args.push(...cols.map(() => like));
   }
   if (f.system) { where.push("g.system = ?"); args.push(f.system); }
+  if (f.gm && Number.isInteger(f.gm)) { where.push("g.gm_id = ?"); args.push(f.gm); }
   // Category CSVs are matched with delimiters so "sci-fi" never matches "sci-fi-horror".
   if (f.genre && isGenre(f.genre)) { where.push("(',' || g.genres || ',') LIKE ?"); args.push(`%,${f.genre},%`); }
   if (f.style && isStyle(f.style)) { where.push("(',' || g.styles || ',') LIKE ?"); args.push(`%,${f.style},%`); }
@@ -299,11 +302,11 @@ export function getGmProfile(userId: number) {
     | undefined;
 }
 
-export function listGmGames(gmId: number, includeUnpublished = false): (GameCard & { status: string })[] {
+export function listGmGames(gmId: number, includeUnpublished = false, limit = -1): (GameCard & { status: string })[] {
   const cond = includeUnpublished ? "g.status != 'archived'" : "g.status = 'published'";
   return db()
-    .prepare(`SELECT c.*, g.status FROM (${CARD_SELECT} WHERE g.gm_id = ? AND ${cond}) c JOIN games g ON g.id = c.id ORDER BY g.created_at DESC`)
-    .all(new Date().toISOString(), gmId) as (GameCard & { status: string })[];
+    .prepare(`SELECT c.*, g.status FROM (${CARD_SELECT} WHERE g.gm_id = ? AND ${cond}) c JOIN games g ON g.id = c.id ORDER BY g.created_at DESC, g.id DESC LIMIT ?`)
+    .all(new Date().toISOString(), gmId, limit) as (GameCard & { status: string })[];
 }
 
 export function listGmReviews(gmId: number, limit = 10): ReviewRow[] {

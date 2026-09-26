@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { gameEventsJsonLd, jsonLdString, NO_INDEX_PATHS, type EventGame } from "../../src/lib/seo.ts";
+import { disallowedPaths, gameEventsJsonLd, jsonLdString, languageAlternates, localizedPath, NO_INDEX_PATHS, unprefixedPath, type EventGame } from "../../src/lib/seo.ts";
 
 type Ev = {
   "@type": string; endDate: string; eventAttendanceMode: string; remainingAttendeeCapacity: number; image?: string[];
@@ -37,4 +37,18 @@ test("JSON-LD can't break out of its script tag; private pages are kept out of s
   assert.ok(!jsonLdString({ t: "</script><script>alert(1)</script>" }).includes("<"));
   for (const p of ["/dashboard", "/admin", "/settings", "/api/"]) assert.ok(NO_INDEX_PATHS.includes(p));
   assert.ok(!NO_INDEX_PATHS.some((p) => "/gms/1".startsWith(p) || "/games/naga".startsWith(p)));
+});
+
+test("language URLs: prefixes are stripped and added; hreflang lists both languages, private pages get none", () => {
+  assert.equal(unprefixedPath("/id/games/naga"), "/games/naga");
+  assert.equal(unprefixedPath("/en"), "/");
+  assert.equal(unprefixedPath("/idea"), "/idea"); // only a whole segment counts
+  assert.equal(localizedPath("/", "id"), "/id");
+  assert.deepEqual(languageAlternates("/id/games/naga", "id"), {
+    canonical: "/id/games/naga",
+    languages: { en: "/en/games/naga", id: "/id/games/naga", "x-default": "/games/naga" },
+  });
+  assert.equal(languageAlternates("/games/naga", "en")?.canonical, "/en/games/naga");
+  assert.equal(languageAlternates("/id/dashboard", "id"), undefined);
+  assert.ok(disallowedPaths().includes("/id/dashboard") && disallowedPaths().includes("/en/admin"));
 });

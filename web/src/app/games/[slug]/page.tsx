@@ -39,7 +39,6 @@ export async function generateMetadata(props: PageProps<"/games/[slug]">): Promi
   return {
     title: game.title,
     description: game.summary,
-    alternates: { canonical: `/games/${game.slug}` },
     openGraph: { title: game.title, description: game.summary, type: "website", url: `/games/${game.slug}` },
   };
 }

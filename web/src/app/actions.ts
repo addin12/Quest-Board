@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db, tx } from "@/lib/db";
@@ -69,6 +69,10 @@ export async function setLanguageAction(form: FormData) {
   const lang = form.get("lang") === "en" ? "en" : "id";
   (await cookies()).set(LANG_COOKIE, lang, { path: "/", sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
   revalidatePath("/", "layout");
+  // On a language URL (/id/..., /en/...), the prefix decides the language: go to the other one.
+  const path = (await headers()).get("x-qb-path") ?? "";
+  const m = path.match(/^\/(en|id)(\/.*)?$/);
+  if (m && m[1] !== lang) redirect(`/${lang}${m[2] ?? ""}`);
 }
 
 // ─── Theme ───────────────────────────────────────────────────────────────

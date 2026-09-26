@@ -9,7 +9,8 @@ import { getI18n } from "@/lib/i18n/server";
 import { siteOrigin } from "@/lib/site";
 import { maybeProcessReminders } from "@/lib/reminders";
 import { logoutAction, setLanguageAction, setThemeAction } from "./actions";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { languageAlternates } from "@/lib/seo";
 import { readToast } from "@/lib/toast";
 import { isMsgKey, type T } from "@/lib/i18n/dict";
 import { Toaster } from "@/components/toaster";
@@ -28,9 +29,11 @@ const alegreya = Alegreya({ variable: "--font-alegreya", subsets: ["latin"] });
 const alegreyaSans = Alegreya_Sans({ variable: "--font-alegreya-sans", subsets: ["latin"], weight: ["400", "500", "700", "800"] });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { t } = await getI18n();
+  const { t, lang } = await getI18n();
   return {
     metadataBase: new URL(await siteOrigin()),
+    // One canonical per language URL + hreflang for every public page (P3-3; path from src/proxy.ts).
+    alternates: languageAlternates((await headers()).get("x-qb-path") ?? "/", lang),
     title: { default: t("meta.title"), template: "%s · Quest Board" },
     description: t("meta.description"),
     openGraph: { siteName: "Quest Board", type: "website", title: t("meta.title"), description: t("meta.description") },
