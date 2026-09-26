@@ -18,7 +18,8 @@
 // v13: session reminders (session_reminders) + users.locale / users.email_reminders.
 // v14: game_sessions.cancel_reason (the GM's message to players when cancelling).
 // v15: users.calendar_token (private calendar feed URL).
-export const SCHEMA_VERSION = 15;
+// v16: game_questions + game_question_messages (ask the GM before booking), notifications.question_id.
+export const SCHEMA_VERSION = 16;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -193,9 +194,28 @@ CREATE TABLE IF NOT EXISTS notifications (
   read_at     TEXT,
   report_id   INTEGER,                   -- v10: report_new / report_resolved
   game_id     INTEGER,                   -- v12: followed_gm_game
-  post_id     INTEGER                    -- v12: lfg_reply
+  post_id     INTEGER,                   -- v12: lfg_reply
+  question_id INTEGER                    -- v16: game_question
 );
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read_at, created_at);
+
+-- v16: a private player ↔ GM conversation about one game, before booking.
+CREATE TABLE IF NOT EXISTS game_questions (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  game_id         INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  player_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  last_message_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  UNIQUE (game_id, player_id)
+);
+CREATE TABLE IF NOT EXISTS game_question_messages (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  question_id INTEGER NOT NULL REFERENCES game_questions(id) ON DELETE CASCADE,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body        TEXT NOT NULL,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_gqm_question ON game_question_messages(question_id, created_at);
 
 -- v13: one row per reminder sent, so each goes out exactly once.
 CREATE TABLE IF NOT EXISTS session_reminders (

@@ -55,8 +55,10 @@ test("a GM cancelling a session gets a toast", async ({ browser }) => {
   await page.getByLabel(/Date & time/).fill(new Date(future.getTime() - future.getTimezoneOffset() * 60_000).toISOString().slice(0, 16));
   await page.getByRole("button", { name: "Add session" }).click();
   await expect(page.getByText("Session added.")).toBeVisible();
+  const panel = page.locator("details", { has: page.locator("summary", { hasText: "Cancel session" }) }).last();
+  await panel.locator("summary").click();
   page.once("dialog", (d) => void d.accept());
-  await page.getByRole("button", { name: "Cancel session" }).last().click();
+  await panel.getByRole("button", { name: "Cancel this session" }).click();
   await expect(page.getByText("Session cancelled. Booked players have been notified.")).toBeVisible();
 });
 

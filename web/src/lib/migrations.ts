@@ -258,6 +258,25 @@ export const MIGRATIONS: Record<number, string> = {
     ALTER TABLE users ADD COLUMN calendar_token TEXT;
     CREATE UNIQUE INDEX IF NOT EXISTS uq_users_calendar_token ON users(calendar_token);
   `,
+  16: `
+    ALTER TABLE notifications ADD COLUMN question_id INTEGER;
+    CREATE TABLE IF NOT EXISTS game_questions (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      game_id         INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+      player_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+      last_message_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+      UNIQUE (game_id, player_id)
+    );
+    CREATE TABLE IF NOT EXISTS game_question_messages (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      question_id INTEGER NOT NULL REFERENCES game_questions(id) ON DELETE CASCADE,
+      user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      body        TEXT NOT NULL,
+      created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_gqm_question ON game_question_messages(question_id, created_at);
+  `,
 };
 
 export type UpgradePlan =

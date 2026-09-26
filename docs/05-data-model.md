@@ -216,3 +216,11 @@ ALTER TABLE users ADD COLUMN calendar_token TEXT;  -- NULL until created in Sett
 CREATE UNIQUE INDEX uq_users_calendar_token ON users(calendar_token);
 ```
 - The token is the feed's only credential (read-only, public details only). "Reset link" replaces it, and account deletion clears it.
+
+## v16: questions before booking
+```sql
+game_questions(id, game_id → games, player_id → users, created_at, last_message_at, UNIQUE(game_id, player_id))
+game_question_messages(id, question_id → game_questions, user_id → users, body ≤ 1000, created_at)
+ALTER TABLE notifications ADD COLUMN question_id INTEGER;  -- kind game_question, collapsed while unread
+```
+- One thread per player per game; only the player, the game's GM and admins can open it.

@@ -208,9 +208,12 @@ test("notifications: the GM hears about bookings and cancellations; players hear
 
   // Nadia cancels the session → Fajar is notified.
   await gm.goto("/gm/games/10");
+  // "Cancel session" opens a panel (optional message to players), then confirms.
+  const panel = gm.locator("details", { has: gm.locator("summary", { hasText: "Cancel session" }) }).first();
+  await panel.locator("summary").click();
   gm.once("dialog", (d) => void d.accept());
-  await gm.getByRole("button", { name: "Cancel session" }).first().click();
-  await expect(gm.getByRole("button", { name: "Cancel session" })).toHaveCount(0);
+  await panel.getByRole("button", { name: "Cancel this session" }).click();
+  await expect(gm.locator("summary", { hasText: "Cancel session" })).toHaveCount(0);
   await player.goto("/notifications");
   await expect(player.getByText("The GM cancelled a session of Starfall Salvage that you had booked")).toBeVisible();
 });

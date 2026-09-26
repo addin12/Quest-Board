@@ -63,7 +63,7 @@ export function jsonLdString(data: unknown): string {
 /** Paths that are private or per-user and should never be indexed. */
 export const NO_INDEX_PATHS = [
   "/api/", "/admin", "/dashboard", "/gm/", "/settings", "/book/", "/notifications", "/dev",
-  "/hire-a-gm/request", "/reset-password", "/verify-email", "/forgot-password",
+  "/hire-a-gm/request", "/reset-password", "/verify-email", "/forgot-password", "/questions",
 ];
 
 /** Strip a /en or /id language prefix: "/id/games/x" → "/games/x", "/en" → "/". */

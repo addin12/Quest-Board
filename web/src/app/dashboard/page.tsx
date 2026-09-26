@@ -20,6 +20,8 @@ import { getGameCardsByIds } from "@/lib/queries";
 import { googleCalendarUrl, sessionEvent } from "@/lib/calendar";
 import { siteOrigin } from "@/lib/site";
 import { Icon } from "@/components/icon";
+import { listPlayerQuestions } from "@/lib/questions";
+import { QuestionList } from "@/components/question-list";
 import type { RegularIcon } from "@/lib/icons";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -29,6 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const user = await requireUser("/dashboard");
+  const questions = listPlayerQuestions(user.id);
   const { t } = await getI18n();
   const { booked, reset, view } = await props.searchParams;
   const calendarView = view === "calendar";
@@ -166,6 +169,12 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
               )}
             </BookingRow>
           ))}
+        </Section>
+      )}
+
+      {questions.length > 0 && (
+        <Section icon="comment-dots" title={t("dash.questions")}>
+          <QuestionList rows={questions} awaitingLabel={t("dash.questionReplied")} />
         </Section>
       )}
 

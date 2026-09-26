@@ -25,6 +25,7 @@ import { heldSeats, joinWaitlist, leaveWaitlist, processWaitlist } from "@/lib/w
 import { addReply, announceGameIfNew, createNotice, getNotice, setFollowing, setSaved } from "@/lib/community";
 import { parseNotice, parseReply } from "@/lib/board";
 import { toast } from "@/lib/toast";
+import { askQuestion, getQuestionThread, replyQuestion } from "@/lib/questions";
 import { getI18n } from "@/lib/i18n/server";
 import { siteOrigin } from "@/lib/site";
 
@@ -721,6 +722,40 @@ export async function toggleFollowAction(form: FormData) {
   revalidatePath("/", "layout");
 }
 
+// ─── Questions to the GM (before booking) ────────────────────────────────
+
+function messageBody(form: FormData): { body: string } | { error: MsgKey } {
+  const body = String(form.get("body") ?? "").trim();
+  if (!body) return { error: "err.emptyMessage" };
+  if (body.length > 1000) return { error: "err.longMessage" };
+  return { body };
+}
+
+async function askQuestionActionImpl(_: FormState, form: FormData): Promise<FormState> {
+  const game = getGameById(Number(form.get("gameId")));
+  const user = await requireUser(game ? `/games/${game.slug}/ask` : undefined);
+  if (!game || game.status !== "published") return { error: "err.notFound" };
+  if (game.gm_id === user.id) return { error: "err.ownGame" };
+  if (!user.email_verified) return { error: "err.verifyEmail" };
+  const m = messageBody(form);
+  if ("error" in m) return { error: m.error };
+  if (!hit("question", String(user.id))) return { error: "err.rateLimited" };
+  const id = askQuestion(game.id, game.gm_id, user.id, m.body);
+  redirect(`/questions/${id}?sent=1`);
+}
+
+async function replyQuestionActionImpl(_: FormState, form: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const thread = getQuestionThread(Number(form.get("questionId")));
+  if (!thread || (user.id !== thread.player_id && user.id !== thread.gm_id)) return { error: "err.membersOnly" };
+  const m = messageBody(form);
+  if ("error" in m) return { error: m.error };
+  if (!hit("chat", String(user.id))) return { error: "err.rateLimited" };
+  replyQuestion(thread, user.id, m.body);
+  revalidatePath(`/questions/${thread.id}`);
+  return { ok: true };
+}
+
 // ─── Reports & moderation ────────────────────────────────────────────────
 
 async function createReportActionImpl(_: FormState, form: FormData): Promise<FormState> {
@@ -840,6 +875,14 @@ export async function createNoticeAction(prev: FormState, form: FormData): Promi
 
 export async function replyNoticeAction(prev: FormState, form: FormData): Promise<FormState> {
   return withEcho(form, () => replyNoticeActionImpl(prev, form));
+}
+
+export async function askQuestionAction(prev: FormState, form: FormData): Promise<FormState> {
+  return withEcho(form, () => askQuestionActionImpl(prev, form));
+}
+
+export async function replyQuestionAction(prev: FormState, form: FormData): Promise<FormState> {
+  return withEcho(form, () => replyQuestionActionImpl(prev, form));
 }
 
 export async function postRequestMessageAction(prev: FormState, form: FormData): Promise<FormState> {

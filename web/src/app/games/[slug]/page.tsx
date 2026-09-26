@@ -274,6 +274,9 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                 </span>
               </Link>
               <p className="mt-3 line-clamp-4 text-sm text-muted">{game.gm_bio}</p>
+              {user?.id !== game.gm_id && game.status === "published" && (
+                <Link href={`/games/${game.slug}/ask`} className="btn-secondary mt-4 w-full"><Icon name="comment-dots" /> {t("ask.button")}</Link>
+              )}
             </div>
           </aside>
         </div>

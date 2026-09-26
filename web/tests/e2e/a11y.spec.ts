@@ -45,7 +45,7 @@ for (const scheme of ["light", "dark"] as const) {
 test("signed-in pages and forms with errors have no axe violations", async ({ page }) => {
   await login(page, "gm@questboard.test");
   const found: string[] = [];
-  for (const path of ["/dashboard", "/settings", "/gm", "/gm/requests", "/gm/games/new", "/become-a-gm", "/hire-a-gm/request", "/notifications", "/board/new", "/dashboard?view=calendar"]) {
+  for (const path of ["/dashboard", "/settings", "/gm", "/gm/requests", "/gm/games/new", "/become-a-gm", "/hire-a-gm/request", "/notifications", "/board/new", "/dashboard?view=calendar", "/gm/questions", "/games/naga-naga-hutan-bara-petualangan-pemula/ask"]) {
     await page.goto(path);
     found.push(...(await violationsOf(page, path)));
   }

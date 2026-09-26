@@ -4,6 +4,7 @@ import { requireGm } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
 import { countOpenRequestsForGm, getGmSettings, gmDashboardStats, listGmGames } from "@/lib/queries";
 import { formatIdr } from "@/lib/policy";
+import { countAwaitingForGm } from "@/lib/questions";
 import { EmptyState, Stars, Thumb, priceLabel } from "@/components/ui";
 import { LocalTime } from "@/components/local-time";
 import { Icon } from "@/components/icon";
@@ -17,6 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function GmDashboardPage() {
   const gm = await requireGm();
   const hasProfile = !!getGmSettings(gm.id)?.headline; // the public page exists once the profile is filled in
+  const awaitingQuestions = countAwaitingForGm(gm.id);
   const { t } = await getI18n();
   const stats = gmDashboardStats(gm.id);
   const games = listGmGames(gm.id, true);
@@ -34,6 +36,9 @@ export default async function GmDashboardPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href="/gm/questions" className="btn-secondary">
+            <Icon name="comment-dots" /> {awaitingQuestions > 0 ? t("gmQuestions.buttonAwaiting", { n: awaitingQuestions }) : t("gmQuestions.title")}
+          </Link>
           <Link href="/gm/requests" className="btn-secondary">
             <Icon name="inbox" /> {t("gmRequests.title")}
             {openRequests > 0 && <span className="rounded-full bg-accent px-2 text-xs font-bold text-accent-ink">{openRequests}</span>}

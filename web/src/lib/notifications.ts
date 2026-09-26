@@ -21,10 +21,11 @@ export type NotificationKind =
   | "lfg_reply"          // → notice author: someone replied on the Notice Board (collapsed while unread)
   | "followed_gm_game"   // → follower: a GM they follow published a new game
   | "session_reminder_24h" // → booked players + GM: the session is within 24 hours (lib/reminders.ts)
-  | "session_reminder_1h";  // → booked players + GM: the session starts within the hour
+  | "session_reminder_1h"   // → booked players + GM: the session starts within the hour
+  | "game_question";       // → GM or player: a message in a pre-booking question thread (collapsed while unread)
 
 /** Kinds that update one unread row instead of piling up (chatty events). */
-const COLLAPSE: ReadonlySet<NotificationKind> = new Set(["request_message", "lfg_reply"]);
+const COLLAPSE: ReadonlySet<NotificationKind> = new Set(["request_message", "lfg_reply", "game_question"]);
 
 export type NotifyInput = {
   userId: number;
@@ -35,6 +36,7 @@ export type NotifyInput = {
   reportId?: number | null;
   gameId?: number | null;
   postId?: number | null;
+  questionId?: number | null;
 };
 
 /** Record a notification. Never notifies people about their own actions. Pass `c` inside tx(). */
@@ -45,13 +47,13 @@ export function notify(n: NotifyInput, c: DatabaseSync = db()): void {
     const bumped = c
       .prepare(
         `UPDATE notifications SET created_at = ?, actor_id = ?
-          WHERE user_id = ? AND kind = ? AND request_id IS ? AND post_id IS ? AND read_at IS NULL`,
+          WHERE user_id = ? AND kind = ? AND request_id IS ? AND post_id IS ? AND question_id IS ? AND read_at IS NULL`,
       )
-      .run(now, n.actorId ?? null, n.userId, n.kind, n.requestId ?? null, n.postId ?? null);
+      .run(now, n.actorId ?? null, n.userId, n.kind, n.requestId ?? null, n.postId ?? null, n.questionId ?? null);
     if (Number(bumped.changes) > 0) return;
   }
-  c.prepare("INSERT INTO notifications (user_id, kind, actor_id, request_id, session_id, report_id, game_id, post_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
-    n.userId, n.kind, n.actorId ?? null, n.requestId ?? null, n.sessionId ?? null, n.reportId ?? null, n.gameId ?? null, n.postId ?? null, now,
+  c.prepare("INSERT INTO notifications (user_id, kind, actor_id, request_id, session_id, report_id, game_id, post_id, question_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
+    n.userId, n.kind, n.actorId ?? null, n.requestId ?? null, n.sessionId ?? null, n.reportId ?? null, n.gameId ?? null, n.postId ?? null, n.questionId ?? null, now,
   );
 }
 
@@ -69,6 +71,7 @@ export type NotificationRow = {
   game_slug: string | null;
   starts_at: string | null;
   cancel_reason: string | null;
+  question_id: number | null;
   post_id: number | null;
   post_title: string | null;
 };
@@ -79,12 +82,13 @@ export function listNotifications(userId: number, limit = 50): NotificationRow[]
       `SELECT n.id, n.kind, n.created_at, n.read_at,
               a.name AS actor_name, a.avatar_hue AS actor_hue, a.avatar_image AS actor_image,
               n.request_id, r.title AS request_title,
-              g.title AS game_title, g.slug AS game_slug, s.starts_at, s.cancel_reason, n.post_id, lp.title AS post_title
+              g.title AS game_title, g.slug AS game_slug, s.starts_at, s.cancel_reason, n.question_id, n.post_id, lp.title AS post_title
          FROM notifications n
          LEFT JOIN users a ON a.id = n.actor_id
          LEFT JOIN gm_requests r ON r.id = n.request_id
          LEFT JOIN game_sessions s ON s.id = n.session_id
-         LEFT JOIN games g ON g.id = COALESCE(n.game_id, s.game_id)
+         LEFT JOIN game_questions gq ON gq.id = n.question_id
+         LEFT JOIN games g ON g.id = COALESCE(n.game_id, s.game_id, gq.game_id)
          LEFT JOIN lfg_posts lp ON lp.id = n.post_id
         WHERE n.user_id = ?
         ORDER BY n.created_at DESC, n.id DESC
@@ -105,6 +109,13 @@ export function countUnread(userId: number): number {
 
 export function markAllRead(userId: number): void {
   db().prepare("UPDATE notifications SET read_at = ? WHERE user_id = ? AND read_at IS NULL").run(new Date().toISOString(), userId);
+}
+
+/** Opening a question thread reads its notifications. */
+export function markQuestionRead(userId: number, questionId: number): void {
+  db()
+    .prepare("UPDATE notifications SET read_at = ? WHERE user_id = ? AND question_id = ? AND read_at IS NULL")
+    .run(new Date().toISOString(), userId, questionId);
 }
 
 /** Opening a request page reads its notifications. */
