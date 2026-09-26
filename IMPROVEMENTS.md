@@ -8,13 +8,9 @@ When you finish an item, move it to **Done** with the date and a test reference.
 All P1 items are done (2026-09-25). See **Done** below. New P1s go here.
 
 ## P2: Product & UX
-- **P2-5 · Browse pagination (S):** `searchGames` is capped at 60 (`queries.ts:63`). Add `?page=` with a "Load more" link.
-- **P2-7 · Location search (S):** include `gm_profiles.location` in the keyword search, and add a city filter for in-person games.
 - **P2-12 · Notifications (L):** in-app notifications are done (v0.9.1). Still to do: email and WhatsApp delivery, plus reminders 24 h and 1 h before a session, in the user's language. Needs a provider and a `users.locale` column.
 
 ## P2: Platform & quality
-- **P2-16 · No-literal-strings lint (S):** a custom ESLint rule, or `eslint-plugin-i18next` adapted to `t()`, to stop hard-coded JSX text.
-- **P2-17 · SEO basics (S):** `app/sitemap.ts`, `app/robots.ts`, canonical URLs and per-game structured data (`Event`).
 - **P2-18 · Native-speaker review (S):** have a native speaker review all `id` strings in `dict.ts`. Terminology was decided by the product owner (native speaker) in v0.9.2 and is in DESIGN.md. **Done 2026-09-26:** the product owner reviewed all 351 v0.11 strings line by line (17 rewritten), then made the terminology consistent across the app: *luring*, *tautan*, *Anonim* and *Papan Pengumuman Tavern*.
 
 ## P3: Later
@@ -54,6 +50,10 @@ Every item below was done on 2026-09-25 (v0.5). `e2e:hardening` means `web/tests
 | New · Tavern Notice Board | LFG notes (`lf_group` / `lf_players` with open spots), filters (type, keyword, online/city, language), public replies with collapsed notifications, take-down (closed notices 404 for strangers), 30-day expiry, verified email to post/reply, rate limits (5 notices/day, 30 replies/h), reportable (reports table rebuilt in v12) | `lib/board.ts` (pure), `lib/community.ts`, `app/board/**`, `notice-card.tsx`, `board-forms.tsx` | unit: board ×3; e2e: board ×2 + report/remove; axe |
 | New · Save games & follow GMs | Bookmark on game pages (`aria-pressed`), "Saved games" and "GMs you follow" on My games, follower count on GM profiles; a followed GM's **first** publish of each game notifies followers (`games.announced_at`) | `social-buttons.tsx`, `community.ts` | e2e |
 | Fix · Header layout | Tab bar below `md`; nav never wraps; board link icon-only; tighter padding at `xl`; `2xl` header width | `layout.tsx`, `mobile-tab-bar.tsx` | header width sweep 640–1536 px (5 roles/languages) |
+| P2-5 · Browse pagination | 24 games per batch; **Load more** keeps the filters and adds the next batch below (`?page=`, up to 20); the count shows the total; ties broken by id so batches never repeat. Category pages show 24 + "See all N games". API: `offset` + `total` | `countGames`, `gameFilterSql`, `games/(list)/page.tsx` | e2e: browse-seo "Load more" (30 inserted games, API paging) |
+| P2-7 · Location search | City filter (cities with in-person games, case-insensitive); keyword search also matches the GM's profile location. API: `city` | `listCitiesInUse`, `gameFilterSql` | e2e: browse-seo "filter by city" |
+| P2-17 · SEO basics | `robots.txt` (private pages disallowed), `sitemap.xml` (pages, games, GMs, categories), canonical URLs on game/GM/category pages, schema.org `Event` per upcoming session (public details only; escaped against `</script>`) | `app/robots.ts`, `app/sitemap.ts`, `lib/seo.ts` | unit: seo ×3; e2e: browse-seo "search engines" |
+| P2-16 · No-literal-strings lint | `react/jsx-no-literals` fails the build on bare JSX text (symbols and brand names allowed; the dev outbox is exempt) | `eslint.config.mjs` | lint in CI; verified a probe file is flagged |
 | P2-6 · Waitlist | Join when full; a freed seat is offered to #1 and **held** (counts as taken for everyone else) for 12 h or until the start; expired or declined offers pass on; processed lazily on view/book/cancel/edit (no cron); GM sees "N waiting"; deleted/suspended accounts drop out | `lib/waitlist.ts`, `waitlist-controls.tsx`, game/book/dashboard pages, schema v11 | unit: migration 11; e2e: waitlist ×2 (incl. expiry) |
 | P2-9 · Recurring sessions | "Repeat: weekly, N sessions" (2–12) on the add-session form; same UTC time each week (Indonesia has no DST) | `weeklyStarts`/`parseRepeat`, `addSessionAction` | unit + e2e |
 | P2-3 · Paid ✓ | Per-seat toggle on the GM roster for paid games (`aria-pressed`), "N/M paid" count, player sees "The GM confirmed your payment" + notification | `markPaidAction`, `bookings.paid_marked_at` | e2e |

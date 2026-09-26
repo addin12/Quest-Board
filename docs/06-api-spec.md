@@ -17,7 +17,7 @@ Base URL `https://<host>/api`. No authentication. Returns `application/json`. On
 
 | Query param | Type | Description |
 |---|---|---|
-| `q` | string ≤ 80 | Keyword across title, summary, tags, system, GM name, city |
+| `q` | string ≤ 80 | Keyword across title, summary, tags, system, GM name, city and the GM’s location |
 | `system` | string | Exact system name |
 | `format` | `one_shot` \| `campaign` | |
 | `location` | `online` \| `in_person` | |
@@ -26,12 +26,16 @@ Base URL `https://<host>/api`. No authentication. Returns `application/json`. On
 | `maxPrice` | integer (IDR) | e.g. `100000` |
 | `free` | `1` | Only free games |
 | `sort` | `soonest` \| `rating` \| `price_asc` \| `price_desc` \| `newest` | Default `soonest` |
+| `city` | string ≤ 60 | In-person games in this city (case-insensitive) |
 | `limit` | 1–100 | Default 30 |
+| `offset` | integer ≥ 0 | Skip this many results (paging). Default 0 |
 
 **200 OK**
 ```json
 {
   "count": 1,
+  "total": 1,
+  "offset": 0,
   "data": [
     {
       "id": 3,

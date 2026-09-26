@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getI18n } from "@/lib/i18n/server";
 import type { T } from "@/lib/i18n/dict";
-import { searchGames, searchGms, systemFromSlug, type GameFilters } from "@/lib/queries";
+import { countGames, searchGames, searchGms, systemFromSlug, type GameFilters } from "@/lib/queries";
 import {
   GENRES, STYLES, genreDescKey, genreIcon, genreLabelKey, isGenre, isStyle,
   styleDescKey, styleIcon, styleLabelKey, systemDescKey, systemSlug,
@@ -39,7 +39,7 @@ export async function generateMetadata(props: PageProps<"/browse/[type]/[value]"
   const { type, value } = await props.params;
   const { t } = await getI18n();
   const r = resolve(type, value, t);
-  return r ? { title: r.title, description: r.desc } : {};
+  return r ? { title: r.title, description: r.desc, alternates: { canonical: `/browse/${type}/${value}` } } : {};
 }
 
 export default async function CategoryPage(props: PageProps<"/browse/[type]/[value]">) {
@@ -47,7 +47,8 @@ export default async function CategoryPage(props: PageProps<"/browse/[type]/[val
   const { t } = await getI18n();
   const r = resolve(type, value, t);
   if (!r) notFound();
-  const games = searchGames({ ...r.filter, sort: "soonest" });
+  const games = searchGames({ ...r.filter, sort: "soonest" }, 24);
+  const total = countGames(r.filter);
   const gms = searchGms(r.gmFilter, 3);
   const typeLabel = t(type === "genre" ? "browse.genre" : type === "style" ? "browse.style" : "browse.system");
   const siblings =
@@ -73,13 +74,20 @@ export default async function CategoryPage(props: PageProps<"/browse/[type]/[val
       </header>
 
       <section className="mt-8">
-        <h2 className="mb-4 text-xl font-bold">{t("browse.gamesIn", { n: games.length })}</h2>
+        <h2 className="mb-4 text-xl font-bold">{t("browse.gamesIn", { n: total })}</h2>
         {games.length === 0 ? (
           <EmptyState title={t("browse.emptyCategory")}>
             <Link href="/hire-a-gm/request" className="btn-primary mt-3"><Icon name="briefcase" /> {t("hire.ctaRequest")}</Link>
           </EmptyState>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{games.map((g) => <GameCard key={g.id} game={g} t={t} />)}</div>
+          <>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{games.map((g) => <GameCard key={g.id} game={g} t={t} />)}</div>
+            {total > games.length && (
+              <p className="mt-6 text-center">
+                <Link href={r.gamesHref} className="btn-secondary">{t("browse.seeAll", { n: total })} <Icon name="arrow-right" /></Link>
+              </p>
+            )}
+          </>
         )}
       </section>
 

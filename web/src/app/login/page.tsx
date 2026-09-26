@@ -20,8 +20,8 @@ export default async function LoginPage(props: PageProps<"/login">) {
       <LoginForm next={typeof next === "string" ? next : undefined} />
       <div className="mt-8 rounded-lg border border-dashed border-border p-4 text-xs text-muted">
         <p className="font-semibold text-text">{t("auth.demo")}</p>
-        <p className="mt-1">{t("auth.demoPlayer")}: player@questboard.test</p>
-        <p>{t("auth.demoGm")}: gm@questboard.test</p>
+        <p className="mt-1">{t("auth.demoPlayer")}{": player@questboard.test"}</p>
+        <p>{t("auth.demoGm")}{": gm@questboard.test"}</p>
       </div>
     </div>
   );

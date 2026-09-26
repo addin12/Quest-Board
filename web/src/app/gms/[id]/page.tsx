@@ -18,7 +18,7 @@ export async function generateMetadata(props: PageProps<"/gms/[id]">): Promise<M
   const { id } = await props.params;
   const gm = getGmProfile(Number(id));
   const { t } = await getI18n();
-  return gm ? { title: t("profile.metaTitle", { name: gm.name }), description: gm.headline } : {};
+  return gm ? { title: t("profile.metaTitle", { name: gm.name }), description: gm.headline, alternates: { canonical: `/gms/${gm.id}` } } : {};
 }
 
 export default async function GmProfilePage(props: PageProps<"/gms/[id]">) {

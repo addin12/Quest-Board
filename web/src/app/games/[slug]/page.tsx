@@ -26,6 +26,7 @@ import { CalendarLinks } from "@/components/calendar-links";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { googleCalendarUrl, sessionEvent } from "@/lib/calendar";
 import { siteOrigin } from "@/lib/site";
+import { gameEventsJsonLd, jsonLdString } from "@/lib/seo";
 import { myWaitlist, refreshWaitlists } from "@/lib/waitlist";
 import { WaitlistControls, WaitlistOffer } from "@/components/waitlist-controls";
 import { SaveGameButton } from "@/components/social-buttons";
@@ -38,6 +39,7 @@ export async function generateMetadata(props: PageProps<"/games/[slug]">): Promi
   return {
     title: game.title,
     description: game.summary,
+    alternates: { canonical: `/games/${game.slug}` },
     openGraph: { title: game.title, description: game.summary, type: "website", url: `/games/${game.slug}` },
   };
 }
@@ -64,8 +66,11 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
   const gameUrl = `${origin}/games/${game.slug}`;
   const levelKey = game.experience_level === "beginner" ? "level.beginner" : game.experience_level === "experienced" ? "level.experienced" : "level.any";
 
+  const events = game.status === "published" ? gameEventsJsonLd(game, sessions, origin) : [];
+
   return (
     <article>
+      {events.length > 0 && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(events) }} />}
       <Cover hue={game.cover_hue} system={game.system} image={game.cover_image} className="h-48 sm:h-72" wide />
       <div className="mx-auto max-w-6xl px-4">
         {game.status !== "published" && (

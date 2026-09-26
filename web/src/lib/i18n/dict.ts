@@ -116,6 +116,11 @@ const en = {
   "browse.emptyTitle": "No games match those filters",
   "browse.emptyBody": "Try widening your search, or",
   "browse.clearAll": "clear all filters",
+  "browse.city": "City",
+  "browse.anyCity": "Any city",
+  "browse.showing": "Showing {shown} of {n}",
+  "browse.loadMore": "Load more games",
+  "browse.seeAll": "See all {n} games",
 
   "sort.soonest": "Starting soonest",
   "sort.rating": "Top rated",
@@ -1127,6 +1132,11 @@ const id: Record<MsgKey, string> = {
   "browse.emptyTitle": "Tidak ada game yang cocok",
   "browse.emptyBody": "Coba perluas pencarian, atau",
   "browse.clearAll": "hapus semua filter",
+  "browse.city": "Kota",
+  "browse.anyCity": "Kota mana saja",
+  "browse.showing": "Menampilkan {shown} dari {n}",
+  "browse.loadMore": "Muat lebih banyak game",
+  "browse.seeAll": "Lihat semua {n} game",
 
   "sort.soonest": "Paling cepat dimulai",
   "sort.rating": "Rating tertinggi",

@@ -1,4 +1,4 @@
-import { searchGames, type GameFilters } from "@/lib/queries";
+import { countGames, searchGames, type GameFilters } from "@/lib/queries";
 
 // Public read-only JSON API — see docs/06-api-spec.md. Prices are whole IDR.
 export async function GET(request: Request) {
@@ -11,12 +11,14 @@ export async function GET(request: Request) {
     location: p.get("location") || undefined,
     language: p.get("language") || undefined,
     level: p.get("level") || undefined,
+    city: p.get("city")?.slice(0, 60) || undefined,
     maxPrice: p.get("maxPrice") ? Number(p.get("maxPrice")) : undefined,
     free: p.get("free") === "1",
     sort: (["soonest", "price_asc", "price_desc", "rating", "newest"] as const).find((s) => s === sort) ?? "soonest",
   };
   const limit = Math.min(100, Math.max(1, Number(p.get("limit")) || 30));
-  const games = searchGames(filters, limit).map((g) => ({
+  const offset = Math.min(10_000, Math.max(0, Math.floor(Number(p.get("offset"))) || 0));
+  const games = searchGames(filters, limit, offset).map((g) => ({
     id: g.id,
     slug: g.slug,
     title: g.title,
@@ -39,5 +41,5 @@ export async function GET(request: Request) {
       : null,
     url: `/games/${g.slug}`,
   }));
-  return Response.json({ data: games, count: games.length });
+  return Response.json({ data: games, count: games.length, total: countGames(filters), offset });
 }

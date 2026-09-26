@@ -64,22 +64,24 @@ export type GameFilters = {
   location?: string;
   language?: string;
   level?: string;
+  /** In-person games in this city (case-insensitive). */
+  city?: string;
   maxPrice?: number;
   free?: boolean;
   sort?: "soonest" | "price_asc" | "price_desc" | "rating" | "newest";
 };
 
-export function searchGames(f: GameFilters, limit = 60): GameCard[] {
+/** WHERE clauses and their args for a set of browse filters (shared by search and count). */
+function gameFilterSql(f: GameFilters): { where: string[]; args: (string | number)[] } {
   const where: string[] = ["g.status = 'published'"];
-  const args: (string | number)[] = [new Date().toISOString()];
+  const args: (string | number)[] = [];
 
   if (f.q) {
-    // Escape % and _ so the keyword matches literally.
-    where.push(
-      "(g.title LIKE ? ESCAPE '\\' OR g.summary LIKE ? ESCAPE '\\' OR g.tags LIKE ? ESCAPE '\\' OR g.system LIKE ? ESCAPE '\\' OR u.name LIKE ? ESCAPE '\\' OR g.city LIKE ? ESCAPE '\\')",
-    );
+    // Escape % and _ so the keyword matches literally. The GM's own location counts too.
+    const cols = ["g.title", "g.summary", "g.tags", "g.system", "u.name", "g.city", "p.location"];
+    where.push(`(${cols.map((c) => `${c} LIKE ? ESCAPE '\\'`).join(" OR ")})`);
     const like = `%${escapeLike(f.q)}%`;
-    args.push(like, like, like, like, like, like);
+    args.push(...cols.map(() => like));
   }
   if (f.system) { where.push("g.system = ?"); args.push(f.system); }
   // Category CSVs are matched with delimiters so "sci-fi" never matches "sci-fi-horror".
@@ -87,13 +89,18 @@ export function searchGames(f: GameFilters, limit = 60): GameCard[] {
   if (f.style && isStyle(f.style)) { where.push("(',' || g.styles || ',') LIKE ?"); args.push(`%,${f.style},%`); }
   if (f.format === "one_shot" || f.format === "campaign") { where.push("g.format = ?"); args.push(f.format); }
   if (f.location === "online" || f.location === "in_person") { where.push("g.location_type = ?"); args.push(f.location); }
+  if (f.city) { where.push("g.location_type = 'in_person' AND LOWER(TRIM(g.city)) = LOWER(TRIM(?))"); args.push(f.city); }
   // "Bahasa Indonesia" also matches bilingual tables, and likewise for English.
   if (f.language === "id" || f.language === "en") { where.push("g.language IN (?, 'both')"); args.push(f.language); }
   if (f.level === "beginner") where.push("g.experience_level IN ('beginner','any')");
   if (f.level === "experienced") where.push("g.experience_level IN ('experienced','any')");
   if (f.free) where.push("g.price_idr = 0");
   if (f.maxPrice != null && Number.isFinite(f.maxPrice)) { where.push("g.price_idr <= ?"); args.push(Math.round(f.maxPrice)); }
+  return { where, args };
+}
 
+export function searchGames(f: GameFilters, limit = 60, offset = 0): GameCard[] {
+  const { where, args } = gameFilterSql(f);
   const order = {
     soonest: "next_session_at IS NULL, next_session_at ASC",
     price_asc: "g.price_idr ASC",
@@ -102,10 +109,29 @@ export function searchGames(f: GameFilters, limit = 60): GameCard[] {
     newest: "g.created_at DESC",
   }[f.sort ?? "soonest"];
 
-  args.push(limit);
+  // g.id breaks ties so pages never repeat or skip a game.
   return db()
-    .prepare(`${CARD_SELECT} WHERE ${where.join(" AND ")} ORDER BY ${order} LIMIT ?`)
-    .all(...args) as GameCard[];
+    .prepare(`${CARD_SELECT} WHERE ${where.join(" AND ")} ORDER BY ${order}, g.id LIMIT ? OFFSET ?`)
+    .all(new Date().toISOString(), ...args, limit, offset) as GameCard[];
+}
+
+/** How many published games match the filters (for "N games" and "Load more"). */
+export function countGames(f: GameFilters): number {
+  const { where, args } = gameFilterSql(f);
+  return (db()
+    .prepare(`SELECT COUNT(*) AS n FROM games g JOIN users u ON u.id = g.gm_id LEFT JOIN gm_profiles p ON p.user_id = u.id WHERE ${where.join(" AND ")}`)
+    .get(...args) as { n: number }).n;
+}
+
+/** Cities with published in-person games, most games first (for the city filter). */
+export function listCitiesInUse(): { city: string; n: number }[] {
+  return db()
+    .prepare(
+      `SELECT MIN(TRIM(city)) AS city, COUNT(*) AS n FROM games
+        WHERE status = 'published' AND location_type = 'in_person' AND TRIM(city) <> ''
+        GROUP BY LOWER(TRIM(city)) ORDER BY n DESC, city`,
+    )
+    .all() as { city: string; n: number }[];
 }
 
 export type SystemSummary = { system: string; slug: string; n: number; cover: string; hue: number };
@@ -591,4 +617,16 @@ export function getUserSettings(userId: number) {
   return db()
     .prepare("SELECT id, name, email, bio, role, avatar_hue, avatar_image FROM users WHERE id = ?")
     .get(userId) as { id: number; name: string; email: string; bio: string; role: string; avatar_hue: number; avatar_image: string } | undefined;
+}
+
+/** Public, indexable URLs' data for sitemap.xml: published games and listed GMs. */
+export function sitemapEntries(): { games: { slug: string; created_at: string }[]; gms: { id: number }[] } {
+  const games = db().prepare("SELECT slug, created_at FROM games WHERE status = 'published' ORDER BY id").all() as { slug: string; created_at: string }[];
+  const gms = db()
+    .prepare(
+      `SELECT u.id FROM users u JOIN gm_profiles p ON p.user_id = u.id
+        WHERE u.role IN ('gm','admin') AND p.headline <> '' AND u.deleted_at IS NULL AND u.suspended_at IS NULL ORDER BY u.id`,
+    )
+    .all() as { id: number }[];
+  return { games, gms };
 }
