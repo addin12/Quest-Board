@@ -36,6 +36,7 @@ export default async function GmDashboardPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href="/gm/earnings" className="btn-secondary"><Icon name="coins" /> {t("earnings.title")}</Link>
           <Link href="/gm/questions" className="btn-secondary">
             <Icon name="comment-dots" /> {awaitingQuestions > 0 ? t("gmQuestions.buttonAwaiting", { n: awaitingQuestions }) : t("gmQuestions.title")}
           </Link>

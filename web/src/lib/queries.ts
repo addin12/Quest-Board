@@ -681,3 +681,16 @@ export function calendarFeedSessions(userId: number, now = new Date()): FeedSess
     .all(userId, since, userId, since) as FeedSession[];
   return rows;
 }
+
+/** Every confirmed seat in my (not cancelled) sessions, for the earnings page and CSV. */
+export function gmEarningRows(gmId: number): import("./earnings").EarningRow[] {
+  return db()
+    .prepare(
+      `SELECT b.id AS booking_id, b.price_idr, (b.paid_marked_at IS NOT NULL) AS paid, s.id AS session_id, s.starts_at,
+              g.id AS game_id, g.title, u.name AS player_name
+         FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id JOIN users u ON u.id = b.player_id
+        WHERE g.gm_id = ? AND b.status = 'confirmed' AND s.status <> 'cancelled'
+        ORDER BY s.starts_at, b.id`,
+    )
+    .all(gmId) as import("./earnings").EarningRow[];
+}

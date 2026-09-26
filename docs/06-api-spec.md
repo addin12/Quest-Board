@@ -73,6 +73,9 @@ A person's private, subscribable iCalendar feed (created and reset in Settings).
 
 **404 Not Found** for unknown or reset tokens and for deleted or suspended accounts.
 
+### `GET /api/gm/earnings`
+The signed-in GM's booked seats as CSV (`session_start_wib, game, player, price_idr, marked_paid`), for their own bookkeeping. UTF-8 with BOM; cells are quoted and spreadsheet formulas are neutralised. **401** unless signed in as a GM.
+
 ### Planned
 `GET /api/gms/{id}` · `GET /api/systems` · rate limiting of 60 requests/min per IP (`429` + `Retry-After`).
 
