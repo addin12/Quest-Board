@@ -11,6 +11,7 @@ reserve seats and meet Game Masters, online or *luring* (in person).
 ![Node 22.13+](https://img.shields.io/badge/node-%E2%89%A522.13-3c873a)
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-black)
 ![Languages: EN / ID](https://img.shields.io/badge/languages-EN%20%2F%20ID-8e2b1c)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 ![Quest Board home page](docs/screenshots/readme-home.png)
 
@@ -149,4 +150,4 @@ Start with [CLAUDE.md](CLAUDE.md), then [CONVENTIONS.md](CONVENTIONS.md) and [TE
 
 ---
 
-<sub>Icons: [Uicons by Flaticon](https://www.flaticon.com/uicons). Illustrations are original and drawn in code. Quest Board is an independent project, not affiliated with StartPlaying. It does not process payments: money is exchanged directly between players and Game Masters. This repository doesn't have a license yet.</sub>
+<sub>Icons: [Uicons by Flaticon](https://www.flaticon.com/uicons). Illustrations are original and drawn in code. Quest Board is an independent project, not affiliated with StartPlaying. It does not process payments: money is exchanged directly between players and Game Masters. Code licensed under the [MIT License](LICENSE); the Flaticon icons keep their own license (attribution required).</sub>
