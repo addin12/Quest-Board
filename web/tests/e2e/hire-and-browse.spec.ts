@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { e2eDb } from "./helpers";
 
 // v0.9: profile settings, browse by category, hire a GM.
 
@@ -216,4 +217,38 @@ test("notifications: the GM hears about bookings and cancellations; players hear
   await expect(gm.locator("summary", { hasText: "Cancel session" })).toHaveCount(0);
   await player.goto("/notifications");
   await expect(player.getByText("The GM cancelled a session of Starfall Salvage that you had booked")).toBeVisible();
+});
+
+test("GMs who offered hear when the group chooses someone else or closes the request", async ({ browser }) => {
+  const db = e2eDb();
+  const id = (email: string) => (db.prepare("SELECT id FROM users WHERE email = ?").get(email) as { id: number }).id;
+  const [citra, bima, raka] = [id("citra@questboard.test"), id("bima@questboard.test"), id("gm@questboard.test")];
+  const tag = Date.now() % 100000;
+  const request = (title: string) => {
+    const r = Number(db.prepare("INSERT INTO gm_requests (requester_id, title, system, group_size, schedule, details) VALUES (?, ?, 'D&D 5e (2014)', 4, 'Fridays', 'Four friends looking for a long campaign together.')").run(citra, title).lastInsertRowid);
+    for (const gm of [bima, raka]) db.prepare("INSERT INTO gm_request_offers (request_id, gm_id, message, price_idr) VALUES (?, ?, 'Happy to run it!', 50000)").run(r, gm);
+    return r;
+  };
+  const chosen = request(`Campaign ${tag}`);
+  const closed = request(`One-shot ${tag}`);
+  try {
+    const player = await (await browser.newContext()).newPage();
+    await login(player, "citra@questboard.test");
+    await player.goto(`/hire-a-gm/requests/${chosen}`);
+    await player.locator("li, article, div.card").filter({ hasText: "Bima Saputra" }).getByRole("button", { name: "Choose this GM" }).first().click();
+    await expect(player.getByText("Chosen").first()).toBeVisible();
+    await player.goto(`/hire-a-gm/requests/${closed}`);
+    player.once("dialog", (d) => void d.accept());
+    await player.getByRole("button", { name: "Close request" }).click();
+    await expect(player.getByRole("button", { name: "Close request" })).toHaveCount(0);
+
+    const gm = await (await browser.newContext()).newPage();
+    await login(gm, "gm@questboard.test");
+    await gm.goto("/notifications");
+    await expect(gm.getByText(`went with another GM for “Campaign ${tag}”`)).toBeVisible();
+    await expect(gm.getByText(`closed the request “One-shot ${tag}” you offered on`)).toBeVisible();
+  } finally {
+    db.prepare("DELETE FROM gm_requests WHERE id IN (?, ?)").run(chosen, closed);
+    db.close();
+  }
 });

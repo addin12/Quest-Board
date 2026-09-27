@@ -50,6 +50,10 @@ export function describeNotification(n: NotificationSource, t: T): NotificationV
     case "request_direct": return { ...base, href: requestHref, icon: "briefcase", text: t("notif.requestDirect", { name: who, title: request }) };
     case "offer_received": return { ...base, href: requestHref, icon: "hand-wave", text: t("notif.offerReceived", { name: who, title: request }) };
     case "offer_chosen": return { ...base, href: requestHref, icon: "handshake", text: t("notif.offerChosen", { name: who, title: request }) };
+    case "offer_not_chosen": return { ...base, href: "/gm/requests", icon: "briefcase", text: t("notif.offerNotChosen", { name: who, title: request }) };
+    case "request_closed": return { ...base, href: "/gm/requests", icon: "briefcase", text: t("notif.requestClosed", { name: who, title: request }) };
+    case "lfg_thread_reply": return { ...base, href: n.post_id ? `/board/${n.post_id}` : "/board", icon: "thumbtack", text: t("notif.lfgThreadReply", { name: who, title: n.post_title ?? "" }) };
+    case "gm_suspended": return { ...base, actor: null, href: "/dashboard", icon: "triangle-warning", text: t("notif.gmSuspended", { name: who }) };
     case "request_message": return { ...base, href: requestHref, icon: "comment-dots", text: t("notif.requestMessage", { name: who, title: request }) };
     case "booking_new": return { ...base, href: "/gm", icon: "user-add", text: t("notif.bookingNew", { name: who, title: game }) };
     case "booking_cancelled": return { ...base, href: "/gm", icon: "user", text: t("notif.bookingCancelled", { name: who, title: game }) };

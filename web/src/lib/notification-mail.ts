@@ -32,8 +32,9 @@ export async function deliverNotificationEmails(origin: string, limit = 50): Pro
     const view = describeNotification(n, t);
     await sendEmail({
       to: u.email,
-      subject: view.text.slice(0, 150),
-      text: t("mail.notifBody", { name: u.name, text: view.text, link: origin + view.href }),
+      subject: n.kind === "gm_suspended" ? t("mail.gmSuspendedSubject", { name: view.actor?.name ?? n.actor_name ?? "" }) : view.text.slice(0, 150),
+      // The body adds its own full stop; always-sent warnings can't be turned off, so they don't say they can.
+      text: t(ALWAYS_EMAIL.has(n.kind) ? "mail.notifBodyImportant" : "mail.notifBody", { name: u.name, text: view.text.replace(/[.!?]$/, ""), link: origin + view.href }),
     });
     sent++;
   }

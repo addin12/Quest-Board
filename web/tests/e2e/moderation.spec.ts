@@ -116,6 +116,8 @@ test("a scam report leads to suspension: login blocked, profile hidden, game arc
   expect((await player.goto(`/games/${slug}`))?.status()).toBe(404);
   await player.goto("/notifications");
   await expect(player.getByText("The GM cancelled a session of Too Good To Be True that you had booked")).toBeVisible();
+  // …and warned not to pay the suspended GM.
+  await expect(player.getByText("Quest Board moderators suspended the GM Sam Scammer. Don't send them any money.", { exact: false })).toBeVisible();
   expect((await player.goto(gmProfile))?.status()).toBe(404);
   await admin.goto(`/admin/users?q=${encodeURIComponent(gmEmail)}`);
   await expect(admin.getByRole("row").filter({ hasText: "Sam Scammer" }).getByText("Suspended").filter({ visible: true })).toBeVisible();

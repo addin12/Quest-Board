@@ -113,7 +113,17 @@ export function suspendUser(userId: number, adminId: number): boolean {
   const u = db().prepare("SELECT role, suspended_at FROM users WHERE id = ? AND deleted_at IS NULL").get(userId) as { role: string; suspended_at: string | null } | undefined;
   if (!u || u.role === "admin" || u.suspended_at) return false;
   tx((c) => {
-    c.prepare("UPDATE users SET suspended_at = ? WHERE id = ?").run(new Date().toISOString(), userId);
+    // Before their games are archived: players with upcoming seats, and requesters who chose them in the last 90 days,
+    // are told not to pay (and what to do if they already did).
+    const now = new Date();
+    const warn = c.prepare(
+      `SELECT DISTINCT b.player_id AS id FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id
+        WHERE g.gm_id = ? AND b.status = 'confirmed' AND s.status = 'scheduled' AND s.starts_at > ?
+       UNION
+       SELECT requester_id FROM gm_requests WHERE matched_gm_id = ? AND status = 'matched' AND created_at > ?`,
+    ).all(userId, now.toISOString(), userId, new Date(now.getTime() - 90 * 86_400_000).toISOString()) as { id: number }[];
+    for (const w of warn) notify({ userId: w.id, kind: "gm_suspended", actorId: userId }, c);
+    c.prepare("UPDATE users SET suspended_at = ? WHERE id = ?").run(now.toISOString(), userId);
     c.prepare("DELETE FROM auth_sessions WHERE user_id = ?").run(userId);
     dropFromWaitlists(c, userId);
     c.prepare("UPDATE lfg_posts SET status = 'closed' WHERE author_id = ? AND status = 'open'").run(userId);

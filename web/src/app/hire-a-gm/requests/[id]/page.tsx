@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
 import { shownName } from "@/lib/i18n/dict";
 import { markRequestRead } from "@/lib/notifications";
-import { getGmRequest, getGmSettings, getOffer, getPaymentInfo, listOffers, listRequestMessages } from "@/lib/queries";
+import { getGmRequest, getGmSettings, getOffer, getPaymentInfo, isSuspended, listOffers, listRequestMessages } from "@/lib/queries";
 import { Avatar, Notice, Stars, VerifiedBadge, priceLabel } from "@/components/ui";
 import { LocalTime } from "@/components/local-time";
 import { ConfirmButton, SubmitButton } from "@/components/submit-button";
@@ -75,7 +75,10 @@ export default async function RequestPage(props: PageProps<"/hire-a-gm/requests/
           <AutoRefresh />
           <h2 id="thread-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="comment-dots" className="text-accent" /> {t("hire.threadTitle")}</h2>
           <p className="text-sm text-muted">{t("hire.threadLead")}</p>
-          {isRequester && matchedOffer && (
+          {isRequester && matchedOffer && isSuspended(matchedOffer.gm_id) && (
+            <div className="mt-4"><Notice tone="danger">{t("hire.gmSuspended")}</Notice></div>
+          )}
+          {isRequester && matchedOffer && !isSuspended(matchedOffer.gm_id) && (
             <div className="card mt-4 border-accent/40! p-4">
               <p className="eyebrow flex items-center gap-1.5 text-accent!"><Icon name="wallet" /> {t("game.howToPay")}</p>
               <p className="mt-2 whitespace-pre-line text-sm">{getPaymentInfo(matchedOffer.gm_id) || t("game.howToPayEmpty")}</p>

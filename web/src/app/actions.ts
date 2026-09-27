@@ -620,9 +620,15 @@ export async function chooseOfferAction(form: FormData) {
   const res = db().prepare("UPDATE gm_requests SET status = 'matched', matched_gm_id = ? WHERE id = ? AND status = 'open'").run(gmId, request.id);
   if (Number(res.changes) > 0) {
     notify({ userId: gmId, kind: "offer_chosen", actorId: user.id, requestId: request.id });
+    for (const o of offeringGms(request.id, gmId)) notify({ userId: o, kind: "offer_not_chosen", actorId: user.id, requestId: request.id });
     await toast("toast.gmChosen");
   }
   revalidatePath("/", "layout");
+}
+
+/** GMs who sent an offer on a request (except `except`). */
+function offeringGms(requestId: number, except = 0): number[] {
+  return (db().prepare("SELECT gm_id FROM gm_request_offers WHERE request_id = ? AND gm_id <> ?").all(requestId, except) as { gm_id: number }[]).map((o) => o.gm_id);
 }
 
 export async function closeRequestAction(form: FormData) {
@@ -630,7 +636,8 @@ export async function closeRequestAction(form: FormData) {
   const request = getGmRequest(Number(form.get("requestId")));
   if (!request || request.requester_id !== user.id) throw new Error("Not found");
   // Only open requests can be closed: a matched request keeps its thread and payment details.
-  db().prepare("UPDATE gm_requests SET status = 'closed' WHERE id = ? AND status = 'open'").run(request.id);
+  const res = db().prepare("UPDATE gm_requests SET status = 'closed' WHERE id = ? AND status = 'open'").run(request.id);
+  if (Number(res.changes) > 0) for (const o of offeringGms(request.id)) notify({ userId: o, kind: "request_closed", actorId: user.id, requestId: request.id });
   await toast("toast.requestClosed");
   revalidatePath("/", "layout");
 }

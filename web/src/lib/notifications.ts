@@ -10,6 +10,8 @@ export type NotificationKind =
   | "request_direct"     // → GM: a player sent them a direct request
   | "offer_received"     // → requester: a GM sent an offer
   | "offer_chosen"       // → GM: the requester chose their offer
+  | "offer_not_chosen"   // → other GMs who offered: the requester chose someone else
+  | "request_closed"     // → GMs who offered: the requester closed the request
   | "request_message"    // → the other party in a matched request's thread (collapsed while unread)
   | "booking_new"        // → GM: a player reserved a seat
   | "booking_cancelled"  // → GM: a player cancelled their seat
@@ -21,6 +23,8 @@ export type NotificationKind =
   | "waitlist_offer"     // → player: a seat opened up and is held for them
   | "payment_confirmed"  // → player: the GM marked their seat as paid
   | "lfg_reply"          // → notice author: someone replied on the Notice Board (collapsed while unread)
+  | "lfg_thread_reply"   // → earlier repliers on a notice: someone else replied (collapsed while unread)
+  | "gm_suspended"       // → players with upcoming seats / recent requesters: moderators suspended that GM — don't pay
   | "followed_gm_game"   // → follower: a GM they follow published a new game
   | "session_reminder_24h" // → booked players + GM: the session is within 24 hours (lib/reminders.ts)
   | "session_reminder_1h"   // → booked players + GM: the session starts within the hour
@@ -35,14 +39,14 @@ export type NotificationKind =
  */
 export const EMAIL_KINDS: ReadonlySet<NotificationKind> = new Set([
   "booking_new", "booking_cancelled", "waitlist_offer", "request_direct", "offer_received", "offer_chosen",
-  "request_message", "game_question", "feedback_new", "review_prompt", "session_cancelled", "game_place_changed",
+  "request_message", "game_question", "feedback_new", "review_prompt", "session_cancelled", "game_place_changed", "gm_suspended",
 ]);
 
 /** Emailed even to people who turned notification emails off: they could otherwise turn up to a session that isn't happening. */
-export const ALWAYS_EMAIL: ReadonlySet<NotificationKind> = new Set(["session_cancelled"]);
+export const ALWAYS_EMAIL: ReadonlySet<NotificationKind> = new Set(["session_cancelled", "gm_suspended"]);
 
 /** Kinds that update one unread row instead of piling up (chatty events). */
-const COLLAPSE: ReadonlySet<NotificationKind> = new Set(["request_message", "lfg_reply", "game_question"]);
+const COLLAPSE: ReadonlySet<NotificationKind> = new Set(["request_message", "lfg_reply", "lfg_thread_reply", "game_question"]);
 
 export type NotifyInput = {
   userId: number;

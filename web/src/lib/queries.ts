@@ -627,9 +627,16 @@ export function listRequestMessages(requestId: number): RequestMessageRow[] {
   ).reverse();
 }
 
+/** A GM's payment details — never for a suspended or deleted account (moderators may have stopped a scam). */
 export function getPaymentInfo(gmId: number): string {
-  const row = db().prepare("SELECT payment_info FROM gm_profiles WHERE user_id = ?").get(gmId) as { payment_info: string } | undefined;
+  const row = db()
+    .prepare("SELECT p.payment_info FROM gm_profiles p JOIN users u ON u.id = p.user_id WHERE p.user_id = ? AND u.suspended_at IS NULL AND u.deleted_at IS NULL")
+    .get(gmId) as { payment_info: string } | undefined;
   return row?.payment_info ?? "";
+}
+
+export function isSuspended(userId: number): boolean {
+  return !!db().prepare("SELECT 1 FROM users WHERE id = ? AND suspended_at IS NOT NULL").get(userId);
 }
 
 export function getUserSettings(userId: number) {

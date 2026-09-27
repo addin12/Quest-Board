@@ -71,6 +71,9 @@ export function addReply(postId: number, authorId: number, body: string): void {
     c.prepare("INSERT INTO lfg_replies (post_id, author_id, body) VALUES (?, ?, ?)").run(postId, authorId, body);
     const post = c.prepare("SELECT author_id FROM lfg_posts WHERE id = ?").get(postId) as { author_id: number };
     notify({ userId: post.author_id, kind: "lfg_reply", actorId: authorId, postId }, c);
+    // Others who replied earlier (e.g. the author answering a player) — so conversations don't stall.
+    const others = c.prepare("SELECT DISTINCT author_id FROM lfg_replies WHERE post_id = ? AND author_id NOT IN (?, ?)").all(postId, authorId, post.author_id) as { author_id: number }[];
+    for (const o of others) notify({ userId: o.author_id, kind: "lfg_thread_reply", actorId: authorId, postId }, c);
   });
 }
 
