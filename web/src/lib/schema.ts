@@ -22,7 +22,8 @@
 // v17: error_log (server errors, shown in /admin/errors).
 // v18: feedback (the footer's "Send feedback" form) + users.terms_accepted_at / terms_version (consent record).
 // v19: email_queue (emails for important notifications) + users.email_notifications.
-export const SCHEMA_VERSION = 19;
+// v20: email_outbox.attempts / retryable (delivery retries) + review_prompts (once per player per game).
+export const SCHEMA_VERSION = 20;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -256,6 +257,14 @@ CREATE TABLE IF NOT EXISTS email_queue (
   created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
+-- v20: "How was it? Leave a review" — asked once per player per game.
+CREATE TABLE IF NOT EXISTS review_prompts (
+  game_id   INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  player_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  sent_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY (game_id, player_id)
+);
+
 -- v13: one row per reminder sent, so each goes out exactly once.
 CREATE TABLE IF NOT EXISTS session_reminders (
   session_id INTEGER NOT NULL REFERENCES game_sessions(id) ON DELETE CASCADE,
@@ -282,7 +291,9 @@ CREATE TABLE IF NOT EXISTS email_outbox (
   body_text   TEXT NOT NULL,
   created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   sent_at     TEXT,
-  error       TEXT
+  error       TEXT,
+  attempts    INTEGER NOT NULL DEFAULT 0,  -- v20: delivery attempts (retried by the cron)
+  retryable   INTEGER NOT NULL DEFAULT 1   -- v20: 0 when the stored copy had its one-time link blanked
 );
 
 CREATE TABLE IF NOT EXISTS reports (

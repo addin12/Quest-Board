@@ -1,14 +1,18 @@
 import { processReminders } from "@/lib/reminders";
 import { refreshAllWaitlists } from "@/lib/waitlist";
 import { pruneNotifications } from "@/lib/notifications";
-import { pruneOutbox } from "@/lib/mailer";
+import { pruneOutbox, retryFailedEmails } from "@/lib/mailer";
+import { promptReviews } from "@/lib/review-prompts";
+import { purgeExpiredSessions } from "@/lib/auth";
+import { purgeOldWindows } from "@/lib/rate-limit";
 import { pruneErrorLog } from "@/lib/error-log";
 import { deliverNotificationEmails } from "@/lib/notification-mail";
 import { siteOrigin } from "@/lib/site";
 import { timingSafeEqual } from "node:crypto";
 
 // Scheduler endpoint: session reminders, expired waitlist offers passed on to the next person,
-// and light housekeeping (old read notifications, old outbox rows). Call it every 5–10 minutes with
+// notification emails (and retries of failed ones), review prompts, and housekeeping (old read
+// notifications, outbox rows, error log, expired sign-in sessions and rate-limit windows). Call it every 5–10 minutes with
 // "Authorization: Bearer $QUESTBOARD_CRON_SECRET". Without the secret configured the
 // route doesn't exist (404); the site then falls back to checking while people browse.
 export const dynamic = "force-dynamic";
@@ -27,9 +31,13 @@ async function run(request: Request) {
   const waitlists = refreshAllWaitlists();
   const origin = await siteOrigin();
   const emailed = await processReminders(origin);
+  const reviewPrompts = promptReviews();
   const notificationEmails = await deliverNotificationEmails(origin, 500);
+  const retried = await retryFailedEmails();
+  purgeExpiredSessions();
+  purgeOldWindows();
   const pruned = { notifications: pruneNotifications(), outbox: pruneOutbox(), errors: pruneErrorLog() };
-  return Response.json({ ok: true, emailed, notificationEmails, waitlists, pruned });
+  return Response.json({ ok: true, emailed, notificationEmails, retried, reviewPrompts, waitlists, pruned });
 }
 
 export const GET = run;

@@ -313,6 +313,16 @@ export const MIGRATIONS: Record<number, string> = {
       created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
     );
   `,
+  20: `
+    ALTER TABLE email_outbox ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE email_outbox ADD COLUMN retryable INTEGER NOT NULL DEFAULT 1;
+    CREATE TABLE IF NOT EXISTS review_prompts (
+      game_id   INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+      player_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      sent_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+      PRIMARY KEY (game_id, player_id)
+    );
+  `,
 };
 
 export type UpgradePlan =

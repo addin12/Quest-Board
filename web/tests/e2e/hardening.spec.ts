@@ -43,9 +43,11 @@ test("P1-9 repeated failed logins are rate limited", async ({ page }) => {
     await page.getByLabel("Email").fill("brute@force.test");
     await page.getByLabel("Password").fill(`wrong-${i}`);
     // Wait for this attempt's response: the error text is already on screen from the last one.
+    const button = page.getByRole("button", { name: "Log in" });
+    await expect(button).toBeEnabled(); // the previous attempt has fully finished
     await Promise.all([
-      page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/login")),
-      page.getByRole("button", { name: "Log in" }).click(),
+      page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/login"), { timeout: 15_000 }),
+      button.click(),
     ]);
     await expect(page.getByText("Incorrect email or password.")).toBeVisible();
   }

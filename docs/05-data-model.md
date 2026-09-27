@@ -245,3 +245,10 @@ email_queue(id, notification_id → notifications ON DELETE CASCADE, created_at)
 ALTER TABLE users ADD COLUMN email_notifications INTEGER NOT NULL DEFAULT 1;
 ```
 - A queue row is claimed (deleted) before sending, so overlapping runs never send twice.
+
+## v20: email retries and review prompts
+```sql
+ALTER TABLE email_outbox ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE email_outbox ADD COLUMN retryable INTEGER NOT NULL DEFAULT 1;  -- 0 when the one-time link was blanked
+review_prompts(game_id → games, player_id → users, sent_at, PRIMARY KEY (game_id, player_id))
+```

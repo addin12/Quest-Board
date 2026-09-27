@@ -68,3 +68,18 @@ test("the admin console has no axe violations", async ({ page }) => {
   }
   expect(found).toEqual([]);
 });
+
+test("a brand-new GM's dashboard (with the getting-started checklist) has no axe violations", async ({ page }) => {
+  await page.goto("/signup");
+  await page.getByText("Run games").click();
+  await page.getByLabel("Display name").fill("Axe Check GM");
+  await page.getByLabel("Email").fill(`axe-gm-${Date.now()}@questboard.test`);
+  await page.getByLabel("Password").fill("password123");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await page.waitForURL("**/gm");
+  await expect(page.getByRole("heading", { name: "Get your table ready" })).toBeVisible();
+  const found = await violationsOf(page, "/gm (new GM)");
+  await page.goto("/settings");
+  found.push(...(await violationsOf(page, "/settings (new GM)")));
+  expect(found).toEqual([]);
+});

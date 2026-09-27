@@ -12,6 +12,9 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
+  // Multi-account journeys take ~15 s on an idle machine; 60 s keeps a busy moment from failing
+  // them. Individual steps keep their own short timeouts, so a real hang still fails fast.
+  timeout: 60_000,
   reporter: [["list"]],
   use: {
     baseURL: `http://localhost:${PORT}`,

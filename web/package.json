@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "node --test \"tests/unit/*.test.ts\"",
+    "test": "node --conditions=react-server --import ./tests/loader.mjs --test \"tests/unit/*.test.ts\"",
     "test:e2e": "npm run build && playwright test",
     "db:reset": "node scripts/reset-db.mjs",
     "icons": "node scripts/build-icons.mjs",

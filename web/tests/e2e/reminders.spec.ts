@@ -29,6 +29,8 @@ test("P2-12 session reminders: in-app + email in the person's language, once eac
     const cron = await (await request.post("/api/cron/reminders", { headers: AUTH })).json();
     expect(cron.ok).toBe(true);
     expect(typeof cron.waitlists).toBe("number"); // expired offers are passed on here too
+    expect(typeof cron.reviewPrompts).toBe("number");
+    expect(typeof cron.retried).toBe("number");
     expect(cron.pruned).toEqual({ notifications: expect.any(Number), outbox: expect.any(Number), errors: expect.any(Number) });
 
     // The player (Indonesian) and the GM (English) each got exactly one 24h email.
