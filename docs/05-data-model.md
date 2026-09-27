@@ -116,7 +116,7 @@ erDiagram
 | Object | Purpose |
 |---|---|
 | `users.email UNIQUE COLLATE NOCASE` | One account per email |
-| `games.slug UNIQUE` | Stable URLs |
+| `games.slug UNIQUE` | Stable URLs: made from the title while the game is an unpublished draft, then never changed (it is in shared links, emails and calendars) |
 | `CHECK` on enums, price, seats, rating | Defence in depth |
 | `uq_booking_active` — `UNIQUE(session_id, player_id) WHERE status='confirmed'` | One active seat per player per session |
 | `reviews UNIQUE(game_id, player_id)` | One review per game |

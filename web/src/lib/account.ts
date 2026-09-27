@@ -103,5 +103,9 @@ export function exportAccount(userId: number) {
     notice_board_replies: q("SELECT id, post_id, body, created_at FROM lfg_replies WHERE author_id = ?", userId),
     saved_games: q("SELECT g.title, s.created_at FROM saved_games s JOIN games g ON g.id = s.game_id WHERE s.user_id = ?", userId),
     following: q("SELECT u.name, f.created_at FROM gm_follows f JOIN users u ON u.id = f.gm_id WHERE f.follower_id = ?", userId),
+    waitlist: q(
+      `SELECT g.title AS game, s.starts_at, w.status, w.offered_at, w.expires_at, w.created_at
+         FROM waitlist w JOIN game_sessions s ON s.id = w.session_id JOIN games g ON g.id = s.game_id WHERE w.player_id = ? ORDER BY w.created_at`, userId),
+    reports_filed: q("SELECT target_type, reason, details, status, created_at FROM reports WHERE reporter_id = ? ORDER BY created_at", userId),
   };
 }

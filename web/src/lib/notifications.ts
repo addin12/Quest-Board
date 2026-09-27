@@ -15,6 +15,7 @@ export type NotificationKind =
   | "booking_cancelled"  // → GM: a player cancelled their seat
   | "session_cancelled"  // → player: the GM cancelled a session they had booked
   | "session_moved"      // → player: the GM changed the time of a session they had booked
+  | "game_place_changed" // → player with an upcoming seat: the game moved (city, online ↔ in person, platform)
   | "report_new"         // → admins: a member reported something
   | "report_resolved"    // → reporter: a moderator reviewed their report
   | "waitlist_offer"     // → player: a seat opened up and is held for them
@@ -34,7 +35,7 @@ export type NotificationKind =
  */
 export const EMAIL_KINDS: ReadonlySet<NotificationKind> = new Set([
   "booking_new", "booking_cancelled", "waitlist_offer", "request_direct", "offer_received", "offer_chosen",
-  "request_message", "game_question", "feedback_new", "review_prompt", "session_cancelled",
+  "request_message", "game_question", "feedback_new", "review_prompt", "session_cancelled", "game_place_changed",
 ]);
 
 /** Emailed even to people who turned notification emails off: they could otherwise turn up to a session that isn't happening. */

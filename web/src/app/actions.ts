@@ -167,6 +167,7 @@ async function becomeGmActionImpl(_: FormState, form: FormData): Promise<FormSta
   if (headline.length < 5) fieldErrors.headline = "v.headline";
   if (bio.length < 30) fieldErrors.bio = "v.bio";
   if (Object.keys(fieldErrors).length) return { fieldErrors };
+  const before = db().prepare("SELECT payment_info FROM gm_profiles WHERE user_id = ?").get(user.id) as { payment_info: string } | undefined;
 
   tx((c) => {
     c.prepare("UPDATE users SET bio = ?, avatar_image = ?, role = CASE WHEN role = 'admin' THEN role ELSE 'gm' END WHERE id = ?").run(bio, avatarImage, user.id);
@@ -177,6 +178,8 @@ async function becomeGmActionImpl(_: FormState, form: FormData): Promise<FormSta
     ).run(user.id, headline, systems, years, location, paymentInfo);
   });
   if (user.role === "player") await rotateSession(user.id); // role changed: issue a fresh session token
+  // Players pay the GM directly, so new payment details are what a hijacked account would change: tell the owner.
+  if (before?.payment_info && before.payment_info !== paymentInfo) await sendPaymentDetailsChangedEmail(user.email, user.name, paymentInfo);
   revalidatePath("/", "layout");
   redirect("/gm");
 }
@@ -213,9 +216,17 @@ async function saveGameActionImpl(_: FormState, form: FormData): Promise<FormSta
   if (idRaw) {
     if (!existing || (existing.gm_id !== gm.id && gm.role !== "admin")) return { error: "err.notFound" };
     // Never let an edit overbook: seats can't drop below what an upcoming session already holds.
-    if (g.seatsTotal < maxSeatsTakenUpcoming(idRaw)) {
+    const seatsTaken = maxSeatsTakenUpcoming(idRaw);
+    if (g.seatsTotal < seatsTaken) {
       return { fieldErrors: { seatsTotal: "v.seatsBelowBooked" }, error: "err.fixFields" };
     }
+    // Unpublishing would hide the game from players who hold seats (and stop their reminders).
+    if (g.status === "draft" && existing.status === "published" && seatsTaken > 0) {
+      return { fieldErrors: { status: "v.unpublishBooked" }, error: "err.fixFields" };
+    }
+    // Once published, the address never changes: it's in shared links, emails and calendars.
+    const slug = existing.status === "draft" && !existing.announced_at ? uniqueSlug(g.title, idRaw) : existing.slug;
+    const placeChanged = existing.location_type !== g.locationType || existing.city !== g.city || existing.platform !== g.platform;
     db()
       .prepare(
         `UPDATE games SET slug = ?, title = ?, system = ?, summary = ?, description = ?, format = ?, location_type = ?, language = ?, platform = ?, city = ?,
@@ -223,13 +234,23 @@ async function saveGameActionImpl(_: FormState, form: FormData): Promise<FormSta
          WHERE id = ?`,
       )
       .run(
-        uniqueSlug(g.title, idRaw), g.title, g.system, g.summary, g.description, g.format, g.locationType, g.language, g.platform, g.city,
+        slug, g.title, g.system, g.summary, g.description, g.format, g.locationType, g.language, g.platform, g.city,
         g.priceIdr, g.seatsTotal, g.experienceLevel, g.minAge, g.contentWarnings, g.safetyTools, g.tags, hue, coverImage, genres, styles, g.status, idRaw,
       );
     gameId = idRaw;
     // More seats (or re-publishing) may free places for people on the waitlist.
     const upcomingIds = db().prepare("SELECT id FROM game_sessions WHERE game_id = ? AND status = 'scheduled' AND starts_at > ?").all(idRaw, new Date().toISOString()) as { id: number }[];
-    tx((c) => { for (const u of upcomingIds) processWaitlist(c, u.id); });
+    tx((c) => {
+      for (const u of upcomingIds) processWaitlist(c, u.id);
+      // Players with a seat need to know if the table moved (another city, online ↔ in person, another platform).
+      if (placeChanged && g.status === "published") {
+        const players = c.prepare(
+          `SELECT DISTINCT b.player_id FROM bookings b JOIN game_sessions s ON s.id = b.session_id
+            WHERE s.game_id = ? AND s.status = 'scheduled' AND s.starts_at > ? AND b.status = 'confirmed'`,
+        ).all(idRaw, new Date().toISOString()) as { player_id: number }[];
+        for (const p of players) notify({ userId: p.player_id, kind: "game_place_changed", actorId: gm.id, gameId: idRaw }, c);
+      }
+    });
   } else {
     gameId = Number(
       db()
@@ -622,12 +643,25 @@ async function sendVerificationEmail(userId: number, email: string, name: string
   await sendEmail({ to: email, subject: t("mail.verifySubject"), text: t("mail.verifyBody", { name, link }), secret: link });
 }
 
+const nowWib = (lang: string) =>
+  new Date().toLocaleString(lang === "id" ? "id-ID" : "en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }) + " WIB";
+
 /** "Your password was changed — if this wasn't you…" (after a change or a reset). */
 async function sendPasswordChangedEmail(email: string, name: string) {
   const { t, lang } = await getI18n();
-  const when = new Date().toLocaleString(lang === "id" ? "id-ID" : "en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }) + " WIB";
   const link = `${await siteOrigin()}/forgot-password`;
-  await sendEmail({ to: email, subject: t("mail.passwordChangedSubject"), text: t("mail.passwordChangedBody", { name, when, link }) });
+  await sendEmail({ to: email, subject: t("mail.passwordChangedSubject"), text: t("mail.passwordChangedBody", { name, when: nowWib(lang), link }) });
+}
+
+/** "Your payment details were changed" — shows what players now see, and what to do if it wasn't the GM. */
+async function sendPaymentDetailsChangedEmail(email: string, name: string, details: string) {
+  const { t, lang } = await getI18n();
+  const link = `${await siteOrigin()}/forgot-password`;
+  await sendEmail({
+    to: email,
+    subject: t("mail.paymentChangedSubject"),
+    text: t("mail.paymentChangedBody", { name, when: nowWib(lang), details: details || t("mail.paymentRemoved"), link }),
+  });
 }
 
 /** Settings / banner: send the verification link again. */

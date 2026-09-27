@@ -64,3 +64,30 @@ test("sign-up records Terms consent; a password change sends a security email", 
   expect(mail.body_text).toContain("/forgot-password");
   db.close();
 });
+
+test("changing a GM's payment details sends a security email showing the new details", async ({ page }) => {
+  const db = e2eDb();
+  const email = unique("paygm");
+  await signup(page, "Careful GM", email, true);
+  const fillProfile = async (payment: string) => {
+    await page.goto("/gm");
+    await page.getByRole("link", { name: /Edit profile & payment details/ }).click();
+    await page.getByLabel("Headline").fill("Short one-shots");
+    await page.getByLabel("About you").fill("GM yang suka one-shot singkat dan cerita misteri di kota.");
+    await page.getByLabel(/How players pay you/).fill(payment);
+    await page.getByRole("button", { name: /Save & go to GM dashboard/ }).click();
+    await page.waitForURL("**/gm");
+  };
+  const mark = (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM email_outbox").get() as { n: number }).n;
+  const mails = () => db.prepare("SELECT subject, body_text FROM email_outbox WHERE id > ? AND to_address = ? AND subject LIKE '%payment details%'").all(mark, email) as { subject: string; body_text: string }[];
+  await fillProfile("BCA 111-222-333 a.n. Careful GM");
+  expect(mails()).toHaveLength(0); // first time: nothing changed
+  await fillProfile("BCA 111-222-333 a.n. Careful GM"); // saved again, same details
+  expect(mails()).toHaveLength(0);
+  await fillProfile("Mandiri 999-888 a.n. Someone Else");
+  const [mail] = mails();
+  expect(mail.subject).toBe("Your Quest Board payment details were changed");
+  expect(mail.body_text).toContain("Mandiri 999-888 a.n. Someone Else");
+  expect(mail.body_text).toContain("/forgot-password");
+  db.close();
+});

@@ -229,6 +229,7 @@ export type GameRow = {
   price_idr: number; seats_total: number; experience_level: "any" | "beginner" | "experienced"; min_age: number;
   content_warnings: string; safety_tools: string; tags: string; cover_hue: number; cover_image: string; genres: string; styles: string;
   status: "draft" | "published" | "archived"; created_at: string;
+  announced_at: string | null; // first published (v12)
 };
 
 export function getGameById(id: number): GameRow | undefined {

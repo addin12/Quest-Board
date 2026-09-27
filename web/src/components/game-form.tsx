@@ -177,8 +177,8 @@ export function GameForm({ defaults: initial, systems }: { defaults: GameFormDef
             <span aria-hidden className="h-10 w-16 rounded-md" style={{ background: `linear-gradient(135deg, hsl(${hue} 60% 50%), hsl(${(hue + 40) % 360} 50% 25%))` }} />
           </div>
         </Field>
-        <Field id="status" label={t("gameForm.visibility")}>
-          <select id="status" name="status" defaultValue={defaults.status === "draft" ? "draft" : "published"} className="input max-w-80">
+        <Field id="status" label={t("gameForm.visibility")} error={err("status")}>
+          <select id="status" {...errAttrs("status", err("status"))} name="status" defaultValue={defaults.status === "draft" ? "draft" : "published"} className="input max-w-80">
             <option value="published">{t("gameForm.published")}</option>
             <option value="draft">{t("gameForm.draft")}</option>
           </select>

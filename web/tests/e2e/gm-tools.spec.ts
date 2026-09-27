@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { login, newPage, e2eDb, signup, unique } from "./helpers";
+import { login, newPage, e2eDb, signup, unique, createGmWithGame, bookFirstOpenSeat } from "./helpers";
 
 test("a GM cancels a session with a message: players see it in the bell, on My games and by email", async ({ page, browser }) => {
   const db = e2eDb();
@@ -118,6 +118,34 @@ test("if the GM changes the time or price while a player is on the booking page,
     db.prepare("DELETE FROM game_sessions WHERE id = ?").run(sid);
     db.close();
   }
+});
+
+test("editing a published game: the address stays, it can't be unpublished under booked players, and a new place is announced", async ({ page, browser }) => {
+  const title = `Stable Table ${Date.now() % 100000}`;
+  const slug = await createGmWithGame(page, "Stable GM", unique("stable-gm"), title);
+  const manage = page.url();
+  const player = await newPage(browser);
+  await signup(player, "Seat Holder", unique("holder"));
+  await bookFirstOpenSeat(player, [slug]);
+
+  await page.goto(`${manage}/edit`);
+  await page.getByLabel("Title").fill(`${title} Renamed`);
+  await page.getByLabel("Visibility").selectOption("draft");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Players hold seats in upcoming sessions.")).toBeVisible();
+  await expect(page.getByLabel("Visibility")).toHaveAttribute("aria-invalid", "true");
+
+  await page.getByLabel("Visibility").selectOption("published");
+  await page.getByLabel("Platform(s)").fill("Discord + Owlbear Rodeo");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await page.waitForURL(/\/gm\/games\/\d+$/);
+
+  // Renamed, but the shared link still works.
+  await player.goto(`/games/${slug}`);
+  await expect(player.getByRole("heading", { level: 1, name: `${title} Renamed` })).toBeVisible();
+  // The booked player hears that the table moved to another platform.
+  await player.goto("/notifications");
+  await expect(player.getByText(`The GM changed where ${title} Renamed is played`)).toBeVisible();
 });
 
 test("a GM duplicates a game: a draft copy without sessions, ready to edit", async ({ page }) => {
