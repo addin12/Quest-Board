@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 import { login, newPage, signup, unique } from "./helpers";
 
 // Iteration 7: UI/UX polish.
@@ -81,6 +82,41 @@ test.describe("phones", () => {
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog", { name: "Filter games" })).toHaveCount(0);
   });
+
+  test("a game page keeps a booking bar in reach that jumps to the dates", async ({ page }) => {
+    await page.goto("/games/mercusuar-di-pulau-kabut");
+    const cta = page.getByRole("link", { name: "See dates" });
+    await expect(cta).toBeVisible();
+    await expect(page.getByText(/\d+ upcoming sessions?/).first()).toBeVisible();
+    // Pinned above the tab bar, not under it.
+    const bar = (await cta.boundingBox())!;
+    const tabs = (await page.getByRole("navigation", { name: "Sections" }).boundingBox())!;
+    expect(bar.y + bar.height).toBeLessThanOrEqual(tabs.y + 1);
+    await cta.click();
+    await expect(page).toHaveURL(/#sessions$/);
+    await expect(page.locator("#sessions").getByRole("link", { name: "Book", exact: true }).first()).toBeInViewport();
+    const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+    expect(violations.map((v) => v.id)).toEqual([]);
+    // Fits a 320px phone.
+    await page.setViewportSize({ width: 320, height: 640 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+    // The GM of the game doesn't get a booking bar.
+    await login(page, "gm@questboard.test");
+    await page.goto("/games/mercusuar-di-pulau-kabut");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.getByRole("link", { name: "See dates" })).toHaveCount(0);
+  });
+});
+
+test("a new player with no bookings gets a welcome panel; a player with bookings doesn't", async ({ page }) => {
+  await signup(page, "Fresh Player", unique("welcome"));
+  const welcome = page.getByRole("region", { name: "Welcome to the tavern!" });
+  await expect(welcome).toBeVisible();
+  await welcome.getByRole("link", { name: "Beginner-friendly games" }).click();
+  await expect(page).toHaveURL(/\/games\?level=beginner$/);
+  await page.context().clearCookies();
+  await login(page, "player@questboard.test");
+  await expect(page.getByRole("region", { name: "Welcome to the tavern!" })).toHaveCount(0);
 });
 
 test("desktop keeps filters inline", async ({ page }) => {

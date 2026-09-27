@@ -1,6 +1,9 @@
 import { getGameBySlug, listSessions } from "@/lib/queries";
+import { apiLimited } from "@/lib/rate-limit";
 
 export async function GET(_: Request, ctx: RouteContext<"/api/games/[slug]">) {
+  const limited = await apiLimited();
+  if (limited) return limited;
   const { slug } = await ctx.params;
   const g = getGameBySlug(slug);
   if (!g || g.status !== "published") return Response.json({ error: "not_found" }, { status: 404 });

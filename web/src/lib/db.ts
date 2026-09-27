@@ -75,7 +75,8 @@ function open(): DatabaseSync {
   const file = process.env.QUESTBOARD_DB ?? path.join(process.cwd(), "data", "questboard.db");
   if (file !== ":memory:") mkdirSync(path.dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
-  db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
+  // busy_timeout: wait (up to 5 s) for another writer — a backup, the admin CLI — instead of failing.
+  db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
   prepareSchema(db, file);
   const { n } = db.prepare("SELECT COUNT(*) AS n FROM users").get() as { n: number };
   if (n === 0 && process.env.QUESTBOARD_SEED !== "false") seedDatabase(db);

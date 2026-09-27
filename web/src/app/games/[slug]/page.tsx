@@ -189,7 +189,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
           </div>
 
           <aside className="space-y-5 lg:sticky lg:top-24 lg:h-fit">
-            <div className="card p-5">
+            <div id="sessions" className="card scroll-mt-24 p-5">
               <p className="text-2xl font-bold">
                 {priceLabel(game.price_idr, t)}
                 {game.price_idr > 0 && <span className="text-sm font-normal text-muted"> / {t("common.session")}</span>}
@@ -281,6 +281,22 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
           </aside>
         </div>
       </div>
+      {/* Phones and tablets: the booking card sits below the whole description, so keep a way to it in reach. */}
+      {sessions.length > 0 && !isOwner && (
+        <>
+          <div className="h-16 lg:hidden" aria-hidden="true" />
+          <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface/95 px-4 py-2.5 shadow-[0_-4px_12px_rgb(0_0_0/0.12)] backdrop-blur md:bottom-0 lg:hidden">
+            <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+              <p className="min-w-0 text-sm">
+                <span className="font-bold">{priceLabel(game.price_idr, t)}</span>
+                {game.price_idr > 0 && <span className="text-muted"> / {t("common.session")}</span>}
+                <span className="block truncate text-xs text-muted">{t("game.stickyUpcoming", { n: sessions.length })}</span>
+              </p>
+              <a href="#sessions" className="btn-primary shrink-0"><Icon name="ticket" /> {t("game.stickySeeDates")}</a>
+            </div>
+          </div>
+        </>
+      )}
     </article>
   );
 }

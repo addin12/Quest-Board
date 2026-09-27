@@ -1,10 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
-import { login, newPage, signup, unique } from "./helpers";
+import { login, newPage, signup, unique, e2eDb } from "./helpers";
 
 test("questions before booking: a private player ↔ GM thread with notifications", async ({ page, browser }) => {
   test.setTimeout(90_000);
-  const db = new DatabaseSync("data/e2e.db");
+  const db = e2eDb();
   db.exec("PRAGMA foreign_keys = ON");
   const game = db.prepare("SELECT id, title FROM games WHERE slug = 'signal-from-tartarus-station'").get() as { id: number; title: string };
   const player = db.prepare("SELECT id FROM users WHERE email = 'player@questboard.test'").get() as { id: number };

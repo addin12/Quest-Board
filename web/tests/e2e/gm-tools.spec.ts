@@ -1,9 +1,8 @@
 import { test, expect } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
-import { login, newPage } from "./helpers";
+import { login, newPage, e2eDb } from "./helpers";
 
 test("a GM cancels a session with a message: players see it in the bell, on My games and by email", async ({ page, browser }) => {
-  const db = new DatabaseSync("data/e2e.db");
+  const db = e2eDb();
   const game = db.prepare("SELECT id FROM games WHERE slug = 'mercusuar-di-pulau-kabut'").get() as { id: number };
   const player = db.prepare("SELECT id FROM users WHERE email = 'player@questboard.test'").get() as { id: number };
   const sid = Number(db.prepare("INSERT INTO game_sessions (game_id, starts_at) VALUES (?, ?)").run(game.id, new Date(Date.now() + 40 * 86_400_000).toISOString()).lastInsertRowid);
@@ -40,7 +39,7 @@ test("a GM cancels a session with a message: players see it in the bell, on My g
 
 test("a GM duplicates a game: a draft copy without sessions, ready to edit", async ({ page }) => {
   await login(page, "gm@questboard.test");
-  const db = new DatabaseSync("data/e2e.db");
+  const db = e2eDb();
   const game = db.prepare("SELECT id, title FROM games WHERE slug = 'signal-from-tartarus-station'").get() as { id: number; title: string };
   await page.goto(`/gm/games/${game.id}`);
   await page.getByRole("button", { name: "Duplicate game" }).click();

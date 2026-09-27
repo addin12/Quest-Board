@@ -1,10 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
+import { e2eDb } from "./helpers";
 
 test("P2-5 browse shows 24 games, then 'Load more' adds the next batch", async ({ page }) => {
   // 30 copies of a demo game, found by a keyword nothing else uses, so other tests are unaffected.
   const tag = `Pagination${Date.now()}`;
-  const db = new DatabaseSync("data/e2e.db");
+  const db = e2eDb();
   const cols = (db.prepare("PRAGMA table_info(games)").all() as { name: string }[]).map((c) => c.name).filter((c) => c !== "id" && c !== "slug" && c !== "title");
   const ins = db.prepare(`INSERT INTO games (slug, title, ${cols.join(", ")}) SELECT ?, ?, ${cols.join(", ")} FROM games WHERE slug = 'mercusuar-di-pulau-kabut'`);
   db.exec("BEGIN");

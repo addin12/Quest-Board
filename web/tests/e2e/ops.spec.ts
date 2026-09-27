@@ -1,6 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
-import { login, newPage } from "./helpers";
+import { login, newPage, e2eDb } from "./helpers";
 
 test("health check: 200 with the schema version, nothing private", async ({ request }) => {
   const res = await request.get("/api/health");
@@ -12,7 +11,7 @@ test("health check: 200 with the schema version, nothing private", async ({ requ
 });
 
 test("server errors are logged and shown to admins; the launch pulse is on the admin home", async ({ page, browser }) => {
-  const db = new DatabaseSync("data/e2e.db");
+  const db = e2eDb();
   const mark = (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM error_log").get() as { n: number }).n;
   const mine = db.prepare("SELECT id FROM games WHERE slug = 'mercusuar-di-pulau-kabut'").get() as { id: number };
   const other = db.prepare("SELECT id FROM games WHERE slug = 'naga-naga-hutan-bara-petualangan-pemula'").get() as { id: number };
@@ -43,7 +42,7 @@ test("server errors are logged and shown to admins; the launch pulse is on the a
 });
 
 test("admins can read a question thread but don't get a reply box", async ({ page }) => {
-  const db = new DatabaseSync("data/e2e.db");
+  const db = e2eDb();
   db.exec("PRAGMA foreign_keys = ON");
   const game = db.prepare("SELECT id FROM games WHERE slug = 'signal-from-tartarus-station'").get() as { id: number };
   const admin = db.prepare("SELECT id FROM users WHERE email = 'admin@questboard.test'").get() as { id: number };

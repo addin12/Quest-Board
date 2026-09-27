@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
+import { e2eDb } from "./helpers";
 
 test("P3-3 /id and /en URLs show that language, list both in hreflang, and remember the choice", async ({ page, request }) => {
   await page.goto("/id/games");
@@ -34,7 +34,7 @@ test("P3-3 /id and /en URLs show that language, list both in hreflang, and remem
 
 test("a GM profile shows 12 games, and 'See all' opens the full list filtered to that GM", async ({ page }) => {
   const tag = `gmcap${Date.now()}`;
-  const db = new DatabaseSync("data/e2e.db");
+  const db = e2eDb();
   const cols = (db.prepare("PRAGMA table_info(games)").all() as { name: string }[]).map((c) => c.name).filter((c) => !["id", "slug", "title"].includes(c));
   const ins = db.prepare(`INSERT INTO games (slug, title, ${cols.join(", ")}) SELECT ?, ?, ${cols.join(", ")} FROM games WHERE slug = 'mercusuar-di-pulau-kabut'`);
   const gm = db.prepare("SELECT gm_id FROM games WHERE slug = 'mercusuar-di-pulau-kabut'").get() as { gm_id: number };

@@ -1,12 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
-import { login } from "./helpers";
+import { login, e2eDb } from "./helpers";
 
 const AUTH = { Authorization: "Bearer e2e-cron-secret" };
 type Mail = { to_address: string; subject: string; body_text: string };
 
 test("P2-12 session reminders: in-app + email in the person's language, once each, respecting the opt-out", async ({ page, request }) => {
-  const db = new DatabaseSync("data/e2e.db");
+  const db = e2eDb();
   db.exec("PRAGMA foreign_keys = ON"); // so cleanup removes the test bookings and reminders too
   const player = db.prepare("SELECT id FROM users WHERE email = 'player@questboard.test'").get() as { id: number };
   const game = db.prepare("SELECT id, title FROM games WHERE slug = 'mercusuar-di-pulau-kabut'").get() as { id: number; title: string };

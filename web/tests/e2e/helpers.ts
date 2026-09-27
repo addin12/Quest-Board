@@ -1,4 +1,12 @@
 import { expect, type Browser, type Page } from "@playwright/test";
+import { DatabaseSync } from "node:sqlite";
+
+/** The e2e database, opened like the app opens it: waits for the server's writes instead of failing. */
+export function e2eDb(file = "data/e2e.db"): DatabaseSync {
+  const db = new DatabaseSync(file);
+  db.exec("PRAGMA busy_timeout = 5000");
+  return db;
+}
 
 // Shared journey steps for e2e specs (English UI).
 

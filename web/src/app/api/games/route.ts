@@ -1,7 +1,10 @@
 import { countGames, searchGames, type GameFilters } from "@/lib/queries";
+import { apiLimited } from "@/lib/rate-limit";
 
 // Public read-only JSON API — see docs/06-api-spec.md. Prices are whole IDR.
 export async function GET(request: Request) {
+  const limited = await apiLimited();
+  if (limited) return limited;
   const p = new URL(request.url).searchParams;
   const sort = p.get("sort");
   const filters: GameFilters = {

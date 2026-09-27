@@ -1,13 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
-import { login, newPage, signup, unique } from "./helpers";
+import { login, newPage, signup, unique, e2eDb } from "./helpers";
 
 const AUTH = { Authorization: "Bearer e2e-cron-secret" };
 type Mail = { to_address: string; subject: string; body_text: string };
 
 test("important notifications are emailed (queued with the change), respecting the opt-out", async ({ page, browser, request }) => {
   test.setTimeout(90_000);
-  const db = new DatabaseSync("data/e2e.db");
+  const db = e2eDb();
   const game = db.prepare("SELECT id, title FROM games WHERE slug = 'mercusuar-di-pulau-kabut'").get() as { id: number; title: string };
   const sid = Number(db.prepare("INSERT INTO game_sessions (game_id, starts_at) VALUES (?, ?)").run(game.id, new Date(Date.now() + 45 * 86_400_000).toISOString()).lastInsertRowid);
   const lastId = () => (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM email_outbox").get() as { n: number }).n;

@@ -10,7 +10,7 @@ The full QA strategy and manual checklist are in `docs/09-testing-and-qa.md`.
 | `npm test` | `tests/unit/*.test.ts`: policy (IDR, canBook, canCancel, location), validation, i18n parity + default language, icon subset vs registry, **placeholder art exists + is script-free + migration v6 back-fill**, **categories (normalize, systemSlug, dictionary coverage, request/offer/profile validation, migration v7 back-fill)**, D&D editions, crypto | Node's built-in runner with native TS stripping. Runs with `--conditions=react-server` (so `server-only` is a no-op) and `--import ./tests/loader.mjs`, a resolve hook for `@/…` and extensionless imports. So **server modules can be unit-tested too**: set `QUESTBOARD_DB` to a temp file and `QUESTBOARD_SEED=false` *before* importing them, and stub `globalThis.fetch` for email (see `mail-delivery.test.ts`, `review-prompts.test.ts`) |
 | `npm run test:e2e` | `next build`, then Playwright on **:3100** against a fresh `data/e2e.db` | Uses installed **Edge**; `PW_CHANNEL=chrome` for Chrome. Default locale `en-US`, timezone `Asia/Jakarta` |
 
-Current baseline: **65 unit tests, 74 e2e journeys** (`a11y.spec.ts` 6 + `accounts.spec.ts` 6 + `board-social.spec.ts` 4 + `hardening.spec.ts` 9 + `hire-and-browse.spec.ts` 9 + `marketplace.spec.ts` 16 + `moderation.spec.ts` 5 + `share-calendar-live.spec.ts` 6 + `ux-polish.spec.ts` 9 + `waitlist-paid-recurring.spec.ts` 4), all green. The full e2e run takes about 11 minutes: run it in the background, and **don't rebuild while it runs** (the test server uses `.next`).
+Current baseline (2026-09-27): **96 unit tests, 105 e2e tests** (101 in the `seeded` project across 22 spec files, 4 in `empty-launch.spec.ts` on an empty database), all green. The full e2e run takes about 11 minutes: run it in the background, and **don't rebuild while it runs** (the test server uses `.next`).
 
 **Notification assertions:** earlier specs may create similar notifications for the same demo account, so use `.first()` or unique titles.
 
@@ -21,7 +21,7 @@ Current baseline: **65 unit tests, 74 e2e journeys** (`a11y.spec.ts` 6 + `accoun
 **Emails in e2e:** the test server runs with `QUESTBOARD_DEV_OUTBOX=true`, so tests read verification and reset links from `/dev/outbox` (see `linkFromOutbox()` in `accounts.spec.ts`).
 **After a client-side navigation**, wait for the new page's heading before filling fields: the old page's inputs can still match for a moment.
 
-**Accessibility sweep** (`a11y.spec.ts`): `@axe-core/playwright` with WCAG 2.1 A/AA tags on 10 public pages × EN/ID × light/dark, plus signed-in pages and a form with errors. It fails with one line per violation (page → rule → selectors). Add new pages to its lists. Update these numbers when you add tests.
+**Accessibility sweep** (`a11y.spec.ts`): `@axe-core/playwright` with WCAG 2.1 A/AA tags on the public pages × EN/ID × light/dark, the same pages at 360 px phone width, signed-in, admin and brand-new GM/player pages, and a form with errors. It fails with one line per violation (page → rule → selectors). Add new pages to its lists. Update these numbers when you add tests.
 
 ## Writing e2e tests
 - **Tests share one DB and run serially** (`workers: 1`), so pick seed data that other tests don't mutate:

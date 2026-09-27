@@ -77,7 +77,10 @@ A person's private, subscribable iCalendar feed (created and reset in Settings).
 The signed-in GM's booked seats as CSV (`session_start_wib, game, player, price_idr, marked_paid`), for their own bookkeeping. UTF-8 with BOM; cells are quoted and spreadsheet formulas are neutralised. **401** unless signed in as a GM.
 
 ### Planned
-`GET /api/gms/{id}` · `GET /api/systems` · rate limiting of 60 requests/min per IP (`429` + `Retry-After`).
+`GET /api/gms/{id}` · `GET /api/systems`.
+
+### Rate limit
+`/api/games` and `/api/games/{slug}` allow **120 requests per minute per IP**. Beyond that they answer `429 Too Many Requests` with `{ "error": "rate_limited" }` and `Retry-After: 60`.
 
 ---
 

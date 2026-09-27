@@ -66,7 +66,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <header className="on-wood wood-plank sticky top-0 z-40 border-b-2 border-[#8a6a3a] shadow-[0_2px_10px_rgb(0_0_0/0.35)]">
             <nav className="mx-auto flex h-16 max-w-6xl items-center gap-1 whitespace-nowrap px-4 2xl:max-w-7xl" aria-label={t("nav.main")}>
               <Link href="/" className="mr-1 flex items-center gap-2 text-lg font-extrabold tracking-wide sm:mr-3" style={{ fontFamily: "var(--font-heading)" }}>
-                <Icon name="dice-d20" solid className="text-xl text-accent drop-shadow-[0_0_6px_rgb(234_179_90/0.55)]" /> <span className="hidden min-[400px]:inline">Quest Board</span>
+                <Icon name="dice-d20" solid className="text-xl text-accent drop-shadow-[0_0_6px_rgb(234_179_90/0.55)]" /> <span className="max-[399px]:sr-only">Quest Board</span>
               </Link>
               <Link href="/games" className="btn-ghost px-2.5 max-md:hidden xl:px-3" aria-label={t("nav.findGame")}>
                 <Icon name="search" /> <span className="hidden lg:inline">{t("nav.findGame")}</span>

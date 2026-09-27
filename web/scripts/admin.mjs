@@ -68,6 +68,7 @@ function main(argv) {
     return 1;
   }
   const db = new DatabaseSync(file);
+  db.exec("PRAGMA busy_timeout = 5000"); // wait for the running app instead of failing
   try {
     const { user_version } = db.prepare("PRAGMA user_version").get();
     if (user_version !== SCHEMA_VERSION) {

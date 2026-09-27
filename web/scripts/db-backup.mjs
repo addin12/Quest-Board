@@ -39,6 +39,7 @@ export function backup(dbFile, dir, keep = 14, now = new Date()) {
   let out = join(dir, `questboard-${stamp(now)}.db`);
   for (let i = 2; existsSync(out); i++) out = join(dir, `questboard-${stamp(now)}-${i}.db`);
   const db = new DatabaseSync(dbFile);
+  db.exec("PRAGMA busy_timeout = 5000");
   try {
     db.exec(`VACUUM INTO '${resolve(out).replace(/'/g, "''")}'`);
   } finally {
@@ -60,6 +61,7 @@ export function restore(backupFile, dbFile, now = new Date()) {
   if (existsSync(dbFile)) {
     saved = join(dirname(dbFile), `${basename(dbFile, ".db")}.before-restore-${stamp(now)}.db`);
     const cur = new DatabaseSync(dbFile);
+    cur.exec("PRAGMA busy_timeout = 5000");
     try { cur.exec(`VACUUM INTO '${resolve(saved).replace(/'/g, "''")}'`); } finally { cur.close(); }
   }
   for (const suffix of ["-wal", "-shm"]) rmSync(dbFile + suffix, { force: true });

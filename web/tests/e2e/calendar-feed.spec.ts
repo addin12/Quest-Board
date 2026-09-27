@@ -1,9 +1,8 @@
 import { test, expect } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
-import { login, newPage } from "./helpers";
+import { login, newPage, e2eDb } from "./helpers";
 
 test("personal calendar feed: booked sessions, cancellations marked, and a reset kills the old link", async ({ page, browser, request }) => {
-  const db = new DatabaseSync("data/e2e.db");
+  const db = e2eDb();
   db.exec("PRAGMA foreign_keys = ON");
   const game = db.prepare("SELECT id FROM games WHERE slug = 'mercusuar-di-pulau-kabut'").get() as { id: number };
   const player = db.prepare("SELECT id FROM users WHERE email = 'player@questboard.test'").get() as { id: number };

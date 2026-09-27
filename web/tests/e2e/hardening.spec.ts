@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
+import { e2eDb } from "./helpers";
 
 // Regression tests for the P1 fixes in IMPROVEMENTS.md.
 // Uses seed games no other spec mutates: "Darah di Balik Tirai Beludru" (seat edit),
@@ -70,7 +70,7 @@ test("P1-1 a GM cannot lower seats below what an upcoming session already holds"
 });
 
 test("P1-3 table chat shows the newest messages when there are more than 200", async ({ page }) => {
-  const db = new DatabaseSync("data/e2e.db");
+  const db = e2eDb();
   const game = db.prepare("SELECT id, gm_id FROM games WHERE slug = ?").get("mercusuar-di-pulau-kabut") as { id: number; gm_id: number };
   const ins = db.prepare("INSERT INTO messages (game_id, user_id, body, created_at) VALUES (?, ?, ?, ?)");
   const base = Date.now() - 300_000;

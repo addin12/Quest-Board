@@ -83,3 +83,25 @@ test("a brand-new GM's dashboard (with the getting-started checklist) has no axe
   found.push(...(await violationsOf(page, "/settings (new GM)")));
   expect(found).toEqual([]);
 });
+
+test.describe("phone width", () => {
+  // Narrow screens hide labels and show other controls (tab bar, filter sheet, booking bar).
+  test.use({ viewport: { width: 360, height: 780 } });
+
+  test("public pages and a new player's dashboard have no axe violations", async ({ page }) => {
+    const found: string[] = [];
+    for (const path of PUBLIC_PAGES) {
+      await page.goto(path);
+      found.push(...(await violationsOf(page, `${path} [360px]`)));
+    }
+    await page.goto("/signup");
+    await page.getByLabel("Display name").fill("Axe Check Player");
+    await page.getByLabel("Email").fill(`axe-player-${Date.now()}@questboard.test`);
+    await page.getByLabel("Password").fill("password123");
+    await page.getByRole("button", { name: "Create account" }).click();
+    await page.waitForURL("**/dashboard");
+    await expect(page.getByRole("heading", { name: "Welcome to the tavern!" })).toBeVisible();
+    found.push(...(await violationsOf(page, "/dashboard (new player) [360px]")));
+    expect(found).toEqual([]);
+  });
+});

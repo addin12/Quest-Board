@@ -24,6 +24,7 @@ export const LIMITS = {
   noticeReply: { limit: 30, windowMs: 60 * 60_000 }, // notice-board replies per user
   question: { limit: 20, windowMs: 60 * 60_000 }, // new questions to GMs per user
   feedback: { limit: 5, windowMs: 60 * 60_000 }, // feedback messages per user (or IP when signed out)
+  api: { limit: 120, windowMs: 60_000 },         // public JSON API requests per IP per minute
 } as const;
 
 export type Bucket = keyof typeof LIMITS;
@@ -54,6 +55,12 @@ function limitFor(bucket: Bucket): number {
 }
 
 /** Record a hit. Returns false when the caller is over the limit. */
+/** For API routes: a 429 response when this IP is over the API limit, otherwise null. */
+export async function apiLimited(): Promise<Response | null> {
+  if (hit("api", await clientIp())) return null;
+  return Response.json({ error: "rate_limited" }, { status: 429, headers: { "Retry-After": "60" } });
+}
+
 export function hit(bucket: Bucket, identity: string, nowMs = Date.now()): boolean {
   if (process.env.QUESTBOARD_RATE_LIMIT === "off") return true;
   const { windowMs } = LIMITS[bucket];

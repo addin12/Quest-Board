@@ -1,6 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
-import { login, newPage, signup, unique } from "./helpers";
+import { login, newPage, signup, unique, e2eDb } from "./helpers";
 
 test("new GMs get a getting-started checklist; set-up GMs don't", async ({ page, browser }) => {
   await signup(page, "Fresh Game Master", unique("fresh-gm"), true);
@@ -17,7 +16,7 @@ test("new GMs get a getting-started checklist; set-up GMs don't", async ({ page,
 });
 
 test("feedback: anyone can send it from the footer; admins are notified and can mark it done", async ({ page, browser }) => {
-  const db = new DatabaseSync("data/e2e.db");
+  const db = e2eDb();
   await page.goto("/");
   await page.getByRole("contentinfo").getByRole("link", { name: "Send feedback" }).click();
   await expect(page).toHaveURL(/\/feedback$/);
@@ -47,7 +46,7 @@ test("feedback: anyone can send it from the footer; admins are notified and can 
 });
 
 test("sign-up records Terms consent; a password change sends a security email", async ({ page }) => {
-  const db = new DatabaseSync("data/e2e.db");
+  const db = e2eDb();
   const email = unique("consent");
   await signup(page, "Careful Player", email);
   const u = db.prepare("SELECT terms_accepted_at, terms_version FROM users WHERE email = ?").get(email) as { terms_accepted_at: string | null; terms_version: string };

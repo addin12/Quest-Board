@@ -172,6 +172,27 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
         </Section>
       )}
 
+      {all.length === 0 && (
+        <section className="card mt-6 p-5" aria-labelledby="welcome-h">
+          <h2 id="welcome-h" className="text-lg font-bold">{t("welcome.title")}</h2>
+          <p className="mt-1 text-sm text-muted">{t("welcome.lead")}</p>
+          <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+            {([
+              ["/quiz", "sparkles", t("welcome.quiz")],
+              ["/games?level=beginner", "seedling", t("welcome.beginner")],
+              ["/board", "thumbtack", t("welcome.board")],
+              ["/hire-a-gm", "briefcase", t("welcome.hire")],
+            ] as const).map(([href, icon, label]) => (
+              <li key={href}>
+                <Link href={href} className="flex items-center gap-2 rounded-lg border border-border p-3 text-sm font-semibold hover:border-accent hover:text-accent">
+                  <Icon name={icon} className="text-accent" /> {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {questions.length > 0 && (
         <Section icon="comment-dots" title={t("dash.questions")}>
           <QuestionList rows={questions} awaitingLabel={t("dash.questionReplied")} />

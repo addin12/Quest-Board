@@ -49,3 +49,13 @@ test("outside dev, the email outbox never keeps a working verification link", as
   expect(row.body_text).toContain("[link removed]");
   expect(row.body_text).not.toMatch(/token=/);
 });
+
+test("the public API is rate-limited per IP (120 requests a minute)", async ({ request }) => {
+  const statuses: number[] = [];
+  for (let i = 0; i < 125; i++) statuses.push((await request.get("/api/games?limit=1")).status());
+  expect(statuses.filter((s) => s === 200).length).toBeLessThanOrEqual(120);
+  expect(statuses.at(-1)).toBe(429);
+  const res = await request.get("/api/games/anything");
+  expect(res.status()).toBe(429);
+  expect(res.headers()["retry-after"]).toBe("60");
+});
