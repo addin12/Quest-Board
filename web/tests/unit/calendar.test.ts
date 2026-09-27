@@ -42,6 +42,9 @@ test("buildIcs produces a valid single-event calendar with CRLF line endings", (
   assert.match(ics, /\r\nDTEND:20260928T150000Z\r\n/); // 180 minutes later
   assert.match(ics, /\r\nUID:session-7@questboard\r\n/);
   assert.match(ics, /\r\nTRIGGER:-PT1H\r\n/); // 1-hour reminder
+  assert.match(ics, /\r\nSEQUENCE:0\r\n/);
+  // A session whose time the GM changed twice: calendars take the update because SEQUENCE went up.
+  assert.match(buildIcs(sessionEvent({ ...session, reschedule_count: 2 }, "https://questboard.id", t)), /\r\nSEQUENCE:2\r\n/);
   assert.ok(!/\n(?<!\r\n)/.test(ics.replace(/\r\n/g, "")), "no bare LF");
 });
 

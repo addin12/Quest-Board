@@ -323,6 +323,9 @@ export const MIGRATIONS: Record<number, string> = {
       PRIMARY KEY (game_id, player_id)
     );
   `,
+  21: `
+    ALTER TABLE game_sessions ADD COLUMN reschedule_count INTEGER NOT NULL DEFAULT 0;
+  `,
 };
 
 export type UpgradePlan =

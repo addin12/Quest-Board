@@ -209,6 +209,7 @@ session_reminders(session_id → game_sessions, user_id → users, kind '24h'|'1
 ALTER TABLE game_sessions ADD COLUMN cancel_reason TEXT NOT NULL DEFAULT '';  -- the GM's message when cancelling
 ```
 - Shown to booked players in the `session_cancelled` notification, on My games, and in the cancellation email.
+- Every cancellation path (the Cancel button, archiving, account deletion, moderation) creates `session_cancelled` notifications, which queue the cancellation email (`email_queue`). It is sent even to people with `email_notifications = 0` (`ALWAYS_EMAIL`), because they might otherwise turn up.
 
 ## v15: calendar feed
 ```sql
@@ -252,3 +253,10 @@ ALTER TABLE email_outbox ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE email_outbox ADD COLUMN retryable INTEGER NOT NULL DEFAULT 1;  -- 0 when the one-time link was blanked
 review_prompts(game_id → games, player_id → users, sent_at, PRIMARY KEY (game_id, player_id))
 ```
+
+## v21: changing a session's time
+```sql
+ALTER TABLE game_sessions ADD COLUMN reschedule_count INTEGER NOT NULL DEFAULT 0;  -- times the GM changed the time
+```
+- Changing the time (`rescheduleSessionAction`) keeps every booking, clears the session's `session_reminders` rows so reminders go out again for the new time, and sends booked players a `session_moved` notification and an email with the old and new time.
+- The calendar feed and `.ics` files use it as `SEQUENCE`, so calendar apps replace the old time.

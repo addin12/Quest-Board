@@ -14,6 +14,7 @@ export type NotificationKind =
   | "booking_new"        // → GM: a player reserved a seat
   | "booking_cancelled"  // → GM: a player cancelled their seat
   | "session_cancelled"  // → player: the GM cancelled a session they had booked
+  | "session_moved"      // → player: the GM changed the time of a session they had booked
   | "report_new"         // → admins: a member reported something
   | "report_resolved"    // → reporter: a moderator reviewed their report
   | "waitlist_offer"     // → player: a seat opened up and is held for them
@@ -27,14 +28,17 @@ export type NotificationKind =
   | "review_prompt";       // → player: a few hours after their session, "leave a review" (once per game)
 
 /**
- * Kinds that are also emailed (see lib/notification-mail.ts). Not here: session_cancelled
- * (the cancel action sends its own email with the GM's message), reminders (their own emails),
+ * Kinds that are also emailed (see lib/notification-mail.ts). session_cancelled is queued from every path
+ * (cancel, archive, account deletion, moderation). Not here: session_moved (its action sends the old and new time), reminders (their own emails),
  * and low-urgency kinds (follows, paid ticks, board replies, report outcomes).
  */
 export const EMAIL_KINDS: ReadonlySet<NotificationKind> = new Set([
   "booking_new", "booking_cancelled", "waitlist_offer", "request_direct", "offer_received", "offer_chosen",
-  "request_message", "game_question", "feedback_new", "review_prompt",
+  "request_message", "game_question", "feedback_new", "review_prompt", "session_cancelled",
 ]);
+
+/** Emailed even to people who turned notification emails off: they could otherwise turn up to a session that isn't happening. */
+export const ALWAYS_EMAIL: ReadonlySet<NotificationKind> = new Set(["session_cancelled"]);
 
 /** Kinds that update one unread row instead of piling up (chatty events). */
 const COLLAPSE: ReadonlySet<NotificationKind> = new Set(["request_message", "lfg_reply", "game_question"]);
@@ -83,6 +87,7 @@ export type NotificationRow = {
   request_title: string | null;
   game_title: string | null;
   game_slug: string | null;
+  game_status: string | null;
   starts_at: string | null;
   cancel_reason: string | null;
   question_id: number | null;
@@ -93,7 +98,7 @@ export type NotificationRow = {
 const ROW_SELECT = `SELECT n.id, n.kind, n.created_at, n.read_at,
               a.name AS actor_name, a.avatar_hue AS actor_hue, a.avatar_image AS actor_image,
               n.request_id, r.title AS request_title,
-              g.title AS game_title, g.slug AS game_slug, s.starts_at, s.cancel_reason, n.question_id, n.post_id, lp.title AS post_title
+              g.title AS game_title, g.slug AS game_slug, g.status AS game_status, s.starts_at, s.cancel_reason, n.question_id, n.post_id, lp.title AS post_title
          FROM notifications n
          LEFT JOIN users a ON a.id = n.actor_id
          LEFT JOIN gm_requests r ON r.id = n.request_id

@@ -23,7 +23,8 @@
 // v18: feedback (the footer's "Send feedback" form) + users.terms_accepted_at / terms_version (consent record).
 // v19: email_queue (emails for important notifications) + users.email_notifications.
 // v20: email_outbox.attempts / retryable (delivery retries) + review_prompts (once per player per game).
-export const SCHEMA_VERSION = 20;
+// v21: game_sessions.reschedule_count (a GM changed the time; the calendar SEQUENCE).
+export const SCHEMA_VERSION = 21;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -103,7 +104,8 @@ CREATE TABLE IF NOT EXISTS game_sessions (
   starts_at        TEXT NOT NULL,              -- ISO-8601 UTC
   duration_minutes INTEGER NOT NULL DEFAULT 180,
   status           TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled','completed','cancelled')),
-  cancel_reason    TEXT NOT NULL DEFAULT ''    -- v14: the GM's message to booked players when cancelling
+  cancel_reason    TEXT NOT NULL DEFAULT '',   -- v14: the GM's message to booked players when cancelling
+  reschedule_count INTEGER NOT NULL DEFAULT 0  -- v21: times the GM changed the time (iCalendar SEQUENCE)
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_game ON game_sessions(game_id, starts_at);
 

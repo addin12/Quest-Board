@@ -10,6 +10,7 @@ export type CalendarEvent = {
   location: string;
   url: string;
   cancelled?: boolean;  // STATUS:CANCELLED, so subscribed calendars mark or drop it
+  sequence?: number;    // SEQUENCE: goes up each time the time changes, so calendars take the update
 };
 
 /** 2026-09-28T12:00:00.000Z → "20260928T120000Z" */
@@ -69,6 +70,7 @@ function veventLines(e: CalendarEvent, now: Date): string[] {
     "BEGIN:VEVENT",
     `UID:${e.uid}`,
     `DTSTAMP:${icsDate(now)}`,
+    `SEQUENCE:${e.sequence ?? 0}`,
     `DTSTART:${icsDate(e.start)}`,
     `DTEND:${icsDate(end)}`,
     `SUMMARY:${icsEscape(e.title)}`,
@@ -84,7 +86,7 @@ function veventLines(e: CalendarEvent, now: Date): string[] {
 
 /** One Quest Board session as a calendar event (public details only — never payment info). */
 export function sessionEvent(
-  s: { id: number; starts_at: string; duration_minutes: number; title: string; system: string; slug: string; location_type: string; platform: string; city: string },
+  s: { id: number; starts_at: string; duration_minutes: number; reschedule_count?: number; title: string; system: string; slug: string; location_type: string; platform: string; city: string },
   origin: string,
   t: T,
 ): CalendarEvent {
@@ -94,6 +96,7 @@ export function sessionEvent(
     uid: `session-${s.id}@questboard`,
     start: new Date(s.starts_at),
     minutes: s.duration_minutes,
+    sequence: s.reschedule_count ?? 0,
     title: `${s.title} (${s.system})`,
     description: t("cal.description", { where }),
     location: where,

@@ -261,7 +261,7 @@ export function listSessions(gameId: number, opts: { upcomingOnly?: boolean } = 
 export function getSessionWithGame(sessionId: number) {
   return db()
     .prepare(
-      `SELECT s.id, s.starts_at, s.duration_minutes, s.status,
+      `SELECT s.id, s.starts_at, s.duration_minutes, s.status, s.reschedule_count,
               (SELECT COUNT(*) FROM bookings b WHERE b.session_id = s.id AND b.status = 'confirmed') AS seats_taken,
               g.id AS game_id, g.slug, g.title, g.system, g.price_idr, g.seats_total, g.status AS game_status,
               g.gm_id, g.cover_hue, g.cover_image, u.name AS gm_name, u.avatar_image AS gm_image,
@@ -650,7 +650,7 @@ export function sitemapEntries(): { games: { slug: string; created_at: string }[
 }
 
 export type FeedSession = {
-  id: number; starts_at: string; duration_minutes: number; status: string;
+  id: number; starts_at: string; duration_minutes: number; status: string; reschedule_count: number;
   title: string; system: string; slug: string; location_type: string; platform: string; city: string;
 };
 
@@ -668,7 +668,7 @@ export function calendarFeedOwner(token: string): { id: number; locale: "en" | "
  */
 export function calendarFeedSessions(userId: number, now = new Date()): FeedSession[] {
   const since = new Date(now.getTime() - 60 * 86_400_000).toISOString();
-  const cols = "s.id, s.starts_at, s.duration_minutes, s.status, g.title, g.system, g.slug, g.location_type, g.platform, g.city";
+  const cols = "s.id, s.starts_at, s.duration_minutes, s.status, s.reschedule_count, g.title, g.system, g.slug, g.location_type, g.platform, g.city";
   const rows = db()
     .prepare(
       `SELECT ${cols} FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id

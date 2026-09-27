@@ -15,12 +15,13 @@ test("questions before booking: a private player ↔ GM thread with notification
     await page.getByRole("link", { name: "Ask the GM a question" }).click();
     await expect(page).toHaveURL(/\/games\/signal-from-tartarus-station\/ask$/);
     await page.getByLabel("Your question").fill("Is this okay for someone who has never played Mothership?");
+    // Mark the outbox first: the email can go out as soon as the question is saved (the page-load fallback).
+    const outboxMark = (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM email_outbox").get() as { n: number }).n;
     await page.getByRole("button", { name: "Send question" }).click();
     await expect(page).toHaveURL(/\/questions\/\d+\?sent=1$/);
     const threadUrl = page.url().replace(/\?.*$/, "");
     await expect(page.getByText(/^Sent\./)).toBeVisible();
-    // The GM also gets it by email (queued with the notification, sent by the cron).
-    const outboxMark = (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM email_outbox").get() as { n: number }).n; // the email is only sent when the cron runs, below
+    // The GM also gets it by email (queued with the notification, sent by the cron or the fallback).
     await page.request.post("/api/cron/reminders", { headers: { Authorization: "Bearer e2e-cron-secret" } });
     await expect.poll(() => (db.prepare("SELECT COUNT(*) AS n FROM email_outbox WHERE id > ? AND to_address = 'gm@questboard.test' AND subject LIKE ?").get(outboxMark, `%sent a message about ${game.title}%`) as { n: number }).n).toBeGreaterThan(0);
     // Asking again reopens the same thread.

@@ -89,6 +89,7 @@ Priority uses MoSCoW: **M** = must, **S** = should, **C** = could. ✅ = impleme
 | US-53 | As a GM, I can schedule sessions in my local time. | M | Must be in the future. 2–6 hours. Stored in UTC. | ✅ |
 | US-54 | As a GM, I can see who is booked into each session. | M | The roster shows avatar and name. | ✅ |
 | US-55 | As a GM, I can cancel a session. | M | The confirmation says how many seats will be released and reminds me to handle refunds directly. | ✅ |
+| US-62 | As a GM, I can change the time of an upcoming session without losing its bookings. | M | Booked players keep their seats and get a notification and an email with the old and new time; reminders are sent again for the new time; calendar feeds update. | ✅ |
 | US-56 | As a GM, I can mark a past session as played. | S | Only after the start time. Unlocks reviews. | ✅ |
 | US-57 | As a GM, I can see my expected income. | S | The sum of reserved seats × the price at reservation time, for upcoming sessions. Labelled "paid to you directly". | ✅ |
 

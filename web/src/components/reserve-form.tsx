@@ -7,12 +7,15 @@ import { Notice } from "./ui";
 import { useI18n } from "./i18n-provider";
 import { Icon } from "./icon";
 
-export function ReserveForm({ sessionId, priceText, isFree }: { sessionId: number; priceText: string; isFree: boolean }) {
+/** `startsAt` and `price` are what the player sees; if the GM changes either before they confirm, the server asks again. */
+export function ReserveForm({ sessionId, priceText, isFree, startsAt, price }: { sessionId: number; priceText: string; isFree: boolean; startsAt: string; price: number }) {
   const { t } = useI18n();
   const [state, action] = useActionState<FormState, FormData>(reserveSeatAction, undefined);
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="sessionId" value={sessionId} />
+      <input type="hidden" name="seenStartsAt" value={startsAt} />
+      <input type="hidden" name="seenPrice" value={price} />
       <div className="space-y-2 rounded-lg border border-border bg-surface-2 p-4 text-sm">
         <p className="eyebrow flex items-center gap-1.5"><Icon name="wallet" /> {t("book.howPaymentWorks")}</p>
         {isFree ? (

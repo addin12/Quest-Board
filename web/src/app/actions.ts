@@ -16,7 +16,8 @@ import { canReview, getGameById, getGmRequest, getGmSettings, getSessionWithGame
 import { LANG_COOKIE, type MsgKey } from "@/lib/i18n/dict";
 import { markAllRead, notify } from "@/lib/notifications";
 import { sendEmail } from "@/lib/mailer";
-import { cancellationEmail } from "@/lib/session-mail";
+import { movedEmail } from "@/lib/session-mail";
+import { deliverNotificationEmails } from "@/lib/notification-mail";
 import { consumeToken, issueToken, peekToken } from "@/lib/tokens";
 import { archiveGame, deleteAccount } from "@/lib/account";
 import { createReport, decideReport, setGmVerified, suspendUser, unsuspendUser } from "@/lib/moderation";
@@ -255,6 +256,7 @@ export async function archiveGameAction(form: FormData) {
   // Archiving hides the game page from players, so release every future seat
   // instead of leaving players holding seats they can no longer see.
   tx((c) => archiveGame(c, game.id, gm.id));
+  await sendQueuedEmails(); // booked players are told by email too
   revalidatePath("/", "layout");
   redirect("/gm");
 }
@@ -289,7 +291,8 @@ export async function cancelSessionAction(form: FormData) {
   // Past, completed or already-cancelled sessions can't be "cancelled" (players would be told so).
   if (s.status !== "scheduled" || new Date(s.starts_at) <= new Date()) throw new Error("Only upcoming sessions can be cancelled");
   const reason = String(form.get("reason") ?? "").trim().replace(/\s+/g, " ").slice(0, 300);
-  const booked = tx((c) => {
+  tx((c) => {
+    // The notification also queues the cancellation email (lib/notification-mail.ts), with the reason.
     const booked = c.prepare("SELECT player_id FROM bookings WHERE session_id = ? AND status = 'confirmed'").all(sessionId) as { player_id: number }[];
     for (const b of booked) notify({ userId: b.player_id, kind: "session_cancelled", actorId: s.gm_id, sessionId }, c);
     c.prepare("UPDATE game_sessions SET status = 'cancelled', cancel_reason = ? WHERE id = ?").run(reason, sessionId);
@@ -297,12 +300,43 @@ export async function cancelSessionAction(form: FormData) {
     c.prepare(
       "UPDATE bookings SET status = 'cancelled', cancelled_by = 'gm', cancelled_at = ? WHERE session_id = ? AND status = 'confirmed'",
     ).run(new Date().toISOString(), sessionId);
-    return booked;
   });
-  // Players might otherwise turn up: tell them by email too, in their own language.
-  await sendCancellationEmails(booked.map((b) => b.player_id), s, reason);
+  await sendQueuedEmails();
   await toast("toast.sessionCancelled");
   revalidatePath("/", "layout");
+}
+
+/** GM changes an upcoming session's time or length. Seats stay booked; players are told and reminders start over. */
+async function rescheduleSessionActionImpl(_: FormState, form: FormData): Promise<FormState> {
+  const sessionId = Number(form.get("sessionId"));
+  const s = getSessionWithGame(sessionId);
+  if (!s) return { error: "err.notFound" };
+  await ownedGameOrThrow(s.game_id);
+  if (s.status !== "scheduled") return { error: "err.notScheduled" };
+  if (new Date(s.starts_at) <= new Date()) return { error: "err.started" };
+  const start = parseSessionStart(form.get("startsAt"), form.get("tzOffset"), new Date());
+  if (!start.ok) return { fieldErrors: start.errors };
+  const duration = Math.max(30, Math.min(720, Number(form.get("duration") ?? s.duration_minutes) || s.duration_minutes));
+  const startsAt = start.value.toISOString();
+  if (startsAt === new Date(s.starts_at).toISOString() && duration === s.duration_minutes) return { fieldErrors: { startsAt: "v.sameTime" } };
+  const booked = tx((c) => {
+    c.prepare("UPDATE game_sessions SET starts_at = ?, duration_minutes = ?, reschedule_count = reschedule_count + 1 WHERE id = ?").run(startsAt, duration, sessionId);
+    c.prepare("DELETE FROM session_reminders WHERE session_id = ?").run(sessionId); // remind again for the new time
+    const booked = c.prepare("SELECT player_id FROM bookings WHERE session_id = ? AND status = 'confirmed'").all(sessionId) as { player_id: number }[];
+    for (const b of booked) notify({ userId: b.player_id, kind: "session_moved", actorId: s.gm_id, sessionId }, c);
+    return booked;
+  });
+  if (booked.length > 0) {
+    const origin = await siteOrigin();
+    const ids = booked.map((b) => b.player_id);
+    const people = db()
+      .prepare(`SELECT email, name, locale FROM users WHERE id IN (${ids.map(() => "?").join(",")}) AND email_verified_at IS NOT NULL AND deleted_at IS NULL`)
+      .all(...ids) as { email: string; name: string; locale: "en" | "id" }[];
+    await Promise.allSettled(people.map((p) => sendEmail(movedEmail(p, s, s, { starts_at: startsAt, duration_minutes: duration }, origin))));
+  }
+  await toast(booked.length > 0 ? "toast.sessionMoved" : "toast.sessionMovedNoPlayers");
+  revalidatePath("/", "layout");
+  return { ok: true };
 }
 
 export async function completeSessionAction(form: FormData) {
@@ -315,13 +349,9 @@ export async function completeSessionAction(form: FormData) {
   revalidatePath("/", "layout");
 }
 
-async function sendCancellationEmails(playerIds: number[], s: { title: string; slug: string; starts_at: string }, reason: string) {
-  if (playerIds.length === 0) return;
-  const origin = await siteOrigin();
-  const people = db()
-    .prepare(`SELECT email, name, locale FROM users WHERE id IN (${playerIds.map(() => "?").join(",")}) AND email_verified_at IS NOT NULL AND deleted_at IS NULL`)
-    .all(...playerIds) as { email: string; name: string; locale: "en" | "id" }[];
-  await Promise.allSettled(people.map((p) => sendEmail(cancellationEmail(p, s, reason, origin))));
+/** Send queued notification emails now (a cancellation shouldn't wait for the next cron run). Never fails the action. */
+async function sendQueuedEmails() {
+  await deliverNotificationEmails(await siteOrigin()).catch((err) => console.error("[quest-board] notification emails failed", err));
 }
 
 /** Copy one of my games (details, categories, cover) as a new draft, without sessions. */
@@ -367,6 +397,9 @@ async function reserveSeatActionImpl(_: FormState, form: FormData): Promise<Form
       seatsTotal: s.seats_total, seatsTaken: s.seats_taken + heldSeats(c, sessionId, user.id), isGm: s.gm_id === user.id, alreadyBooked: !!already,
     });
     if (!verdict.ok) return verdict.reason;
+    // The GM changed the time or price while this page was open: show the new details and ask again.
+    const seenAt = form.get("seenStartsAt"), seenPrice = form.get("seenPrice");
+    if ((seenAt !== null && String(seenAt) !== s.starts_at) || (seenPrice !== null && Number(seenPrice) !== s.price_idr)) return "err.sessionChanged";
     c.prepare("INSERT INTO bookings (session_id, player_id, status, price_idr) VALUES (?, ?, 'confirmed', ?)").run(
       sessionId, user.id, s.price_idr,
     );
@@ -374,7 +407,10 @@ async function reserveSeatActionImpl(_: FormState, form: FormData): Promise<Form
     c.prepare("UPDATE waitlist SET status = 'claimed' WHERE session_id = ? AND player_id = ? AND status IN ('waiting','offered')").run(sessionId, user.id);
     return null;
   });
-  if (bookingError) return { error: bookingError };
+  if (bookingError) {
+    if (bookingError === "err.sessionChanged") revalidatePath(`/book/${sessionId}`);
+    return { error: bookingError };
+  }
 
   revalidatePath("/", "layout");
   redirect(`/dashboard?booked=${sessionId}`);
@@ -643,6 +679,7 @@ async function deleteAccountActionImpl(_: FormState, form: FormData): Promise<Fo
   if (form.get("confirm") !== "on") fieldErrors.confirm = "v.deleteConfirm";
   if (Object.keys(fieldErrors).length) return { fieldErrors };
   deleteAccount(user.id);
+  await sendQueuedEmails(); // players of a GM's games are told their sessions are off
   (await cookies()).delete(SESSION_COOKIE);
   revalidatePath("/", "layout");
   redirect("/?deleted=1");
@@ -867,6 +904,10 @@ export async function saveGameAction(prev: FormState, form: FormData): Promise<F
 
 export async function addSessionAction(prev: FormState, form: FormData): Promise<FormState> {
   return withEcho(form, () => addSessionActionImpl(prev, form));
+}
+
+export async function rescheduleSessionAction(prev: FormState, form: FormData): Promise<FormState> {
+  return withEcho(form, () => rescheduleSessionActionImpl(prev, form));
 }
 
 export async function reserveSeatAction(prev: FormState, form: FormData): Promise<FormState> {

@@ -86,6 +86,8 @@ test("P1-3 table chat shows the newest messages when there are more than 200", a
 });
 
 test("P1-2 archiving a game cancels its upcoming sessions and frees players' seats", async ({ browser }) => {
+  const db = e2eDb();
+  const mark = (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM email_outbox").get() as { n: number }).n;
   const gm = await browser.newPage();
   await login(gm, "dewi@questboard.test");
   await gm.goto("/gm");
@@ -101,6 +103,15 @@ test("P1-2 archiving a game cancels its upcoming sessions and frees players' sea
   await login(player, "player@questboard.test");
   const row = player.locator(".card", { has: player.getByRole("link", { name: "Panen Harapan" }) }).first();
   await expect(row.getByText("Cancelled by GM")).toBeVisible();
+
+  // Players are emailed too (they might otherwise turn up), with a link that still works.
+  const mails = db.prepare("SELECT to_address, body_text FROM email_outbox WHERE id > ? AND subject LIKE 'Cancelled: Panen Harapan%'").all(mark) as { to_address: string; body_text: string }[];
+  db.close();
+  expect(mails.map((m) => m.to_address)).toContain("player@questboard.test");
+  expect(mails.every((m) => !m.body_text.includes("/games/panen-harapan"))).toBe(true);
+  // The bell links to My games, not the archived game's (now missing) page.
+  await player.goto("/notifications");
+  await expect(player.locator('a[href*="/games/panen-harapan"]')).toHaveCount(0);
 });
 
 test("P1-10 log out on all devices revokes other sessions", async ({ browser }) => {

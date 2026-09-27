@@ -47,7 +47,7 @@ export default async function BookPage(props: PageProps<"/book/[sessionId]">) {
             <div className="mb-4"><Notice tone="success">{t("wait.offerNotice")} <LocalTime iso={offer.expires_at} /></Notice></div>
           )}
           {verdict.ok ? (
-            <ReserveForm sessionId={s.id} priceText={price} isFree={s.price_idr === 0} />
+            <ReserveForm sessionId={s.id} priceText={price} isFree={s.price_idr === 0} startsAt={s.starts_at} price={s.price_idr} />
           ) : (
             <Notice tone="danger">{t(verdict.reason)}</Notice>
           )}

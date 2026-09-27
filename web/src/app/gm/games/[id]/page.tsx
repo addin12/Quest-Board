@@ -8,7 +8,7 @@ import { getGameById, listSessionRoster, listSessions, upcomingSeatsTaken } from
 import { Avatar, Notice, priceLabel } from "@/components/ui";
 import { LocalTime } from "@/components/local-time";
 import { Icon } from "@/components/icon";
-import { AddSessionForm } from "@/components/forms";
+import { AddSessionForm, RescheduleSessionForm } from "@/components/forms";
 import { ConfirmButton, SubmitButton } from "@/components/submit-button";
 import { archiveGameAction, cancelSessionAction, completeSessionAction, duplicateGameAction, markPaidAction } from "@/app/actions";
 import { waitingCounts } from "@/lib/waitlist";
@@ -79,6 +79,10 @@ export default async function ManageGamePage(props: PageProps<"/gm/games/[id]">)
           <div className="space-y-3">
             {upcoming.map((s) => (
               <SessionCard key={s.id} s={s} seatsTotal={game.seats_total} t={t} paid={paidOn} waiting={waiting.get(s.id) ?? 0}>
+                <details className="group w-full sm:w-auto">
+                  <summary className="btn-secondary cursor-pointer list-none py-1.5! [&::-webkit-details-marker]:hidden"><Icon name="calendar-clock" /> {t("manage.moveSession")}</summary>
+                  <RescheduleSessionForm sessionId={s.id} startsAt={s.starts_at} duration={s.duration_minutes} booked={s.seats_taken} />
+                </details>
                 <details className="group w-full sm:w-auto">
                   <summary className="btn-danger cursor-pointer list-none py-1.5! [&::-webkit-details-marker]:hidden"><Icon name="cross-circle" /> {t("manage.cancelSession")}</summary>
                   <form action={cancelSessionAction} className="mt-2 space-y-2 sm:w-80">

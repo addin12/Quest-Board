@@ -26,7 +26,7 @@ test("personal calendar feed: booked sessions, cancellations marked, and a reset
     const gm = await newPage(browser);
     await login(gm, "gm@questboard.test");
     await gm.goto(`/gm/games/${game.id}`);
-    const panel = gm.locator(`details:has(input[name="sessionId"][value="${sid}"])`);
+    const panel = gm.locator(`details:has(input[name="sessionId"][value="${sid}"]):has(textarea[name="reason"])`);
     await panel.locator("summary").click();
     gm.once("dialog", (d) => d.accept());
     await panel.getByRole("button", { name: "Cancel this session" }).click();

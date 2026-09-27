@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
-import { postMessageAction, submitReviewAction, addSessionAction, type FormState } from "@/app/actions";
+import { useActionState, useEffect, useRef, useSyncExternalStore } from "react";
+import { postMessageAction, submitReviewAction, addSessionAction, rescheduleSessionAction, type FormState } from "@/app/actions";
 import { SubmitButton } from "./submit-button";
 import { FieldError, Notice, errAttrs } from "./ui";
 import { useI18n } from "./i18n-provider";
@@ -55,6 +55,61 @@ export function MessageForm({ gameId }: { gameId: number }) {
       <textarea id="msg" name="body" rows={2} maxLength={1000} required className="input" placeholder={t("chat.placeholder")} defaultValue={state?.values?.body} />
       <SubmitButton pendingText={t("chat.sending")}><Icon name="paper-plane" /> {t("chat.send")}</SubmitButton>
       {state?.error && <p className="text-xs text-danger">{t(state.error)}</p>}
+    </form>
+  );
+}
+
+const noop = () => () => {};
+
+/** An ISO time as a `datetime-local` value in the browser's timezone. */
+function localInputValue(iso: string): string {
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
+/** Change an upcoming session's time or length (booked players keep their seats and are told). */
+export function RescheduleSessionForm({ sessionId, startsAt, duration, booked }: { sessionId: number; startsAt: string; duration: number; booked: number }) {
+  const { t } = useI18n();
+  const [state, action] = useActionState<FormState, FormData>(rescheduleSessionAction, undefined);
+  // The current time is shown in the GM's own timezone, which the server doesn't know.
+  const mounted = useSyncExternalStore(noop, () => true, () => false);
+  const startsErr = state?.fieldErrors?.startsAt;
+  const id = `move-${sessionId}`;
+  const lengths = [120, 180, 240, 300, 360].includes(duration) ? [120, 180, 240, 300, 360] : [...[120, 180, 240, 300, 360], duration].sort((a, b) => a - b);
+  return (
+    <form
+      action={(f) => {
+        f.set("tzOffset", String(new Date(String(f.get("startsAt"))).getTimezoneOffset()));
+        return action(f);
+      }}
+      className="mt-2 space-y-2 sm:w-80"
+    >
+      <input type="hidden" name="sessionId" value={sessionId} />
+      <div>
+        <label htmlFor={`${id}-at`} className="label">{t("manage.newTime")}</label>
+        <input
+          key={mounted ? "local" : "server"}
+          id={`${id}-at`}
+          {...errAttrs(`${id}-at`, startsErr && t(startsErr))}
+          name="startsAt"
+          type="datetime-local"
+          required
+          className="input"
+          defaultValue={state?.values?.startsAt ?? (mounted ? localInputValue(startsAt) : "")}
+        />
+        <FieldError id={`${id}-at`} msg={startsErr && t(startsErr)} />
+      </div>
+      <div>
+        <label htmlFor={`${id}-len`} className="label">{t("manage.length")}</label>
+        <select id={`${id}-len`} name="duration" defaultValue={state?.values?.duration ?? String(duration)} className="input">
+          {lengths.map((m) => (
+            <option key={m} value={m}>{t("common.hours", { n: m / 60 })}</option>
+          ))}
+        </select>
+      </div>
+      <p className="text-xs text-muted">{booked > 0 ? t("manage.moveHint", { n: booked }) : t("manage.moveHintEmpty")}</p>
+      {state?.error && <Notice tone="danger">{t(state.error)}</Notice>}
+      <SubmitButton className="btn-primary py-1.5!" pendingText={t("manage.moving")}><Icon name="calendar-clock" /> {t("manage.moveButton")}</SubmitButton>
     </form>
   );
 }
