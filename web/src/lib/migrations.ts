@@ -326,6 +326,17 @@ export const MIGRATIONS: Record<number, string> = {
   21: `
     ALTER TABLE game_sessions ADD COLUMN reschedule_count INTEGER NOT NULL DEFAULT 0;
   `,
+  22: `
+    CREATE TABLE IF NOT EXISTS admin_log (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      action         TEXT NOT NULL,          -- lib/moderation.ts AdminAction
+      target_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      detail         TEXT NOT NULL DEFAULT '',
+      created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_admin_log_created ON admin_log(created_at);
+  `,
 };
 
 export type UpgradePlan =

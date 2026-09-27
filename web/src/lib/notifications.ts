@@ -20,6 +20,7 @@ export type NotificationKind =
   | "game_place_changed" // → player with an upcoming seat: the game moved (city, online ↔ in person, platform)
   | "report_new"         // → admins: a member reported something
   | "report_resolved"    // → reporter: a moderator reviewed their report
+  | "content_removed"    // → author: a moderator removed their review, message, notice, reply or game
   | "waitlist_offer"     // → player: a seat opened up and is held for them
   | "payment_confirmed"  // → player: the GM marked their seat as paid
   | "lfg_reply"          // → notice author: someone replied on the Notice Board (collapsed while unread)
@@ -39,7 +40,7 @@ export type NotificationKind =
  */
 export const EMAIL_KINDS: ReadonlySet<NotificationKind> = new Set([
   "booking_new", "booking_cancelled", "waitlist_offer", "request_direct", "offer_received", "offer_chosen",
-  "request_message", "game_question", "feedback_new", "review_prompt", "session_cancelled", "game_place_changed", "gm_suspended",
+  "request_message", "game_question", "feedback_new", "review_prompt", "session_cancelled", "game_place_changed", "gm_suspended", "content_removed",
 ]);
 
 /** Emailed even to people who turned notification emails off: they could otherwise turn up to a session that isn't happening. */
@@ -98,19 +99,21 @@ export type NotificationRow = {
   question_id: number | null;
   post_id: number | null;
   post_title: string | null;
+  report_target: string | null;
 };
 
 const ROW_SELECT = `SELECT n.id, n.kind, n.created_at, n.read_at,
               a.name AS actor_name, a.avatar_hue AS actor_hue, a.avatar_image AS actor_image,
               n.request_id, r.title AS request_title,
-              g.title AS game_title, g.slug AS game_slug, g.status AS game_status, s.starts_at, s.cancel_reason, n.question_id, n.post_id, lp.title AS post_title
+              g.title AS game_title, g.slug AS game_slug, g.status AS game_status, s.starts_at, s.cancel_reason, n.question_id, n.post_id, lp.title AS post_title, rep.target_type AS report_target
          FROM notifications n
          LEFT JOIN users a ON a.id = n.actor_id
          LEFT JOIN gm_requests r ON r.id = n.request_id
          LEFT JOIN game_sessions s ON s.id = n.session_id
          LEFT JOIN game_questions gq ON gq.id = n.question_id
          LEFT JOIN games g ON g.id = COALESCE(n.game_id, s.game_id, gq.game_id)
-         LEFT JOIN lfg_posts lp ON lp.id = n.post_id`;
+         LEFT JOIN lfg_posts lp ON lp.id = n.post_id
+         LEFT JOIN reports rep ON rep.id = n.report_id`;
 
 export function listNotifications(userId: number, limit = 50): NotificationRow[] {
   return db()

@@ -260,3 +260,10 @@ ALTER TABLE game_sessions ADD COLUMN reschedule_count INTEGER NOT NULL DEFAULT 0
 ```
 - Changing the time (`rescheduleSessionAction`) keeps every booking, clears the session's `session_reminders` rows so reminders go out again for the new time, and sends booked players a `session_moved` notification and an email with the old and new time.
 - The calendar feed and `.ics` files use it as `SEQUENCE`, so calendar apps replace the old time.
+
+## v22: moderator action log
+```sql
+admin_log(id, admin_id → users (SET NULL), action, target_user_id → users (SET NULL), detail, created_at)
+```
+- `action` is one of `suspend`, `unsuspend`, `verify`, `unverify`, `report_remove`, `report_suspend`, `report_dismiss` (`AdminAction` in `lib/moderation.ts`). `detail` names the reported item and the moderator's note.
+- The admin home lists the latest 15. It isn't in "Download my data" (it's the moderators' record); decisions that affect someone reach them as notifications (`content_removed`, `report_resolved`).

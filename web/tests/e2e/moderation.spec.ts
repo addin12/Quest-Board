@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { bookFirstOpenSeat, createGmWithGame, login, newPage, signup, unique } from "./helpers";
+import { bookFirstOpenSeat, createGmWithGame, e2eDb, login, newPage, signup, unique } from "./helpers";
 
 // Iteration 4: reports and the admin console.
 
@@ -65,6 +65,23 @@ test("reporting a review: validation, no self-reports, no duplicates; the admin 
   await expect(reporter.getByText(reviewText.slice(0, 30), { exact: false })).toHaveCount(0);
   await reporter.goto("/notifications");
   await expect(reporter.getByText("Thanks — a moderator reviewed your report.").first()).toBeVisible();
+
+  // The review's author is told why (with a link to the rules), and the decision is in the moderator log.
+  const db = e2eDb();
+  const told = db.prepare(
+    "SELECT u.email FROM notifications n JOIN users u ON u.id = n.user_id JOIN reports r ON r.id = n.report_id WHERE n.kind = 'content_removed' AND r.note = 'Advertising' ORDER BY n.id DESC",
+  ).get() as { email: string } | undefined;
+  db.close();
+  expect(told?.email).toBeTruthy();
+  const author = await newPage(browser);
+  await login(author, told!.email);
+  await author.goto("/notifications");
+  await author.getByRole("link", { name: /A moderator removed your review because it broke the community guidelines/ }).first().click();
+  await expect(author).toHaveURL(/\/terms#s6$/);
+  await expect(author.getByRole("heading", { name: "6. Community conduct" })).toBeInViewport();
+  await admin.goto("/admin");
+  const log = admin.getByRole("region", { name: "Recent moderator actions" });
+  await expect(log.getByText(/Admin Quest Board removed content by .+ · review #\d+ — Advertising/).first()).toBeVisible();
 });
 
 test("people can't report their own content", async ({ page }) => {

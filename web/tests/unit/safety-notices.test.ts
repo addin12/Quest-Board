@@ -76,3 +76,35 @@ test("a reply on a notice reaches its author and everyone who replied before", (
   assert.deepEqual(kinds(author), ["lfg_reply"]);
   assert.deepEqual(kinds(b), []); // not told about their own reply
 });
+
+test("removing reported content tells its author (without naming the moderator) and is logged", async () => {
+  const { decideReport, listAdminLog } = await import("../../src/lib/moderation.ts");
+  const { listNotifications } = await import("../../src/lib/notifications.ts");
+  const { describeNotification } = await import("../../src/lib/notification-view.ts");
+  const { makeT } = await import("../../src/lib/i18n/dict.ts");
+  const author = user("rude@x.test");
+  const reporter = user("reporter@x.test");
+  const admin = user("mod@x.test");
+  const gm = user("gm3@x.test");
+  const game = Number(db().prepare(
+    "INSERT INTO games (gm_id, slug, title, system, summary, description, format, location_type, language, price_idr, seats_total, status) VALUES (?, 'g3', 'Game 3', 'D&D 5e (2014)', 's', 'd', 'one_shot', 'online', 'id', 0, 5, 'published')",
+  ).run(gm).lastInsertRowid);
+  const review = Number(db().prepare("INSERT INTO reviews (game_id, player_id, rating, body) VALUES (?, ?, 1, 'rude words')").run(game, author).lastInsertRowid);
+  const report = Number(db().prepare(
+    "INSERT INTO reports (reporter_id, target_type, target_id, target_owner_id, reason, snapshot, href) VALUES (?, 'review', ?, ?, 'harassment', 'rude words', '/games/g3')",
+  ).run(reporter, review, author).lastInsertRowid);
+
+  assert.equal(decideReport(report, admin, "remove", "insults the GM"), true);
+  assert.equal(db().prepare("SELECT 1 FROM reviews WHERE id = ?").get(review), undefined);
+  const [n] = listNotifications(author);
+  const view = describeNotification(n, makeT("en"));
+  assert.equal(view.text, "A moderator removed your review because it broke the community guidelines");
+  assert.equal(view.href, "/terms#s6");
+  assert.equal(view.actor, null); // the moderator isn't named
+  assert.deepEqual(kinds(reporter), ["report_resolved"]);
+  const [entry] = listAdminLog(1);
+  assert.equal(entry.action, "report_remove");
+  assert.equal(entry.admin_name, "mod");
+  assert.equal(entry.target_name, "rude");
+  assert.match(entry.detail, /^review #\d+ — insults the GM$/);
+});

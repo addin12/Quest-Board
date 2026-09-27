@@ -38,6 +38,7 @@ const COVERAGE: Record<string, string> = {
   auth_tokens: "excluded: one-time link tokens (secrets)",
   session_reminders: "excluded: which reminders were sent (bookkeeping; the notifications are exported)",
   review_prompts: "excluded: when a review prompt was sent (bookkeeping; the notification is exported)",
+  admin_log: "excluded: the moderators' audit trail (kept for accountability; decisions about you reach you as notifications)",
 };
 
 test("every table that references a user is in the data export or excluded on purpose", () => {

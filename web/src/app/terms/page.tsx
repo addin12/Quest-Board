@@ -23,7 +23,7 @@ export default async function TermsPage() {
       <p className="mt-6 leading-relaxed">{t("legal.terms.intro")}</p>
       <ol className="mt-6 space-y-6">
         {SECTIONS.map((n) => (
-          <li key={n} className="card p-5">
+          <li key={n} id={`s${n}`} className="card scroll-mt-24 p-5">
             <h2 className="text-lg font-bold">{n}. {t(`legal.terms.${n}.title` as MsgKey)}</h2>
             <p className="mt-2 whitespace-pre-line text-sm leading-relaxed">{t(`legal.terms.${n}.body` as MsgKey)}</p>
           </li>

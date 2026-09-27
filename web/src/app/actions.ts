@@ -20,7 +20,7 @@ import { movedEmail } from "@/lib/session-mail";
 import { deliverNotificationEmails } from "@/lib/notification-mail";
 import { consumeToken, issueToken, peekToken } from "@/lib/tokens";
 import { archiveGame, deleteAccount } from "@/lib/account";
-import { createReport, decideReport, setGmVerified, suspendUser, unsuspendUser } from "@/lib/moderation";
+import { createReport, decideReport, setGmVerified, suspendUser, unsuspendUser, logAdminAction } from "@/lib/moderation";
 import { isReportDecision, parseReport } from "@/lib/reports";
 import { heldSeats, joinWaitlist, leaveWaitlist, processWaitlist } from "@/lib/waitlist";
 import { addReply, announceGameIfNew, createNotice, getNotice, setFollowing, setSaved } from "@/lib/community";
@@ -906,14 +906,16 @@ export async function setSuspendedAction(form: FormData) {
   const admin = await requireAdmin();
   const userId = Number(form.get("userId"));
   if (userId === admin.id) throw new Error("Cannot suspend yourself");
-  if (form.get("suspend") === "1") suspendUser(userId, admin.id);
-  else unsuspendUser(userId);
+  if (form.get("suspend") === "1") { if (suspendUser(userId, admin.id)) logAdminAction(admin.id, "suspend", userId); }
+  else if (unsuspendUser(userId)) logAdminAction(admin.id, "unsuspend", userId);
   revalidatePath("/", "layout");
 }
 
 export async function setGmVerifiedAction(form: FormData) {
-  await requireAdmin();
-  setGmVerified(Number(form.get("userId")), form.get("verified") === "1");
+  const admin = await requireAdmin();
+  const userId = Number(form.get("userId"));
+  const verified = form.get("verified") === "1";
+  if (setGmVerified(userId, verified)) logAdminAction(admin.id, verified ? "verify" : "unverify", userId);
   revalidatePath("/", "layout");
 }
 

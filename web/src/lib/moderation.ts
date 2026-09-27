@@ -1,4 +1,5 @@
 import "server-only";
+import type { DatabaseSync } from "node:sqlite";
 import { db, tx } from "./db";
 import { archiveGame } from "./account";
 import { dropFromWaitlists } from "./waitlist";
@@ -108,6 +109,25 @@ export function listReports(status: "open" | "resolved" | "dismissed", limit = 1
     .all(status, limit) as ReportRow[];
 }
 
+export type AdminAction = "suspend" | "unsuspend" | "verify" | "unverify" | "report_remove" | "report_suspend" | "report_dismiss";
+
+/** Record a moderator action (shown on the admin home). */
+export function logAdminAction(adminId: number, action: AdminAction, targetUserId: number | null, detail = "", c: DatabaseSync = db()): void {
+  c.prepare("INSERT INTO admin_log (admin_id, action, target_user_id, detail) VALUES (?, ?, ?, ?)").run(adminId, action, targetUserId, detail.slice(0, 300));
+}
+
+export type AdminLogRow = { id: number; action: AdminAction; detail: string; created_at: string; admin_name: string | null; target_name: string | null; target_user_id: number | null };
+
+export function listAdminLog(limit = 15): AdminLogRow[] {
+  return db()
+    .prepare(
+      `SELECT l.id, l.action, l.detail, l.created_at, a.name AS admin_name, t.name AS target_name, l.target_user_id
+         FROM admin_log l LEFT JOIN users a ON a.id = l.admin_id LEFT JOIN users t ON t.id = l.target_user_id
+        ORDER BY l.created_at DESC, l.id DESC LIMIT ?`,
+    )
+    .all(limit) as AdminLogRow[];
+}
+
 /** Suspend a member: no login, sessions ended, GM profile hidden, games archived (players notified). */
 export function suspendUser(userId: number, adminId: number): boolean {
   const u = db().prepare("SELECT role, suspended_at FROM users WHERE id = ? AND deleted_at IS NULL").get(userId) as { role: string; suspended_at: string | null } | undefined;
@@ -136,8 +156,8 @@ export function suspendUser(userId: number, adminId: number): boolean {
   return true;
 }
 
-export function unsuspendUser(userId: number): void {
-  db().prepare("UPDATE users SET suspended_at = NULL WHERE id = ?").run(userId);
+export function unsuspendUser(userId: number): boolean {
+  return Number(db().prepare("UPDATE users SET suspended_at = NULL WHERE id = ? AND suspended_at IS NOT NULL").run(userId).changes) > 0;
 }
 
 /** Apply an admin decision to a report (and to every other open report about the same thing). */
@@ -157,7 +177,10 @@ export function decideReport(reportId: number, adminId: number, decision: Report
       else if (r.target_type === "game") archiveGame(c, r.target_id, adminId);
       else if (r.target_type === "lfg_post") c.prepare("DELETE FROM lfg_posts WHERE id = ?").run(r.target_id);
       else if (r.target_type === "lfg_reply") c.prepare("DELETE FROM lfg_replies WHERE id = ?").run(r.target_id);
+      // The author learns what was removed and why (never which moderator, never who reported it).
+      if (r.target_type !== "user") notify({ userId: r.target_owner_id, kind: "content_removed", reportId: r.id }, c);
     }
+    logAdminAction(adminId, `report_${decision}`, r.target_owner_id, `${r.target_type} #${r.target_id}${note ? ` — ${note}` : ""}`, c);
     const status = decision === "dismiss" ? "dismissed" : "resolved";
     const affected = c
       .prepare(
@@ -170,8 +193,8 @@ export function decideReport(reportId: number, adminId: number, decision: Report
   return true;
 }
 
-export function setGmVerified(userId: number, verified: boolean): void {
-  db().prepare("UPDATE gm_profiles SET verified = ? WHERE user_id = ?").run(verified ? 1 : 0, userId);
+export function setGmVerified(userId: number, verified: boolean): boolean {
+  return Number(db().prepare("UPDATE gm_profiles SET verified = ? WHERE user_id = ? AND verified <> ?").run(verified ? 1 : 0, userId, verified ? 1 : 0).changes) > 0;
 }
 
 export function adminStats() {

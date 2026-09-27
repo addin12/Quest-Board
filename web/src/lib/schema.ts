@@ -24,7 +24,8 @@
 // v19: email_queue (emails for important notifications) + users.email_notifications.
 // v20: email_outbox.attempts / retryable (delivery retries) + review_prompts (once per player per game).
 // v21: game_sessions.reschedule_count (a GM changed the time; the calendar SEQUENCE).
-export const SCHEMA_VERSION = 21;
+// v22: admin_log (who suspended, verified or decided what — shown on the admin home).
+export const SCHEMA_VERSION = 22;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -368,4 +369,15 @@ CREATE TABLE IF NOT EXISTS gm_follows (
   PRIMARY KEY (follower_id, gm_id)
 );
 CREATE INDEX IF NOT EXISTS idx_gm_follows_gm ON gm_follows(gm_id);
+
+-- v22: moderator actions, for accountability between admins.
+CREATE TABLE IF NOT EXISTS admin_log (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  admin_id       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  action         TEXT NOT NULL,          -- lib/moderation.ts AdminAction
+  target_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  detail         TEXT NOT NULL DEFAULT '',
+  created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_admin_log_created ON admin_log(created_at);
 `;

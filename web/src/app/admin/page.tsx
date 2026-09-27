@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
-import { adminStats, launchMetrics } from "@/lib/moderation";
+import { adminStats, launchMetrics, listAdminLog } from "@/lib/moderation";
+import { LocalTime } from "@/components/local-time";
+import { shownName } from "@/lib/i18n/dict";
 import { countRecentErrors } from "@/lib/error-log";
 import { Icon } from "@/components/icon";
 import { AdminNav } from "./admin-nav";
@@ -18,6 +20,7 @@ export default async function AdminHomePage() {
   const s = adminStats();
   const m = launchMetrics(7);
   const errors = countRecentErrors(7);
+  const log = listAdminLog(15);
   const pulse = [
     ["users", m.signups, t("admin.pulseSignups")],
     ["dice-d20", m.gamesPublished, t("admin.pulseGames")],
@@ -63,6 +66,26 @@ export default async function AdminHomePage() {
             <Icon name="triangle-warning" /> {t("admin.pulseErrors", { n: errors })}
           </Link>
         </p>
+      </section>
+
+      <section className="mt-10" aria-labelledby="log-h">
+        <h2 id="log-h" className="text-xl font-bold">{t("admin.logTitle")}</h2>
+        <p className="mt-1 text-sm text-muted">{t("admin.logLead")}</p>
+        {log.length === 0 ? (
+          <p className="mt-4 text-sm text-muted">{t("admin.logEmpty")}</p>
+        ) : (
+          <ul className="card mt-4 divide-y divide-border">
+            {log.map((l) => (
+              <li key={l.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 py-2.5 text-sm">
+                <span>
+                  {t(`admin.log.${l.action}` as const, { admin: shownName(l.admin_name ?? "", t), target: shownName(l.target_name ?? "", t) })}
+                  {l.detail && <span className="text-muted"> · {l.detail}</span>}
+                </span>
+                <span className="text-xs text-muted"><LocalTime iso={l.created_at} /></span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );
