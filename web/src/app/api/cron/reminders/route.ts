@@ -3,6 +3,7 @@ import { refreshAllWaitlists } from "@/lib/waitlist";
 import { pruneNotifications } from "@/lib/notifications";
 import { pruneOutbox } from "@/lib/mailer";
 import { pruneErrorLog } from "@/lib/error-log";
+import { deliverNotificationEmails } from "@/lib/notification-mail";
 import { siteOrigin } from "@/lib/site";
 import { timingSafeEqual } from "node:crypto";
 
@@ -24,9 +25,11 @@ async function run(request: Request) {
   if (!process.env.QUESTBOARD_CRON_SECRET) return new Response("Not found", { status: 404 });
   if (!authorized(request)) return new Response("Unauthorized", { status: 401 });
   const waitlists = refreshAllWaitlists();
-  const emailed = await processReminders(await siteOrigin());
+  const origin = await siteOrigin();
+  const emailed = await processReminders(origin);
+  const notificationEmails = await deliverNotificationEmails(origin, 500);
   const pruned = { notifications: pruneNotifications(), outbox: pruneOutbox(), errors: pruneErrorLog() };
-  return Response.json({ ok: true, emailed, waitlists, pruned });
+  return Response.json({ ok: true, emailed, notificationEmails, waitlists, pruned });
 }
 
 export const GET = run;

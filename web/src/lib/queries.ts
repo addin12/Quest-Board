@@ -633,8 +633,8 @@ export function getPaymentInfo(gmId: number): string {
 
 export function getUserSettings(userId: number) {
   return db()
-    .prepare("SELECT id, name, email, bio, role, avatar_hue, avatar_image, email_reminders, calendar_token FROM users WHERE id = ?")
-    .get(userId) as { id: number; name: string; email: string; bio: string; role: string; avatar_hue: number; avatar_image: string; email_reminders: number; calendar_token: string | null } | undefined;
+    .prepare("SELECT id, name, email, bio, role, avatar_hue, avatar_image, email_reminders, email_notifications, calendar_token FROM users WHERE id = ?")
+    .get(userId) as { id: number; name: string; email: string; bio: string; role: string; avatar_hue: number; avatar_image: string; email_reminders: number; email_notifications: number; calendar_token: string | null } | undefined;
 }
 
 /** Public, indexable URLs' data for sitemap.xml: published games and listed GMs. */

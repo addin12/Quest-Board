@@ -60,7 +60,7 @@ test("sign-up records Terms consent; a password change sends a security email", 
   await page.getByLabel("New password").fill("a-much-better-passphrase");
   await page.getByRole("button", { name: "Change password" }).click();
   await expect(page.getByText(/Password changed/)).toBeVisible();
-  const mail = db.prepare("SELECT subject, body_text FROM email_outbox WHERE id > ? AND to_address = ?").get(mark, email) as { subject: string; body_text: string };
+  const mail = db.prepare("SELECT subject, body_text FROM email_outbox WHERE id > ? AND to_address = ? AND subject LIKE '%password%'").get(mark, email) as { subject: string; body_text: string };
   expect(mail.subject).toBe("Your Quest Board password was changed");
   expect(mail.body_text).toContain("/forgot-password");
   db.close();

@@ -238,3 +238,10 @@ ALTER TABLE users ADD COLUMN terms_accepted_at TEXT;             -- set at sign-
 ALTER TABLE users ADD COLUMN terms_version TEXT NOT NULL DEFAULT '';  -- lib/legal.ts LEGAL_VERSION
 ```
 - Bump `LEGAL_VERSION` whenever the Terms or Privacy Policy change materially. Existing accounts keep the version they agreed to.
+
+## v19: notification emails
+```sql
+email_queue(id, notification_id → notifications ON DELETE CASCADE, created_at)
+ALTER TABLE users ADD COLUMN email_notifications INTEGER NOT NULL DEFAULT 1;
+```
+- A queue row is claimed (deleted) before sending, so overlapping runs never send twice.

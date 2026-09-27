@@ -20,6 +20,10 @@ test("questions before booking: a private player ↔ GM thread with notification
     await expect(page).toHaveURL(/\/questions\/\d+\?sent=1$/);
     const threadUrl = page.url().replace(/\?.*$/, "");
     await expect(page.getByText(/^Sent\./)).toBeVisible();
+    // The GM also gets it by email (queued with the notification, sent by the cron).
+    const outboxMark = (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM email_outbox").get() as { n: number }).n; // the email is only sent when the cron runs, below
+    await page.request.post("/api/cron/reminders", { headers: { Authorization: "Bearer e2e-cron-secret" } });
+    await expect.poll(() => (db.prepare("SELECT COUNT(*) AS n FROM email_outbox WHERE id > ? AND to_address = 'gm@questboard.test' AND subject LIKE ?").get(outboxMark, `%sent a message about ${game.title}%`) as { n: number }).n).toBeGreaterThan(0);
     // Asking again reopens the same thread.
     await page.goto("/games/signal-from-tartarus-station/ask");
     await expect(page).toHaveURL(threadUrl);

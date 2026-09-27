@@ -17,7 +17,7 @@ test("P2-12 session reminders: in-app + email in the person's language, once eac
   };
   const lastMailId = () => (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM email_outbox").get() as { n: number }).n;
   const mailsSince = (mark: number) =>
-    (db.prepare("SELECT to_address, subject, body_text FROM email_outbox WHERE id > ? ORDER BY id").all(mark) as Mail[]).filter((m) => m.subject.includes(game.title));
+    (db.prepare("SELECT to_address, subject, body_text FROM email_outbox WHERE id > ? ORDER BY id").all(mark) as Mail[]).filter((m) => m.subject.includes(game.title) && /^(Reminder|Pengingat|Starting soon|Segera dimulai):/.test(m.subject)); // only reminder emails
   let mark = lastMailId();
   db.prepare("UPDATE users SET locale = 'id', email_reminders = 1 WHERE id = ?").run(player.id);
   const s24 = addSession(20);

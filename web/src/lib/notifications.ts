@@ -25,6 +25,16 @@ export type NotificationKind =
   | "game_question"        // → GM or player: a message in a pre-booking question thread (collapsed while unread)
   | "feedback_new";        // → admins: someone sent feedback
 
+/**
+ * Kinds that are also emailed (see lib/notification-mail.ts). Not here: session_cancelled
+ * (the cancel action sends its own email with the GM's message), reminders (their own emails),
+ * and low-urgency kinds (follows, paid ticks, board replies, report outcomes).
+ */
+export const EMAIL_KINDS: ReadonlySet<NotificationKind> = new Set([
+  "booking_new", "booking_cancelled", "waitlist_offer", "request_direct", "offer_received", "offer_chosen",
+  "request_message", "game_question", "feedback_new",
+]);
+
 /** Kinds that update one unread row instead of piling up (chatty events). */
 const COLLAPSE: ReadonlySet<NotificationKind> = new Set(["request_message", "lfg_reply", "game_question"]);
 
@@ -53,9 +63,11 @@ export function notify(n: NotifyInput, c: DatabaseSync = db()): void {
       .run(now, n.actorId ?? null, n.userId, n.kind, n.requestId ?? null, n.postId ?? null, n.questionId ?? null);
     if (Number(bumped.changes) > 0) return;
   }
-  c.prepare("INSERT INTO notifications (user_id, kind, actor_id, request_id, session_id, report_id, game_id, post_id, question_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
+  const id = c.prepare("INSERT INTO notifications (user_id, kind, actor_id, request_id, session_id, report_id, game_id, post_id, question_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
     n.userId, n.kind, n.actorId ?? null, n.requestId ?? null, n.sessionId ?? null, n.reportId ?? null, n.gameId ?? null, n.postId ?? null, n.questionId ?? null, now,
-  );
+  ).lastInsertRowid;
+  // Same transaction as the notification: if the change is rolled back, no email goes out.
+  if (EMAIL_KINDS.has(n.kind)) c.prepare("INSERT INTO email_queue (notification_id) VALUES (?)").run(id);
 }
 
 export type NotificationRow = {
@@ -77,10 +89,7 @@ export type NotificationRow = {
   post_title: string | null;
 };
 
-export function listNotifications(userId: number, limit = 50): NotificationRow[] {
-  return db()
-    .prepare(
-      `SELECT n.id, n.kind, n.created_at, n.read_at,
+const ROW_SELECT = `SELECT n.id, n.kind, n.created_at, n.read_at,
               a.name AS actor_name, a.avatar_hue AS actor_hue, a.avatar_image AS actor_image,
               n.request_id, r.title AS request_title,
               g.title AS game_title, g.slug AS game_slug, s.starts_at, s.cancel_reason, n.question_id, n.post_id, lp.title AS post_title
@@ -90,12 +99,17 @@ export function listNotifications(userId: number, limit = 50): NotificationRow[]
          LEFT JOIN game_sessions s ON s.id = n.session_id
          LEFT JOIN game_questions gq ON gq.id = n.question_id
          LEFT JOIN games g ON g.id = COALESCE(n.game_id, s.game_id, gq.game_id)
-         LEFT JOIN lfg_posts lp ON lp.id = n.post_id
-        WHERE n.user_id = ?
-        ORDER BY n.created_at DESC, n.id DESC
-        LIMIT ?`,
-    )
+         LEFT JOIN lfg_posts lp ON lp.id = n.post_id`;
+
+export function listNotifications(userId: number, limit = 50): NotificationRow[] {
+  return db()
+    .prepare(`${ROW_SELECT} WHERE n.user_id = ? ORDER BY n.created_at DESC, n.id DESC LIMIT ?`)
     .all(userId, limit) as NotificationRow[];
+}
+
+/** One notification with everything needed to describe it (for its email). */
+export function getNotificationRow(id: number): (NotificationRow & { user_id: number }) | undefined {
+  return db().prepare(`${ROW_SELECT.replace("SELECT n.id,", "SELECT n.id, n.user_id,")} WHERE n.id = ?`).get(id) as (NotificationRow & { user_id: number }) | undefined;
 }
 
 /** Housekeeping (from the cron route): read notifications older than `days` are dropped. */

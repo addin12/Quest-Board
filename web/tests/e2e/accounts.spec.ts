@@ -24,7 +24,7 @@ async function signup(page: Page, name: string, email: string, gm = false) {
 /** The newest link in the outbox sent to `email` whose URL contains `path`. */
 async function linkFromOutbox(page: Page, email: string, path: string): Promise<string> {
   await page.goto("/dev/outbox");
-  const mail = page.getByTestId("outbox-mail").filter({ has: page.getByTestId("outbox-to").getByText(email, { exact: true }) }).first();
+  const mail = page.getByTestId("outbox-mail").filter({ has: page.getByTestId("outbox-to").getByText(email, { exact: true }) }).filter({ hasText: path }).first();
   const body = (await mail.getByTestId("outbox-body").textContent()) ?? "";
   const m = new RegExp(`https?://[^\\s]+${path}\\?token=[\\w-]+`).exec(body);
   expect(m, `no ${path} link for ${email}`).not.toBeNull();

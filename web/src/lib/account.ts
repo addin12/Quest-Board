@@ -85,7 +85,7 @@ export function exportAccount(userId: number) {
       `SELECT g.title AS game, m.body, m.created_at FROM game_question_messages m JOIN game_questions gq ON gq.id = m.question_id
          JOIN games g ON g.id = gq.game_id WHERE m.user_id = ? ORDER BY m.created_at`, userId),
     exported_at: new Date().toISOString(),
-    account: one("SELECT id, email, name, role, bio, avatar_image, email_verified_at, locale, email_reminders, terms_accepted_at, terms_version, created_at FROM users WHERE id = ?", userId),
+    account: one("SELECT id, email, name, role, bio, avatar_image, email_verified_at, locale, email_reminders, email_notifications, terms_accepted_at, terms_version, created_at FROM users WHERE id = ?", userId),
     gm_profile: one("SELECT headline, systems, years_experience, location, verified, payment_info FROM gm_profiles WHERE user_id = ?", userId) ?? null,
     bookings: q(
       `SELECT b.id, g.title AS game, s.starts_at, b.status, b.cancelled_by, b.price_idr, b.created_at

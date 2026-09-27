@@ -305,6 +305,14 @@ export const MIGRATIONS: Record<number, string> = {
     );
     CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status, created_at);
   `,
+  19: `
+    ALTER TABLE users ADD COLUMN email_notifications INTEGER NOT NULL DEFAULT 1;
+    CREATE TABLE IF NOT EXISTS email_queue (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      notification_id INTEGER NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
+      created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );
+  `,
 };
 
 export type UpgradePlan =

@@ -114,9 +114,17 @@ test("My games has a calendar view", async ({ page }) => {
   await page.waitForURL("**/dashboard?view=calendar");
   const cal = page.locator("table").first();
   await expect(cal).toBeVisible();
-  await expect(cal.getByRole("link").first()).toBeVisible(); // Andi has sessions this month or next
-  await page.getByRole("button", { name: "Next month" }).click();
-  await page.getByRole("button", { name: "Previous month" }).click();
+  // Andi has sessions this month or next (demo sessions are a few days ahead, so near the
+  // end of a month they fall in the next one).
+  if ((await cal.getByRole("link").count()) === 0) {
+    await page.getByRole("button", { name: "Next month" }).click();
+    await expect(page.locator("table").first().getByRole("link").first()).toBeVisible();
+    await page.getByRole("button", { name: "Previous month" }).click();
+  } else {
+    await expect(cal.getByRole("link").first()).toBeVisible();
+    await page.getByRole("button", { name: "Next month" }).click();
+    await page.getByRole("button", { name: "Previous month" }).click();
+  }
   await page.getByRole("link", { name: "List", exact: true }).click();
   await expect(page.getByRole("heading", { name: /Upcoming \(/ })).toBeVisible();
 });

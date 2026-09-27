@@ -21,7 +21,8 @@
 // v16: game_questions + game_question_messages (ask the GM before booking), notifications.question_id.
 // v17: error_log (server errors, shown in /admin/errors).
 // v18: feedback (the footer's "Send feedback" form) + users.terms_accepted_at / terms_version (consent record).
-export const SCHEMA_VERSION = 18;
+// v19: email_queue (emails for important notifications) + users.email_notifications.
+export const SCHEMA_VERSION = 19;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -43,7 +44,8 @@ CREATE TABLE IF NOT EXISTS users (
   email_reminders INTEGER NOT NULL DEFAULT 1, -- email me before my sessions (v13)
   calendar_token TEXT,                       -- v15: secret for /api/calendar/<token>.ics; NULL until created
   terms_accepted_at TEXT,                    -- v18: when they agreed to the Terms & Privacy Policy at sign-up
-  terms_version  TEXT NOT NULL DEFAULT ''    -- v18: which version of those texts (LEGAL_VERSION)
+  terms_version  TEXT NOT NULL DEFAULT '',   -- v18: which version of those texts (LEGAL_VERSION)
+  email_notifications INTEGER NOT NULL DEFAULT 1 -- v19: email me about bookings, questions and offers
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_users_calendar_token ON users(calendar_token);
 
@@ -246,6 +248,13 @@ CREATE TABLE IF NOT EXISTS feedback (
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status, created_at);
+
+-- v19: important notifications waiting to be emailed (written in the same transaction as the notification).
+CREATE TABLE IF NOT EXISTS email_queue (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  notification_id INTEGER NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
+  created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
 
 -- v13: one row per reminder sent, so each goes out exactly once.
 CREATE TABLE IF NOT EXISTS session_reminders (

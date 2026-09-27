@@ -21,7 +21,7 @@ test("a GM cancels a session with a message: players see it in the bell, on My g
 
     const status = db.prepare("SELECT status, cancel_reason FROM game_sessions WHERE id = ?").get(sid) as { status: string; cancel_reason: string };
     expect(status).toEqual({ status: "cancelled", cancel_reason: "I'm ill — let's move to next Saturday." });
-    const mail = db.prepare("SELECT subject, body_text FROM email_outbox WHERE id > ? AND to_address = 'player@questboard.test'").get(mark) as { subject: string; body_text: string };
+    const mail = db.prepare("SELECT subject, body_text FROM email_outbox WHERE id > ? AND to_address = 'player@questboard.test' AND subject LIKE 'Cancelled:%'").get(mark) as { subject: string; body_text: string };
     expect(mail.subject).toMatch(/Mercusuar di Pulau Kabut/);
     expect(mail.body_text).toContain("I'm ill — let's move to next Saturday.");
 
