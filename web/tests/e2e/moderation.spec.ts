@@ -19,7 +19,8 @@ test("reporting a review: validation, no self-reports, no duplicates; the admin 
   const reviews = reporter.getByRole("region", { name: /Reviews/ });
   // Someone else's review (Andi may have reviewed this game in an earlier test; own reviews have no Report).
   const reportable = (scope: typeof reviews) => scope.getByRole("listitem").filter({ has: reporter.locator("summary", { hasText: "Report" }) });
-  const reviewText = ((await reportable(reviews).first().locator("p").nth(1).textContent()) ?? "").trim();
+  // Its body: the paragraph after the name line, skipping the date (which is a <time>).
+  const reviewText = ((await reportable(reviews).first().locator("p:not(:has(time))").nth(1).textContent()) ?? "").trim();
   // Pin the review by its text: once reported, its Report toggle turns into a thank-you note.
   const firstReview = reviews.getByRole("listitem").filter({ hasText: reviewText.slice(0, 30) }).first();
   expect(reviewText.length).toBeGreaterThan(5);

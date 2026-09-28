@@ -267,3 +267,11 @@ admin_log(id, admin_id → users (SET NULL), action, target_user_id → users (S
 ```
 - `action` is one of `suspend`, `unsuspend`, `verify`, `unverify`, `report_remove`, `report_suspend`, `report_dismiss` (`AdminAction` in `lib/moderation.ts`). `detail` names the reported item and the moderator's note.
 - The admin home lists the latest 15. It isn't in "Download my data" (it's the moderators' record); decisions that affect someone reach them as notifications (`content_removed`, `report_resolved`).
+
+## v23: GM replies to reviews
+```sql
+ALTER TABLE reviews ADD COLUMN gm_reply TEXT NOT NULL DEFAULT '';  -- the game's GM answers publicly ('' = none)
+ALTER TABLE reviews ADD COLUMN gm_replied_at TEXT;
+```
+- Only the game's GM can reply (`replyReviewAction`); an empty reply removes it. A first reply notifies the reviewer (`review_reply`). Replies show under the review on the game page and the GM's profile, and are in the GM's data export (`review_replies`).
+- Reviews open once a session has **ended** (start + length) or the GM marked it played — not the moment it starts (`canReview`).

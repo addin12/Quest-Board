@@ -283,12 +283,13 @@ export function getSessionWithGame(sessionId: number) {
 export type ReviewRow = {
   id: number; rating: number; body: string; created_at: string; player_name: string; player_hue: number; player_image?: string;
   player_id?: number; game_title?: string; game_slug?: string;
+  gm_reply: string; gm_replied_at: string | null;
 };
 
 export function listGameReviews(gameId: number): ReviewRow[] {
   return db()
     .prepare(
-      `SELECT r.id, r.player_id, r.rating, r.body, r.created_at, u.name AS player_name, u.avatar_hue AS player_hue, u.avatar_image AS player_image
+      `SELECT r.id, r.player_id, r.rating, r.body, r.created_at, r.gm_reply, r.gm_replied_at, u.name AS player_name, u.avatar_hue AS player_hue, u.avatar_image AS player_image
          FROM reviews r JOIN users u ON u.id = r.player_id WHERE r.game_id = ? ORDER BY r.created_at DESC`,
     )
     .all(gameId) as ReviewRow[];
@@ -322,7 +323,7 @@ export function listGmGames(gmId: number, includeUnpublished = false, limit = -1
 export function listGmReviews(gmId: number, limit = 10): ReviewRow[] {
   return db()
     .prepare(
-      `SELECT r.id, r.rating, r.body, r.created_at, u.name AS player_name, u.avatar_hue AS player_hue, g.title AS game_title, g.slug AS game_slug
+      `SELECT r.id, r.rating, r.body, r.created_at, r.gm_reply, r.gm_replied_at, u.name AS player_name, u.avatar_hue AS player_hue, g.title AS game_title, g.slug AS game_slug
          FROM reviews r JOIN users u ON u.id = r.player_id JOIN games g ON g.id = r.game_id
         WHERE g.gm_id = ? ORDER BY r.created_at DESC LIMIT ?`,
     )
@@ -393,7 +394,7 @@ export function canReview(gameId: number, userId: number): boolean {
     .prepare(
       `SELECT 1 FROM bookings b JOIN game_sessions s ON s.id = b.session_id
         WHERE s.game_id = ? AND b.player_id = ? AND b.status = 'confirmed'
-          AND (s.status = 'completed' OR s.starts_at <= ?)
+          AND (s.status = 'completed' OR julianday(s.starts_at) + s.duration_minutes / 1440.0 <= julianday(?))
           AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.game_id = s.game_id AND r.player_id = b.player_id)
         LIMIT 1`,
     )

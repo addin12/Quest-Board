@@ -13,7 +13,7 @@ const SSR_TIME_ZONE = "Asia/Jakarta";
  * server renders Jakarta time; the client swaps in the browser's zone after
  * hydration (identical for most viewers, so there is no visible change).
  */
-export function LocalTime({ iso, mode = "short" }: { iso: string; mode?: "short" | "long" | "time" }) {
+export function LocalTime({ iso, mode = "short" }: { iso: string; mode?: "short" | "long" | "time" | "date" }) {
   const { lang } = useI18n();
   const hydrated = useSyncExternalStore(
     subscribe,
@@ -25,6 +25,8 @@ export function LocalTime({ iso, mode = "short" }: { iso: string; mode?: "short"
       ? { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZoneName: "short" }
       : mode === "time"
         ? { hour: "2-digit", minute: "2-digit", timeZoneName: "short" }
+        : mode === "date"
+          ? { day: "numeric", month: "short", year: "numeric" }
         : { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZoneName: "short" };
   const text = new Date(iso).toLocaleString(lang === "id" ? "id-ID" : "en-GB", hydrated ? opts : { ...opts, timeZone: SSR_TIME_ZONE });
   return (

@@ -492,6 +492,24 @@ async function submitReviewActionImpl(_: FormState, form: FormData): Promise<For
   return { ok: true };
 }
 
+/** The game's GM answers a review publicly (empty = remove the answer). The reviewer hears about a new answer. */
+async function replyReviewActionImpl(_: FormState, form: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const r = db()
+    .prepare("SELECT r.id, r.player_id, r.gm_reply, g.id AS game_id, g.gm_id, g.slug FROM reviews r JOIN games g ON g.id = r.game_id WHERE r.id = ?")
+    .get(Number(form.get("reviewId"))) as { id: number; player_id: number; gm_reply: string; game_id: number; gm_id: number; slug: string } | undefined;
+  if (!r || r.gm_id !== user.id) return { error: "err.notFound" };
+  const reply = String(form.get("reply") ?? "").trim().replace(/\r\n/g, "\n");
+  if (reply.length > 1000) return { error: "err.longMessage" };
+  if (!hit("chat", String(user.id))) return { error: "err.rateLimited" };
+  db().prepare("UPDATE reviews SET gm_reply = ?, gm_replied_at = ? WHERE id = ?").run(reply, reply ? new Date().toISOString() : null, r.id);
+  if (reply && !r.gm_reply) notify({ userId: r.player_id, kind: "review_reply", actorId: user.id, gameId: r.game_id });
+  await toast(reply ? "toast.replySaved" : "toast.replyRemoved");
+  revalidatePath(`/games/${r.slug}`);
+  revalidatePath(`/gms/${r.gm_id}`);
+  return { ok: true };
+}
+
 // ─── Profile settings (players & GMs) ────────────────────────────────────
 
 async function updateProfileActionImpl(_: FormState, form: FormData): Promise<FormState> {
@@ -963,6 +981,10 @@ export async function postMessageAction(prev: FormState, form: FormData): Promis
 
 export async function submitReviewAction(prev: FormState, form: FormData): Promise<FormState> {
   return withEcho(form, () => submitReviewActionImpl(prev, form));
+}
+
+export async function replyReviewAction(prev: FormState, form: FormData): Promise<FormState> {
+  return withEcho(form, () => replyReviewActionImpl(prev, form));
 }
 
 export async function updateProfileAction(prev: FormState, form: FormData): Promise<FormState> {

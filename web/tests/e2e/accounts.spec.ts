@@ -226,6 +226,8 @@ test("Terms and Privacy pages exist in both languages and are linked from sign-u
   await expect(page.getByRole("heading", { level: 1, name: "Privacy Policy" })).toBeVisible();
   await expect(page.getByText(/UU No\. 27 Tahun 2022/)).toBeVisible();
   await expect(page.getByText(/Draft for launch/)).toBeVisible();
+  // Every cookie the app sets is listed.
+  for (const cookie of ["qb_session", "qb_lang", "qb_theme", "qb_toast"]) await expect(page.getByText(cookie)).toBeVisible();
   await page.getByRole("contentinfo").getByRole("link", { name: "Terms of Service" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Terms of Service" })).toBeVisible();
   await expect(page.getByRole("heading", { name: /^4\. Payments and refunds/ })).toBeVisible();

@@ -77,6 +77,7 @@ export function describeNotification(n: NotificationSource, t: T): NotificationV
     case "feedback_new": return { ...base, actor: null, href: "/admin/feedback", icon: "comment", text: t("notif.feedbackNew") };
     case "review_prompt": return { ...base, actor: null, href: n.game_slug ? `/games/${n.game_slug}#reviews-h` : "/dashboard", icon: "star", text: t("notif.reviewPrompt", { title: game }) };
     case "content_removed": return { ...base, actor: null, href: "/terms#s6", icon: "shield", text: t(REMOVED[n.report_target ?? ""] ?? "notif.removedOther") };
+    case "review_reply": return { ...base, href: n.game_slug ? `/games/${n.game_slug}#reviews-h` : "/dashboard", icon: "comment", text: t("notif.reviewReply", { name: who, title: game }) };
     case "report_resolved": return { ...base, actor: null, href: "/notifications", icon: "shield-check", text: t("notif.reportResolved") };
   }
 }

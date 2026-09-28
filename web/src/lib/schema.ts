@@ -25,7 +25,8 @@
 // v20: email_outbox.attempts / retryable (delivery retries) + review_prompts (once per player per game).
 // v21: game_sessions.reschedule_count (a GM changed the time; the calendar SEQUENCE).
 // v22: admin_log (who suspended, verified or decided what — shown on the admin home).
-export const SCHEMA_VERSION = 22;
+// v23: reviews.gm_reply / gm_replied_at (the GM's public answer to a review).
+export const SCHEMA_VERSION = 23;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -135,6 +136,8 @@ CREATE TABLE IF NOT EXISTS reviews (
   rating     INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
   body       TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  gm_reply   TEXT NOT NULL DEFAULT '',      -- v23: the game's GM answers publicly ('' = no reply)
+  gm_replied_at TEXT,
   UNIQUE (game_id, player_id)
 );
 

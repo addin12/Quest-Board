@@ -18,6 +18,8 @@ async function login(page: Page, email: string) {
 
 /** Axe violations on the current page, one readable line each (prefixed with `label`). */
 async function violationsOf(page: Page, label: string): Promise<string[]> {
+  // Next streams the <title> in after the page on some navigations: wait for it, or axe reports it missing.
+  await expect(page).toHaveTitle(/\S/);
   const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   return violations.map((v) => `${label} → ${v.id} (${v.impact}): ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`);
 }

@@ -337,6 +337,10 @@ export const MIGRATIONS: Record<number, string> = {
     );
     CREATE INDEX IF NOT EXISTS idx_admin_log_created ON admin_log(created_at);
   `,
+  23: `
+    ALTER TABLE reviews ADD COLUMN gm_reply TEXT NOT NULL DEFAULT '';
+    ALTER TABLE reviews ADD COLUMN gm_replied_at TEXT;
+  `,
 };
 
 export type UpgradePlan =

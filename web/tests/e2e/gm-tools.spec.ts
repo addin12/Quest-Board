@@ -148,6 +148,48 @@ test("editing a published game: the address stays, it can't be unpublished under
   await expect(player.getByText(`The GM changed where ${title} Renamed is played`)).toBeVisible();
 });
 
+test("a GM replies to a review: everyone sees it, the reviewer is told, and the GM can take it back", async ({ page, browser }) => {
+  const db = e2eDb();
+  const review = db.prepare(
+    "SELECT r.id, u.email FROM reviews r JOIN games g ON g.id = r.game_id JOIN users u ON u.id = r.player_id WHERE g.slug = 'mercusuar-di-pulau-kabut' AND r.gm_reply = '' AND u.deleted_at IS NULL ORDER BY r.id LIMIT 1",
+  ).get() as { id: number; email: string };
+  const reply = `Thank you for playing! ${Date.now() % 100000}`;
+  try {
+    await login(page, "gm@questboard.test");
+    await page.goto("/games/mercusuar-di-pulau-kabut");
+    const item = page.getByRole("region", { name: /Reviews/ }).getByRole("listitem").filter({ has: page.locator(`input[name="reviewId"][value="${review.id}"]`) });
+    await item.getByText("Reply as the GM").click();
+    const { violations } = await new AxeBuilder({ page }).include(`#reply-${review.id}`).withTags(["wcag2a", "wcag2aa"]).analyze();
+    expect(violations.map((v) => v.id)).toEqual([]);
+    await item.getByLabel("Your public reply").fill(reply);
+    await item.getByRole("button", { name: "Save reply" }).click();
+    await expect(page.getByText("Your reply is up.")).toBeVisible();
+
+    const visitor = await newPage(browser);
+    await visitor.goto("/games/mercusuar-di-pulau-kabut");
+    await expect(visitor.getByText("Reply from Raka Pradipta (GM)").first()).toBeVisible();
+    await expect(visitor.getByText(reply)).toBeVisible();
+    await expect(visitor.getByText("Reply as the GM")).toHaveCount(0); // only the game's GM can answer
+
+    const reviewer = await newPage(browser);
+    await login(reviewer, review.email);
+    await reviewer.goto("/notifications");
+    await expect(reviewer.getByText("Raka Pradipta replied to your review of Mercusuar di Pulau Kabut").first()).toBeVisible();
+
+    // Emptying the reply removes it.
+    await page.reload();
+    await item.getByText("Edit your reply").click();
+    await item.getByLabel("Your public reply").fill("");
+    await item.getByRole("button", { name: "Save reply" }).click();
+    await expect(page.getByText("Your reply was removed.")).toBeVisible();
+    await visitor.reload();
+    await expect(visitor.getByText(reply)).toHaveCount(0);
+  } finally {
+    db.prepare("UPDATE reviews SET gm_reply = '', gm_replied_at = NULL WHERE id = ?").run(review.id);
+    db.close();
+  }
+});
+
 test("a GM duplicates a game: a draft copy without sessions, ready to edit", async ({ page }) => {
   await login(page, "gm@questboard.test");
   const db = e2eDb();

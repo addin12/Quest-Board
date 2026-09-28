@@ -31,7 +31,8 @@ export type NotificationKind =
   | "session_reminder_1h"   // → booked players + GM: the session starts within the hour
   | "game_question"        // → GM or player: a message in a pre-booking question thread (collapsed while unread)
   | "feedback_new"         // → admins: someone sent feedback
-  | "review_prompt";       // → player: a few hours after their session, "leave a review" (once per game)
+  | "review_prompt"        // → player: a few hours after their session, "leave a review" (once per game)
+  | "review_reply";        // → reviewer: the GM answered their review
 
 /**
  * Kinds that are also emailed (see lib/notification-mail.ts). session_cancelled is queued from every path

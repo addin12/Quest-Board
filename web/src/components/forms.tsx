@@ -1,11 +1,33 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useSyncExternalStore } from "react";
-import { postMessageAction, submitReviewAction, addSessionAction, rescheduleSessionAction, type FormState } from "@/app/actions";
+import { postMessageAction, submitReviewAction, addSessionAction, rescheduleSessionAction, replyReviewAction, type FormState } from "@/app/actions";
 import { SubmitButton } from "./submit-button";
 import { FieldError, Notice, errAttrs } from "./ui";
 import { useI18n } from "./i18n-provider";
 import { Icon } from "./icon";
+
+/** The game's GM answers a review publicly (leave it empty to remove the answer). */
+export function ReviewReplyForm({ reviewId, current }: { reviewId: number; current: string }) {
+  const { t } = useI18n();
+  const [state, action] = useActionState<FormState, FormData>(replyReviewAction, undefined);
+  const id = `reply-${reviewId}`;
+  return (
+    <details className="mt-2">
+      <summary className="btn-ghost inline-flex cursor-pointer list-none px-2! py-1! text-xs [&::-webkit-details-marker]:hidden">
+        <Icon name="comment" /> {current ? t("reviews.editReply") : t("reviews.reply")}
+      </summary>
+      <form action={action} className="mt-2 space-y-2">
+        <input type="hidden" name="reviewId" value={reviewId} />
+        <label htmlFor={id} className="label">{t("reviews.replyLabel")}</label>
+        <textarea id={id} name="reply" rows={3} maxLength={1000} defaultValue={state?.values?.reply ?? current} className="input" />
+        <p className="text-xs text-muted">{t("reviews.replyHint")}</p>
+        {state?.error && <Notice tone="danger">{t(state.error)}</Notice>}
+        <SubmitButton className="btn-primary py-1.5!" pendingText={t("common.saving")}>{t("reviews.replySave")}</SubmitButton>
+      </form>
+    </details>
+  );
+}
 
 export function ReviewForm({ gameId }: { gameId: number }) {
   const { t } = useI18n();

@@ -100,6 +100,12 @@ export default async function GmProfilePage(props: PageProps<"/gms/[id]">) {
                   <p className="mt-2 text-xs text-muted">
                     {shownName(r.player_name, t)} · <Link href={`/games/${r.game_slug}`} className="hover:text-accent">{r.game_title}</Link>
                   </p>
+                  {r.gm_reply && (
+                    <div className="mt-2 rounded-lg border-l-2 border-accent bg-surface-2 px-3 py-2 text-sm">
+                      <p className="text-xs font-semibold">{t("reviews.gmReply", { name: shownName(gm.name, t) })}</p>
+                      <p className="mt-0.5 whitespace-pre-line">{r.gm_reply}</p>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

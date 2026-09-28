@@ -93,6 +93,7 @@ export function exportAccount(userId: number) {
       userId,
     ),
     reviews: q("SELECT r.id, g.title AS game, r.rating, r.body, r.created_at FROM reviews r JOIN games g ON g.id = r.game_id WHERE r.player_id = ?", userId),
+    review_replies: q("SELECT g.title AS game, r.gm_reply AS reply, r.gm_replied_at AS replied_at FROM reviews r JOIN games g ON g.id = r.game_id WHERE g.gm_id = ? AND r.gm_reply <> ''", userId),
     table_messages: q("SELECT m.id, g.title AS game, m.body, m.created_at FROM messages m JOIN games g ON g.id = m.game_id WHERE m.user_id = ?", userId),
     games_run: q("SELECT id, title, system, status, price_idr, created_at FROM games WHERE gm_id = ?", userId),
     gm_requests: q("SELECT id, title, system, group_size, status, created_at FROM gm_requests WHERE requester_id = ?", userId),

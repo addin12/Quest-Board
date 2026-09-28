@@ -18,7 +18,7 @@ export default async function PrivacyPage() {
   return (
     <article className="mx-auto max-w-3xl px-4 py-10">
       <h1 className="flex items-center gap-2 text-3xl font-bold"><Icon name="user-lock" className="text-accent" /> {t("legal.privacy.title")}</h1>
-      <p className="mt-1 text-sm text-muted">{t("legal.updated", { date: "25 Sep 2026" })}</p>
+      <p className="mt-1 text-sm text-muted">{t("legal.updated", { date: "28 Sep 2026" })}</p>
       {process.env.QUESTBOARD_LEGAL_FINAL !== "true" && <div className="mt-5"><Notice>{t("legal.draft")}</Notice></div>}
       <p className="mt-6 leading-relaxed">{t("legal.privacy.intro")}</p>
       <ol className="mt-6 space-y-6">
