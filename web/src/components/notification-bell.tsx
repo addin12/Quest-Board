@@ -89,7 +89,7 @@ export function NotificationBell({ unread, items, openRequests }: { unread: numb
           id={panelId}
           role="region"
           aria-label={t("notif.title")}
-          className="parchment popover absolute right-0 top-full z-50 mt-2 w-[22rem] max-sm:fixed max-sm:inset-x-2 max-sm:top-16 max-sm:w-auto"
+          className="parchment popover absolute right-0 top-full z-50 mt-2 w-[22rem] whitespace-normal max-sm:fixed max-sm:inset-x-2 max-sm:top-16 max-sm:w-auto"
         >
           <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
             <p className="font-display text-base font-semibold">{t("notif.title")}</p>
@@ -103,7 +103,7 @@ export function NotificationBell({ unread, items, openRequests }: { unread: numb
           {items.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-muted">{t("notif.emptyTitle")}</p>
           ) : (
-            <ul className="max-h-[min(24rem,60vh)] overflow-y-auto">
+            <ul className="max-h-[min(24rem,60vh)] overflow-y-auto overflow-x-hidden">
               {items.map((item) => (
                 <li key={item.id} className="border-b border-border last:border-b-0">
                   <Link href={item.href} className={`flex items-start gap-3 px-4 py-3 hover:bg-surface-2 ${item.unread ? "bg-accent-soft/40" : ""}`}>

@@ -8,10 +8,11 @@ import { purgeOldWindows } from "@/lib/rate-limit";
 import { pruneErrorLog } from "@/lib/error-log";
 import { deliverNotificationEmails } from "@/lib/notification-mail";
 import { siteOrigin } from "@/lib/site";
+import { remindExpiringNotices } from "@/lib/community";
 import { timingSafeEqual } from "node:crypto";
 
 // Scheduler endpoint: session reminders, expired waitlist offers passed on to the next person,
-// notification emails (and retries of failed ones), review prompts, and housekeeping (old read
+// notification emails (and retries of failed ones), review prompts, "your notice comes down soon", and housekeeping (old read
 // notifications, outbox rows, error log, expired sign-in sessions and rate-limit windows). Call it every 5–10 minutes with
 // "Authorization: Bearer $QUESTBOARD_CRON_SECRET". Without the secret configured the
 // route doesn't exist (404); the site then falls back to checking while people browse.
@@ -32,12 +33,13 @@ async function run(request: Request) {
   const origin = await siteOrigin();
   const emailed = await processReminders(origin);
   const reviewPrompts = promptReviews();
+  const noticeReminders = remindExpiringNotices();
   const notificationEmails = await deliverNotificationEmails(origin, 500);
   const retried = await retryFailedEmails();
   purgeExpiredSessions();
   purgeOldWindows();
   const pruned = { notifications: pruneNotifications(), outbox: pruneOutbox(), errors: pruneErrorLog() };
-  return Response.json({ ok: true, emailed, notificationEmails, retried, reviewPrompts, waitlists, pruned });
+  return Response.json({ ok: true, emailed, notificationEmails, retried, reviewPrompts, noticeReminders, waitlists, pruned });
 }
 
 export const GET = run;

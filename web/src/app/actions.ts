@@ -23,7 +23,7 @@ import { archiveGame, deleteAccount } from "@/lib/account";
 import { createReport, decideReport, setGmVerified, suspendUser, unsuspendUser, logAdminAction } from "@/lib/moderation";
 import { isReportDecision, parseReport } from "@/lib/reports";
 import { heldSeats, joinWaitlist, leaveWaitlist, processWaitlist } from "@/lib/waitlist";
-import { addReply, announceGameIfNew, createNotice, getNotice, setFollowing, setSaved } from "@/lib/community";
+import { addReply, announceGameIfNew, createNotice, getNotice, renewNotice, setFollowing, setSaved, updateNotice } from "@/lib/community";
 import { parseNotice, parseReply } from "@/lib/board";
 import { toast } from "@/lib/toast";
 import { LEGAL_VERSION } from "@/lib/legal";
@@ -345,6 +345,9 @@ async function rescheduleSessionActionImpl(_: FormState, form: FormData): Promis
     c.prepare("DELETE FROM session_reminders WHERE session_id = ?").run(sessionId); // remind again for the new time
     const booked = c.prepare("SELECT player_id FROM bookings WHERE session_id = ? AND status = 'confirmed'").all(sessionId) as { player_id: number }[];
     for (const b of booked) notify({ userId: b.player_id, kind: "session_moved", actorId: s.gm_id, sessionId }, c);
+    // People waiting for a seat (or holding an offered one) need the new time too.
+    const waiting = c.prepare("SELECT player_id FROM waitlist WHERE session_id = ? AND status IN ('waiting','offered')").all(sessionId) as { player_id: number }[];
+    for (const w of waiting) notify({ userId: w.player_id, kind: "waitlist_session_moved", actorId: s.gm_id, sessionId }, c);
     return booked;
   });
   if (booked.length > 0) {
@@ -508,6 +511,34 @@ async function replyReviewActionImpl(_: FormState, form: FormData): Promise<Form
   revalidatePath(`/games/${r.slug}`);
   revalidatePath(`/gms/${r.gm_id}`);
   return { ok: true };
+}
+
+/** The reviewer changes their own review (rating and text). */
+async function updateReviewActionImpl(_: FormState, form: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const r = ownReview(Number(form.get("reviewId")), user.id);
+  if (!r) return { error: "err.notFound" };
+  const parsed = parseReview(fd(form));
+  if (!parsed.ok) return { fieldErrors: parsed.errors };
+  if (!hit("review", String(user.id))) return { error: "err.rateLimited" };
+  db().prepare("UPDATE reviews SET rating = ?, body = ?, edited_at = ? WHERE id = ?").run(parsed.value.rating, parsed.value.body, new Date().toISOString(), r.id);
+  await toast("toast.reviewUpdated");
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** The reviewer deletes their own review (they may write a new one afterwards). */
+export async function deleteReviewAction(form: FormData) {
+  const user = await requireUser();
+  const r = ownReview(Number(form.get("reviewId")), user.id);
+  if (!r) throw new Error("Not found");
+  db().prepare("DELETE FROM reviews WHERE id = ?").run(r.id);
+  await toast("toast.reviewDeleted");
+  revalidatePath("/", "layout");
+}
+
+function ownReview(reviewId: number, userId: number) {
+  return db().prepare("SELECT id FROM reviews WHERE id = ? AND player_id = ?").get(reviewId, userId) as { id: number } | undefined;
 }
 
 // ─── Profile settings (players & GMs) ────────────────────────────────────
@@ -802,6 +833,30 @@ async function replyNoticeActionImpl(_: FormState, form: FormData): Promise<Form
   return { ok: true };
 }
 
+/** The author edits their open notice (e.g. fewer spots left, a new schedule). */
+async function updateNoticeActionImpl(_: FormState, form: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const post = getNotice(Number(form.get("postId")));
+  if (!post || post.author_id !== user.id) return { error: "err.notFound" };
+  if (post.status !== "open") return { error: "err.noticeClosed" };
+  const parsed = parseNotice(fd(form));
+  if (!parsed.ok) return { fieldErrors: parsed.errors, error: "err.fixFields" };
+  if (!hit("chat", String(user.id))) return { error: "err.rateLimited" };
+  updateNotice(post.id, parsed.value);
+  revalidatePath("/", "layout");
+  redirect(`/board/${post.id}?edited=1`);
+}
+
+/** "Keep it up": the author gives an open (or just expired) notice another 30 days on the board. */
+export async function renewNoticeAction(form: FormData) {
+  const user = await requireUser();
+  const post = getNotice(Number(form.get("postId")));
+  if (!post || post.author_id !== user.id || post.status !== "open") throw new Error("Not found");
+  renewNotice(post.id);
+  await toast("toast.noticeRenewed");
+  revalidatePath("/", "layout");
+}
+
 export async function closeNoticeAction(form: FormData) {
   const user = await requireUser();
   const post = getNotice(Number(form.get("postId")));
@@ -983,6 +1038,10 @@ export async function submitReviewAction(prev: FormState, form: FormData): Promi
   return withEcho(form, () => submitReviewActionImpl(prev, form));
 }
 
+export async function updateReviewAction(prev: FormState, form: FormData): Promise<FormState> {
+  return withEcho(form, () => updateReviewActionImpl(prev, form));
+}
+
 export async function replyReviewAction(prev: FormState, form: FormData): Promise<FormState> {
   return withEcho(form, () => replyReviewActionImpl(prev, form));
 }
@@ -1021,6 +1080,10 @@ export async function createReportAction(prev: FormState, form: FormData): Promi
 
 export async function createNoticeAction(prev: FormState, form: FormData): Promise<FormState> {
   return withEcho(form, () => createNoticeActionImpl(prev, form));
+}
+
+export async function updateNoticeAction(prev: FormState, form: FormData): Promise<FormState> {
+  return withEcho(form, () => updateNoticeActionImpl(prev, form));
 }
 
 export async function replyNoticeAction(prev: FormState, form: FormData): Promise<FormState> {

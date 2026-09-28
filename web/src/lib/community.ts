@@ -55,6 +55,40 @@ export function createNotice(authorId: number, n: NoticeInput): number {
   );
 }
 
+export function updateNotice(id: number, n: NoticeInput): void {
+  db()
+    .prepare("UPDATE lfg_posts SET kind = ?, title = ?, system = ?, location_type = ?, city = ?, language = ?, schedule = ?, spots = ?, body = ? WHERE id = ?")
+    .run(n.kind, n.title, n.system, n.locationType, n.city, n.language, n.schedule, n.spots, n.body, id);
+}
+
+/** "Keep it up": another NOTICE_DAYS on the board from now (and a fresh reminder next time). */
+export function renewNotice(id: number, now = new Date()): void {
+  db().prepare("UPDATE lfg_posts SET expires_at = ?, expiry_notified_at = NULL WHERE id = ?").run(new Date(now.getTime() + NOTICE_DAYS * 86_400_000).toISOString(), id);
+}
+
+/** Days before a notice comes down that its author is reminded (once). */
+export const NOTICE_REMIND_DAYS = 3;
+
+/** Tell authors their notice comes down soon, so they can keep it up. Returns how many were told. */
+export function remindExpiringNotices(now = new Date()): number {
+  const soon = new Date(now.getTime() + NOTICE_REMIND_DAYS * 86_400_000).toISOString();
+  return tx((c) => {
+    const due = c
+      .prepare(
+        `SELECT p.id, p.author_id FROM lfg_posts p JOIN users u ON u.id = p.author_id
+          WHERE p.status = 'open' AND p.expiry_notified_at IS NULL AND p.expires_at > ? AND p.expires_at <= ?
+            AND u.deleted_at IS NULL AND u.suspended_at IS NULL`,
+      )
+      .all(now.toISOString(), soon) as { id: number; author_id: number }[];
+    const mark = c.prepare("UPDATE lfg_posts SET expiry_notified_at = ? WHERE id = ?");
+    for (const d of due) {
+      notify({ userId: d.author_id, kind: "notice_expiring", postId: d.id }, c);
+      mark.run(now.toISOString(), d.id);
+    }
+    return due.length;
+  });
+}
+
 export type ReplyRow = { id: number; author_id: number; body: string; created_at: string; name: string; avatar_hue: number; avatar_image: string };
 
 export function listReplies(postId: number): ReplyRow[] {

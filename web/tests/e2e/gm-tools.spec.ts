@@ -49,6 +49,8 @@ test("a GM changes a session's time: seats stay, players are told, reminders sta
   const sid = Number(db.prepare("INSERT INTO game_sessions (game_id, starts_at) VALUES (?, ?)").run(game.id, new Date(first).toISOString()).lastInsertRowid);
   db.prepare("INSERT INTO bookings (session_id, player_id, price_idr) VALUES (?, ?, 0)").run(sid, player.id);
   db.prepare("INSERT INTO session_reminders (session_id, user_id, kind) VALUES (?, ?, '24h')").run(sid, player.id);
+  const waiter = db.prepare("SELECT id FROM users WHERE email = 'citra@questboard.test'").get() as { id: number };
+  db.prepare("INSERT INTO waitlist (session_id, player_id) VALUES (?, ?)").run(sid, waiter.id);
   const mark = (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM email_outbox").get() as { n: number }).n;
   try {
     await login(page, "gm@questboard.test");
@@ -79,6 +81,8 @@ test("a GM changes a session's time: seats stay, players are told, reminders sta
     expect(row).toEqual({ starts_at: new Date(moved).toISOString(), duration_minutes: 240, reschedule_count: 1, status: "scheduled" });
     expect(db.prepare("SELECT status FROM bookings WHERE session_id = ?").get(sid)).toEqual({ status: "confirmed" });
     expect((db.prepare("SELECT COUNT(*) AS n FROM session_reminders WHERE session_id = ?").get(sid) as { n: number }).n).toBe(0);
+    // Someone on the waitlist hears about the new time too.
+    expect(db.prepare("SELECT 1 AS ok FROM notifications WHERE user_id = ? AND kind = 'waitlist_session_moved' AND session_id = ?").get(waiter.id, sid)).toEqual({ ok: 1 });
     const mail = db.prepare("SELECT subject, body_text FROM email_outbox WHERE id > ? AND to_address = 'player@questboard.test' AND subject LIKE 'New time:%'").get(mark) as { subject: string; body_text: string };
     expect(mail.subject).toMatch(/Mercusuar di Pulau Kabut/);
     expect(mail.body_text).toMatch(/Was: .+\nNow: .+ \(4 hours\)/);

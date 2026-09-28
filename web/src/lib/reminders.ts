@@ -79,4 +79,5 @@ export function maybeProcessReminders(origin: string): void {
   lastRun = now;
   processReminders(origin).catch((err) => console.error("[quest-board] reminders failed", err));
   import("./review-prompts").then((m) => m.promptReviews()).catch((err) => console.error("[quest-board] review prompts failed", err));
+  import("./community").then((m) => m.remindExpiringNotices()).catch((err) => console.error("[quest-board] notice reminders failed", err));
 }

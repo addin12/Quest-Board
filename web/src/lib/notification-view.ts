@@ -35,8 +35,8 @@ export type NotificationView = {
   actor: { name: string; hue: number; image: string | null } | null;
 };
 
-const REMOVED: Record<string, "notif.removedReview" | "notif.removedMessage" | "notif.removedGame" | "notif.removedNotice" | "notif.removedReply"> = {
-  review: "notif.removedReview", message: "notif.removedMessage", request_message: "notif.removedMessage",
+const REMOVED: Record<string, "notif.removedReview" | "notif.removedReviewReply" | "notif.removedMessage" | "notif.removedGame" | "notif.removedNotice" | "notif.removedReply"> = {
+  review: "notif.removedReview", review_reply: "notif.removedReviewReply", message: "notif.removedMessage", request_message: "notif.removedMessage",
   game: "notif.removedGame", lfg_post: "notif.removedNotice", lfg_reply: "notif.removedReply",
 };
 
@@ -78,6 +78,8 @@ export function describeNotification(n: NotificationSource, t: T): NotificationV
     case "review_prompt": return { ...base, actor: null, href: n.game_slug ? `/games/${n.game_slug}#reviews-h` : "/dashboard", icon: "star", text: t("notif.reviewPrompt", { title: game }) };
     case "content_removed": return { ...base, actor: null, href: "/terms#s6", icon: "shield", text: t(REMOVED[n.report_target ?? ""] ?? "notif.removedOther") };
     case "review_reply": return { ...base, href: n.game_slug ? `/games/${n.game_slug}#reviews-h` : "/dashboard", icon: "comment", text: t("notif.reviewReply", { name: who, title: game }) };
+    case "waitlist_session_moved": return { ...base, href: gameHref, icon: "calendar-clock", text: t("notif.waitlistSessionMoved", { title: game }) };
+    case "notice_expiring": return { ...base, actor: null, href: n.post_id ? `/board/${n.post_id}` : "/board", icon: "hourglass-end", text: t("notif.noticeExpiring", { title: n.post_title ?? "" }) };
     case "report_resolved": return { ...base, actor: null, href: "/notifications", icon: "shield-check", text: t("notif.reportResolved") };
   }
 }

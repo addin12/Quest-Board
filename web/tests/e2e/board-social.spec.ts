@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { createGmWithGame, login, newPage, signup, unique } from "./helpers";
+import { createGmWithGame, e2eDb, login, newPage, signup, unique } from "./helpers";
 
 // Iteration 6: Tavern Notice Board, saved games, following GMs.
 
@@ -147,4 +147,48 @@ test("notices and replies can be reported, and an admin can remove them", async 
   await card.getByRole("button", { name: "Remove content" }).click();
   await expect(card).toHaveCount(0);
   expect((await reporter.goto(url))?.status()).toBe(404);
+});
+
+test("the author can edit a notice, and keep it up when it's about to come down", async ({ browser }) => {
+  const author = await newPage(browser);
+  await login(author, "fajar@questboard.test");
+  await author.goto("/board/new");
+  await author.getByLabel("Looking for players").check();
+  await author.getByLabel("Headline").fill("Three players for a pirate campaign");
+  await author.getByLabel("Open spots").fill("3");
+  await author.getByLabel("When can you play?").fill("Sunday afternoons");
+  await author.getByLabel("About you and what you want to play").fill("A swashbuckling online campaign, beginners very welcome.");
+  await author.getByRole("button", { name: "Pin to the board" }).click();
+  await author.waitForURL(/\/board\/\d+\?posted=1/);
+  const id = Number(new URL(author.url()).pathname.split("/").pop());
+
+  // Found one player: fewer spots, new schedule.
+  await expect(author.getByText(/On the board until/)).toBeVisible();
+  await expect(author.getByRole("button", { name: /Keep it up/ })).toHaveCount(0); // not yet: a month to go
+  await author.getByRole("link", { name: "Edit notice" }).click();
+  await expect(author.getByLabel("Headline")).toHaveValue("Three players for a pirate campaign");
+  await author.getByLabel("Headline").fill("Two players for a pirate campaign");
+  await author.getByLabel("Open spots").fill("2");
+  await author.getByRole("button", { name: "Save changes" }).click();
+  await author.waitForURL(`**/board/${id}?edited=1`);
+  await expect(author.getByText("Notice updated.")).toBeVisible();
+  await expect(author.getByRole("heading", { level: 1, name: "Two players for a pirate campaign" })).toBeVisible();
+  await expect(author.getByText("2 spots open")).toBeVisible();
+
+  // Two days before it comes down, the author can keep it up for another 30 days.
+  const db = e2eDb();
+  db.prepare("UPDATE lfg_posts SET expires_at = ? WHERE id = ?").run(new Date(Date.now() + 2 * 86_400_000).toISOString(), id);
+  await author.reload();
+  await author.getByRole("button", { name: "Keep it up 30 more days" }).click();
+  await expect(author.getByText("Your notice stays up for another 30 days.")).toBeVisible();
+  const { expires_at } = db.prepare("SELECT expires_at FROM lfg_posts WHERE id = ?").get(id) as { expires_at: string };
+  db.close();
+  expect(Date.parse(expires_at) - Date.now()).toBeGreaterThan(29 * 86_400_000);
+
+  // Nobody else can edit it.
+  const other = await newPage(browser);
+  await login(other, "player@questboard.test");
+  await other.goto(`/board/${id}`);
+  await expect(other.getByRole("link", { name: "Edit notice" })).toHaveCount(0);
+  expect((await other.goto(`/board/${id}/edit`))?.status()).toBe(404);
 });

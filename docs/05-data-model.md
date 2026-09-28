@@ -275,3 +275,17 @@ ALTER TABLE reviews ADD COLUMN gm_replied_at TEXT;
 ```
 - Only the game's GM can reply (`replyReviewAction`); an empty reply removes it. A first reply notifies the reviewer (`review_reply`). Replies show under the review on the game page and the GM's profile, and are in the GM's data export (`review_replies`).
 - Reviews open once a session has **ended** (start + length) or the GM marked it played — not the moment it starts (`canReview`).
+
+## v24: reporting GM replies, edited reviews
+```sql
+ALTER TABLE reviews ADD COLUMN edited_at TEXT;  -- the reviewer changed it after posting
+-- reports is rebuilt (SQLite can't alter a CHECK) so target_type also accepts 'review_reply'
+```
+- A `review_reply` report points at the review's id; its owner is the game's GM. "Remove content" clears `gm_reply` and keeps the review.
+- Reviewers can edit (`edited_at` is shown as "edited") or delete their own review; after deleting they may write a new one.
+
+## v25: notices that come down soon
+```sql
+ALTER TABLE lfg_posts ADD COLUMN expiry_notified_at TEXT;  -- the author was reminded; cleared when they keep it up
+```
+- `remindExpiringNotices()` (cron and browse fallback) notifies the author (`notice_expiring`, emailed) once when an open notice has 3 days or less left. "Keep it up" (`renewNotice`) sets `expires_at` to 30 days from now and clears the reminder.

@@ -136,8 +136,31 @@ test("player can review a game they have played", async ({ page }) => {
   await page.getByRole("textbox", { name: "Review" }).fill("Seram dan seru. E2E approved.");
   await page.getByRole("button", { name: "Post review" }).click();
   await expect(page.getByText("Thanks for reviewing this game")).toBeVisible();
-  await expect(page.getByText("Seram dan seru. E2E approved.")).toBeVisible();
+  await expect(page.locator("p", { hasText: "Seram dan seru. E2E approved." })).toBeVisible(); // (the edit form's textarea holds it too)
   await expect(page.getByText("How was your game?")).toHaveCount(0); // one review per game
+
+  // The reviewer can edit it (marked "edited")…
+  const mine = page.getByRole("region", { name: /Reviews/ }).getByRole("listitem").filter({ hasText: "Seram dan seru. E2E approved." });
+  await mine.getByText("Edit your review").click();
+  await mine.locator('label:has(input[name="rating"][value="4"])').click();
+  await mine.getByRole("textbox", { name: "Review" }).fill("Seram, seru, sedikit panjang. E2E edited.");
+  await mine.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Your review was updated.")).toBeVisible();
+  const edited = page.getByRole("region", { name: /Reviews/ }).getByRole("listitem").filter({ hasText: "E2E edited." });
+  await expect(edited.getByText("edited", { exact: false }).first()).toBeVisible();
+  await expect(edited.getByRole("img", { name: /4/ })).toBeVisible();
+
+  // …or delete it, and then write a new one.
+  await edited.getByText("Edit your review").click();
+  page.once("dialog", (d) => void d.accept());
+  await edited.getByRole("button", { name: "Delete review" }).click();
+  await expect(page.getByText("Your review was deleted.")).toBeVisible();
+  await expect(page.getByText("E2E edited.")).toHaveCount(0);
+  await expect(page.getByText("How was your game?")).toBeVisible();
+  await page.locator('label:has(input[name="rating"][value="5"])').click();
+  await page.getByRole("textbox", { name: "Review" }).fill("Seram dan seru. E2E approved.");
+  await page.getByRole("button", { name: "Post review" }).click();
+  await expect(page.getByText("Thanks for reviewing this game")).toBeVisible();
 });
 
 test("new GM signs up, sets payment details, lists a game in Rupiah and it appears in search", async ({ page }) => {

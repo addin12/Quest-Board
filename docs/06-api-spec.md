@@ -126,3 +126,6 @@ Errors are **translation keys** (e.g. `"err.full"`, `"v.price"`). The client ren
 | `postRequestMessageAction` | requester or matched GM | only when matched |
 
 The public JSON API is unchanged. Requests and offers are not exposed.
+
+### GET /api/gm/games/{id}/roster
+CSV of every seat booked for one game (the game's GM or an admin; otherwise 404): `session_start_wib, session_status, player, seat, price_idr, marked_paid, booked_at_wib`. Names only — no emails or payment details. UTF-8 with a BOM, and cells can't be read as spreadsheet formulas.

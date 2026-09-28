@@ -28,6 +28,12 @@ export function resolveTarget(type: ReportTarget, id: number): Target | null {
       if (!r) return null;
       return { ownerId: r.player_id, href: `/games/${r.slug}#reviews-h`, snapshot: `Review of “${r.title}” by ${r.name} (${r.rating}/5)\n${r.body}`, canSee: () => true };
     }
+    case "review_reply": {
+      const r = c.prepare("SELECT r.gm_reply, g.gm_id, g.slug, g.title, u.name FROM reviews r JOIN games g ON g.id = r.game_id JOIN users u ON u.id = g.gm_id WHERE r.id = ? AND r.gm_reply <> ''").get(id) as
+        | { gm_reply: string; gm_id: number; slug: string; title: string; name: string } | undefined;
+      if (!r) return null;
+      return { ownerId: r.gm_id, href: `/games/${r.slug}#reviews-h`, snapshot: `GM reply to a review of “${r.title}”, ${r.name}:\n${r.gm_reply}`, canSee: () => true };
+    }
     case "message": {
       const m = c.prepare("SELECT m.user_id, m.body, g.id AS game_id, g.slug, g.title, u.name FROM messages m JOIN games g ON g.id = m.game_id JOIN users u ON u.id = m.user_id WHERE m.id = ?").get(id) as
         | { user_id: number; body: string; game_id: number; slug: string; title: string; name: string } | undefined;
@@ -172,6 +178,7 @@ export function decideReport(reportId: number, adminId: number, decision: Report
   tx((c) => {
     if (decision === "remove") {
       if (r.target_type === "review") c.prepare("DELETE FROM reviews WHERE id = ?").run(r.target_id);
+      else if (r.target_type === "review_reply") c.prepare("UPDATE reviews SET gm_reply = '', gm_replied_at = NULL WHERE id = ?").run(r.target_id);
       else if (r.target_type === "message") c.prepare("DELETE FROM messages WHERE id = ?").run(r.target_id);
       else if (r.target_type === "request_message") c.prepare("DELETE FROM gm_request_messages WHERE id = ?").run(r.target_id);
       else if (r.target_type === "game") archiveGame(c, r.target_id, adminId);

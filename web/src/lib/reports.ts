@@ -1,7 +1,7 @@
 // Pure: what can be reported, why, and validation of the report form.
 import type { MsgKey } from "./i18n/dict";
 
-export const REPORT_TARGETS = ["game", "review", "message", "request_message", "user", "lfg_post", "lfg_reply"] as const;
+export const REPORT_TARGETS = ["game", "review", "review_reply", "message", "request_message", "user", "lfg_post", "lfg_reply"] as const;
 export type ReportTarget = (typeof REPORT_TARGETS)[number];
 
 export const REPORT_REASONS = ["scam", "harassment", "inappropriate", "spam", "misleading", "other"] as const;

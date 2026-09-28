@@ -26,7 +26,9 @@
 // v21: game_sessions.reschedule_count (a GM changed the time; the calendar SEQUENCE).
 // v22: admin_log (who suspended, verified or decided what — shown on the admin home).
 // v23: reviews.gm_reply / gm_replied_at (the GM's public answer to a review).
-export const SCHEMA_VERSION = 23;
+// v24: reports accept review_reply (a GM's reply to a review) + reviews.edited_at.
+// v25: lfg_posts.expiry_notified_at (the author was told the notice comes down soon).
+export const SCHEMA_VERSION = 25;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -138,6 +140,7 @@ CREATE TABLE IF NOT EXISTS reviews (
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   gm_reply   TEXT NOT NULL DEFAULT '',      -- v23: the game's GM answers publicly ('' = no reply)
   gm_replied_at TEXT,
+  edited_at  TEXT,                          -- v24: the reviewer changed it after posting
   UNIQUE (game_id, player_id)
 );
 
@@ -305,7 +308,7 @@ CREATE TABLE IF NOT EXISTS email_outbox (
 CREATE TABLE IF NOT EXISTS reports (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   reporter_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  target_type     TEXT NOT NULL CHECK (target_type IN ('game','review','message','request_message','user','lfg_post','lfg_reply')),
+  target_type     TEXT NOT NULL CHECK (target_type IN ('game','review','review_reply','message','request_message','user','lfg_post','lfg_reply')),
   target_id       INTEGER NOT NULL,
   target_owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   reason          TEXT NOT NULL CHECK (reason IN ('scam','harassment','inappropriate','spam','misleading','other')),
@@ -348,7 +351,8 @@ CREATE TABLE IF NOT EXISTS lfg_posts (
   body          TEXT NOT NULL,
   status        TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','closed')),
   created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  expires_at    TEXT NOT NULL
+  expires_at    TEXT NOT NULL,
+  expiry_notified_at TEXT                 -- v25: author reminded it comes down soon (cleared when kept up)
 );
 CREATE INDEX IF NOT EXISTS idx_lfg_posts_open ON lfg_posts(status, expires_at, created_at);
 CREATE TABLE IF NOT EXISTS lfg_replies (

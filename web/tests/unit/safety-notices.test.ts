@@ -108,3 +108,48 @@ test("removing reported content tells its author (without naming the moderator) 
   assert.equal(entry.target_name, "rude");
   assert.match(entry.detail, /^review #\d+ — insults the GM$/);
 });
+
+test("a GM's reply to a review can be reported; removing it clears only the reply and tells the GM", async () => {
+  const { createReport, decideReport } = await import("../../src/lib/moderation.ts");
+  const { listNotifications } = await import("../../src/lib/notifications.ts");
+  const { describeNotification } = await import("../../src/lib/notification-view.ts");
+  const { makeT } = await import("../../src/lib/i18n/dict.ts");
+  const gm = user("gm4@x.test");
+  const player = user("reviewer4@x.test");
+  const admin = user("mod4@x.test");
+  const game = Number(db().prepare(
+    "INSERT INTO games (gm_id, slug, title, system, summary, description, format, location_type, language, price_idr, seats_total, status) VALUES (?, 'g4', 'Game 4', 'D&D 5e (2014)', 's', 'd', 'one_shot', 'online', 'id', 0, 5, 'published')",
+  ).run(gm).lastInsertRowid);
+  const review = Number(db().prepare("INSERT INTO reviews (game_id, player_id, rating, body, gm_reply) VALUES (?, ?, 2, 'meh', 'You were rude at my table')").run(game, player).lastInsertRowid);
+
+  assert.equal(createReport(gm, "review_reply", review, "harassment", ""), "own"); // the GM can't report their own reply
+  assert.equal(createReport(player, "review_reply", review, "harassment", ""), "ok");
+  const report = (db().prepare("SELECT id, target_owner_id, snapshot FROM reports WHERE target_type = 'review_reply' AND target_id = ?").get(review)) as { id: number; target_owner_id: number; snapshot: string };
+  assert.equal(report.target_owner_id, gm);
+  assert.match(report.snapshot, /You were rude at my table/);
+
+  assert.equal(decideReport(report.id, admin, "remove", ""), true);
+  const after = db().prepare("SELECT body, gm_reply FROM reviews WHERE id = ?").get(review) as { body: string; gm_reply: string };
+  assert.deepEqual({ ...after }, { body: "meh", gm_reply: "" }); // the review itself stays
+  const n = listNotifications(gm).find((x) => x.kind === "content_removed");
+  assert.ok(n);
+  assert.equal(describeNotification(n, makeT("en")).text, "A moderator removed your reply to a review because it broke the community guidelines");
+});
+
+test("a notice's author is reminded once, 3 days before it comes down; keeping it up starts over", async () => {
+  const { remindExpiringNotices, renewNotice, getNotice } = await import("../../src/lib/community.ts");
+  const author = user("pinner@x.test");
+  const post = createNotice(author, { kind: "lf_group", title: "Looking for a Friday group", system: "", locationType: "online", city: "", language: "id", schedule: "Fridays", spots: 0, body: "New to TTRPGs, would love a friendly online group on Fridays." });
+  db().prepare("UPDATE lfg_posts SET status = 'closed' WHERE id <> ?").run(post); // notices from earlier tests would come due too
+  const day = 86_400_000;
+  const created = Date.parse(getNotice(post)!.expires_at) - 30 * day;
+  assert.equal(remindExpiringNotices(new Date(created + 20 * day)), 0); // 10 days left: too early
+  assert.equal(remindExpiringNotices(new Date(created + 27.5 * day)), 1); // 2.5 days left
+  assert.equal(remindExpiringNotices(new Date(created + 28 * day)), 0); // only once
+  assert.deepEqual(kinds(author), ["notice_expiring"]);
+
+  renewNotice(post, new Date(created + 28 * day));
+  const renewed = getNotice(post)!;
+  assert.equal(Date.parse(renewed.expires_at), created + 58 * day); // 30 days from when it was kept up
+  assert.equal(remindExpiringNotices(new Date(created + 56 * day)), 1); // reminded again next time round
+});

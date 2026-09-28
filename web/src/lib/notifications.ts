@@ -17,6 +17,7 @@ export type NotificationKind =
   | "booking_cancelled"  // → GM: a player cancelled their seat
   | "session_cancelled"  // → player: the GM cancelled a session they had booked
   | "session_moved"      // → player: the GM changed the time of a session they had booked
+  | "waitlist_session_moved" // → player on the waitlist: the GM changed that session's time
   | "game_place_changed" // → player with an upcoming seat: the game moved (city, online ↔ in person, platform)
   | "report_new"         // → admins: a member reported something
   | "report_resolved"    // → reporter: a moderator reviewed their report
@@ -25,6 +26,7 @@ export type NotificationKind =
   | "payment_confirmed"  // → player: the GM marked their seat as paid
   | "lfg_reply"          // → notice author: someone replied on the Notice Board (collapsed while unread)
   | "lfg_thread_reply"   // → earlier repliers on a notice: someone else replied (collapsed while unread)
+  | "notice_expiring"    // → notice author: it comes down in a few days — keep it up?
   | "gm_suspended"       // → players with upcoming seats / recent requesters: moderators suspended that GM — don't pay
   | "followed_gm_game"   // → follower: a GM they follow published a new game
   | "session_reminder_24h" // → booked players + GM: the session is within 24 hours (lib/reminders.ts)
@@ -41,7 +43,7 @@ export type NotificationKind =
  */
 export const EMAIL_KINDS: ReadonlySet<NotificationKind> = new Set([
   "booking_new", "booking_cancelled", "waitlist_offer", "request_direct", "offer_received", "offer_chosen",
-  "request_message", "game_question", "feedback_new", "review_prompt", "session_cancelled", "game_place_changed", "gm_suspended", "content_removed",
+  "request_message", "game_question", "feedback_new", "review_prompt", "session_cancelled", "game_place_changed", "gm_suspended", "content_removed", "notice_expiring",
 ]);
 
 /** Emailed even to people who turned notification emails off: they could otherwise turn up to a session that isn't happening. */

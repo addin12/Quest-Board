@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useSyncExternalStore } from "react";
-import { postMessageAction, submitReviewAction, addSessionAction, rescheduleSessionAction, replyReviewAction, type FormState } from "@/app/actions";
+import { postMessageAction, submitReviewAction, addSessionAction, rescheduleSessionAction, replyReviewAction, updateReviewAction, type FormState } from "@/app/actions";
 import { SubmitButton } from "./submit-button";
 import { FieldError, Notice, errAttrs } from "./ui";
 import { useI18n } from "./i18n-provider";
@@ -29,20 +29,29 @@ export function ReviewReplyForm({ reviewId, current }: { reviewId: number; curre
   );
 }
 
-export function ReviewForm({ gameId }: { gameId: number }) {
+/** A new review, or (with `existing`) the reviewer editing theirs. */
+export function ReviewForm({ gameId, existing }: { gameId: number; existing?: { id: number; rating: number; body: string } }) {
   const { t } = useI18n();
-  const [state, action] = useActionState<FormState, FormData>(submitReviewAction, undefined);
+  const [state, action] = useActionState<FormState, FormData>(existing ? updateReviewAction : submitReviewAction, undefined);
   const fe = state?.fieldErrors ?? {};
+  const p = existing ? "edit-" : ""; // distinct ids when both could be on a page
+  const rating = state?.values?.rating ?? (existing ? String(existing.rating) : undefined);
+  const ref = useRef<HTMLFormElement>(null);
+  // Saved an edit: fold the "Edit your review" panel away again.
+  useEffect(() => {
+    if (existing && state?.ok) ref.current?.closest("details")?.removeAttribute("open");
+  }, [existing, state]);
   return (
-    <form action={action} className="card space-y-3 p-5">
+    <form ref={ref} action={action} className={existing ? "mt-2 space-y-3" : "card space-y-3 p-5"}>
       <input type="hidden" name="gameId" value={gameId} />
-      <h3 className="font-semibold">{t("reviews.formTitle")}</h3>
-      <fieldset {...errAttrs("rating", fe.rating)}>
+      {existing && <input type="hidden" name="reviewId" value={existing.id} />}
+      {!existing && <h3 className="font-semibold">{t("reviews.formTitle")}</h3>}
+      <fieldset {...errAttrs(`${p}rating`, fe.rating)}>
         <legend className="sr-only">{t("reviews.rating")}</legend>
         <div className="flex flex-row-reverse justify-end gap-1">
           {[5, 4, 3, 2, 1].map((n) => (
             <label key={n} className="cursor-pointer">
-              <input type="radio" name="rating" value={n} className="peer sr-only" required defaultChecked={state?.values?.rating === String(n)} />
+              <input type="radio" name="rating" value={n} className="peer sr-only" required defaultChecked={rating === String(n)} />
               <span
                 className="flex text-2xl text-border peer-checked:text-gold peer-focus-visible:outline-2 peer-focus-visible:outline-accent"
                 title={t("reviews.starsLabel", { n })}
@@ -53,12 +62,12 @@ export function ReviewForm({ gameId }: { gameId: number }) {
           ))}
         </div>
       </fieldset>
-      <FieldError id="rating" msg={fe.rating && t(fe.rating)} />
-      <label htmlFor="review-body" className="sr-only">{t("reviews.review")}</label>
-      <textarea id="review-body" {...errAttrs("review-body", fe.body)} name="body" rows={3} className="input" placeholder={t("reviews.placeholder")} defaultValue={state?.values?.body} />
-      <FieldError id="review-body" msg={fe.body && t(fe.body)} />
+      <FieldError id={`${p}rating`} msg={fe.rating && t(fe.rating)} />
+      <label htmlFor={`${p}review-body`} className="sr-only">{t("reviews.review")}</label>
+      <textarea id={`${p}review-body`} {...errAttrs(`${p}review-body`, fe.body)} name="body" rows={3} className="input" placeholder={t("reviews.placeholder")} defaultValue={state?.values?.body ?? existing?.body} />
+      <FieldError id={`${p}review-body`} msg={fe.body && t(fe.body)} />
       {state?.error && <Notice tone="danger">{t(state.error)}</Notice>}
-      <SubmitButton pendingText={t("reviews.posting")}>{t("reviews.post")}</SubmitButton>
+      <SubmitButton pendingText={existing ? t("common.saving") : t("reviews.posting")}>{existing ? t("reviews.save") : t("reviews.post")}</SubmitButton>
     </form>
   );
 }

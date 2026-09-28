@@ -55,6 +55,21 @@ export function csvCell(v: string | number): string {
   return `"${s.replace(/"/g, '""')}"`;
 }
 
+export type RosterRow = {
+  starts_at: string; session_status: string; player_name: string; seat_status: string; cancelled_by: string | null;
+  price_idr: number; paid_marked_at: string | null; booked_at: string;
+};
+
+const wib = (iso: string) => new Date(new Date(iso).getTime() + WIB_MS).toISOString().slice(0, 16).replace("T", " ");
+
+/** Every seat ever booked for one game, session by session (the GM's roster). */
+export function rosterCsv(rows: RosterRow[]): string {
+  const head = ["session_start_wib", "session_status", "player", "seat", "price_idr", "marked_paid", "booked_at_wib"];
+  const seat = (r: RosterRow) => (r.seat_status === "confirmed" ? "booked" : r.cancelled_by === "gm" ? "cancelled by GM" : "cancelled by player");
+  const lines = rows.map((r) => [wib(r.starts_at), r.session_status, r.player_name, seat(r), r.price_idr, r.paid_marked_at ? "yes" : "no", wib(r.booked_at)].map(csvCell).join(","));
+  return "\uFEFF" + [head.join(","), ...lines].join("\r\n") + "\r\n";
+}
+
 /** One row per booked seat, for the GM's own bookkeeping. */
 export function earningsCsv(rows: EarningRow[]): string {
   const head = ["session_start_wib", "game", "player", "price_idr", "marked_paid"];

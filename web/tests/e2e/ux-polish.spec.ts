@@ -108,6 +108,28 @@ test.describe("phones", () => {
   });
 });
 
+for (const width of [1280, 360]) {
+  test(`the notification popover wraps long text, with no sideways scrollbar (${width}px)`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await login(page, "player@questboard.test");
+    await page.getByRole("button", { name: /^Notifications/ }).click();
+    const list = page.getByRole("region", { name: "Notifications" }).locator("ul");
+    await expect(list.locator("li").first()).toBeVisible();
+    const { scroll, client, lines, chars } = await list.evaluate((el) => {
+      // The longest notification text (other tests may have added newer, shorter ones).
+      const texts = [...el.querySelectorAll("li a span span:first-child")] as HTMLElement[];
+      const text = texts.sort((a, b) => (b.textContent ?? "").length - (a.textContent ?? "").length)[0];
+      return {
+        scroll: el.scrollWidth, client: el.clientWidth, chars: (text.textContent ?? "").length,
+        lines: Math.round(text.getBoundingClientRect().height / parseFloat(getComputedStyle(text).lineHeight)),
+      };
+    });
+    expect(scroll).toBeLessThanOrEqual(client);
+    expect(chars).toBeGreaterThan(60); // the demo "How was …? Leave a review…" prompt
+    expect(lines).toBeGreaterThan(1); // …wraps instead of running off
+  });
+}
+
 test("a new player with no bookings gets a welcome panel; a player with bookings doesn't", async ({ page }) => {
   await signup(page, "Fresh Player", unique("welcome"));
   const welcome = page.getByRole("region", { name: "Welcome to the tavern!" });

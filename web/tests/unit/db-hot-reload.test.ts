@@ -11,16 +11,19 @@ process.env.QUESTBOARD_SEED = "false";
 const { db } = await import("../../src/lib/db.ts");
 const { SCHEMA_VERSION } = await import("../../src/lib/schema.ts");
 
+// Undo of the NEWEST migration only. When adding migration N, replace this with N's inverse
+// (as in hardening.test.ts) and update the check below.
+const UNDO_LATEST = "ALTER TABLE lfg_posts DROP COLUMN expiry_notified_at;";
+const latestIsBack = (conn: ReturnType<typeof db>) => conn.prepare("SELECT expiry_notified_at FROM lfg_posts LIMIT 1").all();
+
 test("an open connection prepared for an older schema is migrated on the next db() call", () => {
   const conn = db();
-  // Roll the open database back two versions (undo migrations 22 and 23), as if it were opened by older code.
-  conn.exec(`DROP TABLE admin_log; ALTER TABLE reviews DROP COLUMN gm_reply; ALTER TABLE reviews DROP COLUMN gm_replied_at;
-    PRAGMA user_version = ${SCHEMA_VERSION - 2};`);
-  (globalThis as { __questboardDbSchema?: number }).__questboardDbSchema = SCHEMA_VERSION - 2;
+  // As if this connection had been opened by the previous version of the code.
+  conn.exec(`${UNDO_LATEST} PRAGMA user_version = ${SCHEMA_VERSION - 1};`);
+  (globalThis as { __questboardDbSchema?: number }).__questboardDbSchema = SCHEMA_VERSION - 1;
 
   const again = db();
   assert.equal(again, conn, "same connection, not a new one");
   assert.equal((again.prepare("PRAGMA user_version").get() as { user_version: number }).user_version, SCHEMA_VERSION);
-  assert.ok(again.prepare("SELECT 1 FROM sqlite_master WHERE name = 'admin_log'").get());
-  again.prepare("SELECT gm_reply FROM reviews LIMIT 1").all(); // the column is back
+  latestIsBack(again); // throws "no such column" if the migration didn't run
 });

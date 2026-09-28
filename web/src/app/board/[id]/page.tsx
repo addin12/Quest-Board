@@ -13,7 +13,9 @@ import { ReportButton } from "@/components/report-button";
 import { ShareButtons } from "@/components/share-buttons";
 import { ConfirmButton } from "@/components/submit-button";
 import { AutoRefresh } from "@/components/auto-refresh";
-import { closeNoticeAction } from "@/app/actions";
+import { closeNoticeAction, renewNoticeAction } from "@/app/actions";
+import { SubmitButton } from "@/components/submit-button";
+import { NOTICE_DAYS } from "@/lib/board";
 import { siteOrigin } from "@/lib/site";
 
 export async function generateMetadata(props: PageProps<"/board/[id]">): Promise<Metadata> {
@@ -24,12 +26,15 @@ export async function generateMetadata(props: PageProps<"/board/[id]">): Promise
 
 export default async function NoticePage(props: PageProps<"/board/[id]">) {
   const { id } = await props.params;
-  const { posted } = await props.searchParams;
+  const { posted, edited } = await props.searchParams;
   const { t } = await getI18n();
   const n = getNotice(Number(id));
   const user = await getCurrentUser();
   if (!n) notFound();
-  const expired = new Date(n.expires_at) <= new Date();
+  const now = new Date();
+  const expired = new Date(n.expires_at) <= now;
+  // The author may keep it up once it's within a week of coming down (or just came down).
+  const renewable = new Date(n.expires_at).getTime() - now.getTime() < 7 * 86_400_000;
   const isAuthor = user?.id === n.author_id;
   const open = n.status === "open" && !expired;
   const replies = listReplies(n.id);
@@ -42,6 +47,21 @@ export default async function NoticePage(props: PageProps<"/board/[id]">) {
       <AutoRefresh />
       <Link href="/board" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-text"><Icon name="arrow-left" /> {t("board.pageTitle")}</Link>
       {posted && isAuthor && <div className="mt-4"><Notice tone="success">{t("board.posted")}</Notice></div>}
+      {edited && isAuthor && <div className="mt-4"><Notice tone="success">{t("board.edited")}</Notice></div>}
+      {isAuthor && n.status === "open" && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface-2 px-4 py-3 text-sm">
+          <span className="flex-1">
+            {t(expired ? "board.cameDown" : "board.upUntil")} <LocalTime iso={n.expires_at} mode="date" />
+          </span>
+          <Link href={`/board/${n.id}/edit`} className="btn-secondary px-3! py-1.5! text-xs!"><Icon name="pencil" /> {t("board.edit")}</Link>
+          {renewable && (
+            <form action={renewNoticeAction}>
+              <input type="hidden" name="postId" value={n.id} />
+              <SubmitButton className="btn-primary px-3! py-1.5! text-xs!"><Icon name="calendar-plus" /> {t("board.renew", { n: NOTICE_DAYS })}</SubmitButton>
+            </form>
+          )}
+        </div>
+      )}
       {!open && <div className="mt-4"><Notice>{t(expired ? "board.expired" : "board.closed")}</Notice></div>}
 
       <article className="notice relative mt-6 p-6 pt-9">

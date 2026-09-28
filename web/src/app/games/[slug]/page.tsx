@@ -22,6 +22,8 @@ import { LocalTime } from "@/components/local-time";
 import { MessageForm, ReviewForm, ReviewReplyForm } from "@/components/forms";
 import { ShareButtons } from "@/components/share-buttons";
 import { ReportButton } from "@/components/report-button";
+import { ConfirmButton } from "@/components/submit-button";
+import { deleteReviewAction } from "@/app/actions";
 import { CalendarLinks } from "@/components/calendar-links";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { googleCalendarUrl, sessionEvent } from "@/lib/calendar";
@@ -178,13 +180,24 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                           {shownName(r.player_name, t)}{" "}
                           <Rating n={r.rating} label={t("reviews.starsLabel", { n: r.rating })} />
                         </p>
-                        <p className="text-xs text-muted"><LocalTime iso={r.created_at} mode="date" /></p>
+                        <p className="text-xs text-muted"><LocalTime iso={r.created_at} mode="date" />{r.edited_at && <> · {t("reviews.edited")}</>}</p>
                         {r.body && <p className="mt-1 text-sm">{r.body}</p>}
                         {r.gm_reply && (
                           <div className="mt-2 rounded-lg border-l-2 border-accent bg-surface-2 px-3 py-2 text-sm">
                             <p className="text-xs font-semibold">{t("reviews.gmReply", { name: shownName(game.gm_name, t) })}</p>
                             <p className="mt-0.5 whitespace-pre-line">{r.gm_reply}</p>
+                            {user && user.id !== game.gm_id && <ReportButton targetType="review_reply" targetId={r.id} className="mt-1" />}
                           </div>
+                        )}
+                        {user?.id === r.player_id && (
+                          <details className="mt-2">
+                            <summary className="btn-ghost inline-flex cursor-pointer list-none px-2! py-1! text-xs [&::-webkit-details-marker]:hidden"><Icon name="pencil" /> {t("reviews.editTitle")}</summary>
+                            <ReviewForm gameId={game.id} existing={{ id: r.id, rating: r.rating, body: r.body }} />
+                            <form action={deleteReviewAction} className="mt-2">
+                              <input type="hidden" name="reviewId" value={r.id} />
+                              <ConfirmButton className="btn-ghost px-2! py-1! text-xs text-danger!" message={t("reviews.deleteConfirm")}><Icon name="trash" /> {t("reviews.delete")}</ConfirmButton>
+                            </form>
+                          </details>
                         )}
                         {user?.id === game.gm_id && <ReviewReplyForm reviewId={r.id} current={r.gm_reply} />}
                         {user && r.player_id !== user.id && <ReportButton targetType="review" targetId={r.id} className="mt-1" />}

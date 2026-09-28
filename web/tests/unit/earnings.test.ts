@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { csvCell, earningsCsv, summarizeEarnings, wibMonth, type EarningRow } from "../../src/lib/earnings.ts";
+import { csvCell, earningsCsv, rosterCsv, summarizeEarnings, wibMonth, type EarningRow } from "../../src/lib/earnings.ts";
 
 const row = (over: Partial<EarningRow>): EarningRow => ({
   booking_id: 1, price_idr: 50000, paid: 0, session_id: 1, starts_at: "2026-09-10T12:00:00Z", game_id: 1, title: "Naga", player_name: "Sari", ...over,
@@ -40,4 +40,17 @@ test("CSV: quoted cells, spreadsheet formulas neutralised, UTF-8 BOM, WIB times"
   const csv = earningsCsv([row({ player_name: "@evil", paid: 1 })]);
   assert.ok(csv.startsWith("﻿session_start_wib,game,player,price_idr,marked_paid\r\n"));
   assert.match(csv, /"2026-09-10 19:00","Naga","'@evil","50000","yes"\r\n$/);
+});
+
+test("roster CSV: one row per seat, WIB times, who cancelled, and no spreadsheet formulas", () => {
+  const csv = rosterCsv([
+    { starts_at: "2026-10-03T12:00:00.000Z", session_status: "scheduled", player_name: "Sari", seat_status: "confirmed", cancelled_by: null, price_idr: 50000, paid_marked_at: "2026-10-01T00:00:00.000Z", booked_at: "2026-09-30T05:30:00.000Z" },
+    { starts_at: "2026-10-03T12:00:00.000Z", session_status: "scheduled", player_name: "=HYPERLINK(1)", seat_status: "cancelled", cancelled_by: "player", price_idr: 50000, paid_marked_at: null, booked_at: "2026-09-30T06:00:00.000Z" },
+    { starts_at: "2026-10-10T12:00:00.000Z", session_status: "cancelled", player_name: "Budi", seat_status: "cancelled", cancelled_by: "gm", price_idr: 50000, paid_marked_at: null, booked_at: "2026-09-30T07:00:00.000Z" },
+  ]);
+  const lines = csv.replace(/^\uFEFF/, "").trim().split("\r\n");
+  assert.equal(lines[0], "session_start_wib,session_status,player,seat,price_idr,marked_paid,booked_at_wib");
+  assert.equal(lines[1], '"2026-10-03 19:00","scheduled","Sari","booked","50000","yes","2026-09-30 12:30"');
+  assert.match(lines[2], /"'=HYPERLINK\(1\)","cancelled by player"/);
+  assert.match(lines[3], /"cancelled","Budi","cancelled by GM"/);
 });

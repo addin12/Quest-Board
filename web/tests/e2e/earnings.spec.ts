@@ -41,3 +41,27 @@ test("GM earnings: expected vs marked paid, seats to follow up, and a CSV only G
     db.close();
   }
 });
+
+test("a GM downloads a game's roster as CSV; other people can't", async ({ page, request }) => {
+  const db = e2eDb();
+  const game = db.prepare("SELECT id, slug FROM games WHERE slug = 'mercusuar-di-pulau-kabut'").get() as { id: number; slug: string };
+  db.close();
+  await login(page, "gm@questboard.test");
+  await page.goto(`/gm/games/${game.id}`);
+  const link = page.getByRole("link", { name: "Roster (CSV)" });
+  await expect(link).toHaveAttribute("href", `/api/gm/games/${game.id}/roster`);
+  const res = await page.request.get(`/api/gm/games/${game.id}/roster`);
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toContain("text/csv");
+  expect(res.headers()["content-disposition"]).toContain(`roster-${game.slug}-`);
+  const csv = await res.text();
+  const lines = csv.replace(/^\uFEFF/, "").trim().split("\r\n");
+  expect(lines[0]).toBe("session_start_wib,session_status,player,seat,price_idr,marked_paid,booked_at_wib");
+  expect(lines.length).toBeGreaterThan(1);
+  expect(csv).not.toMatch(/@questboard\.test|BCA|rekening/); // names only: no emails or payment details
+
+  expect((await request.get(`/api/gm/games/${game.id}/roster`)).status()).toBe(404); // signed out
+  await page.context().clearCookies();
+  await login(page, "player@questboard.test");
+  expect((await page.request.get(`/api/gm/games/${game.id}/roster`)).status()).toBe(404); // not their game
+});

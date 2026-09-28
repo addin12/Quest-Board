@@ -1,4 +1,5 @@
 import "server-only";
+import type { RosterRow } from "./earnings";
 import { db } from "./db";
 import { escapeLike } from "./policy";
 import { getMechanic, isGenre, isMechanic, isStyle, mechanicsForSystem, systemSlug } from "./categories";
@@ -283,13 +284,13 @@ export function getSessionWithGame(sessionId: number) {
 export type ReviewRow = {
   id: number; rating: number; body: string; created_at: string; player_name: string; player_hue: number; player_image?: string;
   player_id?: number; game_title?: string; game_slug?: string;
-  gm_reply: string; gm_replied_at: string | null;
+  gm_reply: string; gm_replied_at: string | null; edited_at: string | null;
 };
 
 export function listGameReviews(gameId: number): ReviewRow[] {
   return db()
     .prepare(
-      `SELECT r.id, r.player_id, r.rating, r.body, r.created_at, r.gm_reply, r.gm_replied_at, u.name AS player_name, u.avatar_hue AS player_hue, u.avatar_image AS player_image
+      `SELECT r.id, r.player_id, r.rating, r.body, r.created_at, r.gm_reply, r.gm_replied_at, r.edited_at, u.name AS player_name, u.avatar_hue AS player_hue, u.avatar_image AS player_image
          FROM reviews r JOIN users u ON u.id = r.player_id WHERE r.game_id = ? ORDER BY r.created_at DESC`,
     )
     .all(gameId) as ReviewRow[];
@@ -323,7 +324,7 @@ export function listGmGames(gmId: number, includeUnpublished = false, limit = -1
 export function listGmReviews(gmId: number, limit = 10): ReviewRow[] {
   return db()
     .prepare(
-      `SELECT r.id, r.rating, r.body, r.created_at, r.gm_reply, r.gm_replied_at, u.name AS player_name, u.avatar_hue AS player_hue, g.title AS game_title, g.slug AS game_slug
+      `SELECT r.id, r.rating, r.body, r.created_at, r.gm_reply, r.gm_replied_at, r.edited_at, u.name AS player_name, u.avatar_hue AS player_hue, g.title AS game_title, g.slug AS game_slug
          FROM reviews r JOIN users u ON u.id = r.player_id JOIN games g ON g.id = r.game_id
         WHERE g.gm_id = ? ORDER BY r.created_at DESC LIMIT ?`,
     )
@@ -466,6 +467,18 @@ export function listSessionRoster(sessionId: number) {
          FROM bookings b JOIN users u ON u.id = b.player_id WHERE b.session_id = ? ORDER BY b.created_at`,
     )
     .all(sessionId) as { booking_id: number; status: string; paid_marked_at: string | null; user_id: number; name: string; avatar_hue: number; avatar_image: string }[];
+}
+
+/** Every seat booked for a game, for the roster CSV. */
+export function gameRosterRows(gameId: number): RosterRow[] {
+  return db()
+    .prepare(
+      `SELECT s.starts_at, s.status AS session_status, u.name AS player_name, b.status AS seat_status, b.cancelled_by,
+              b.price_idr, b.paid_marked_at, b.created_at AS booked_at
+         FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN users u ON u.id = b.player_id
+        WHERE s.game_id = ? ORDER BY s.starts_at, b.created_at`,
+    )
+    .all(gameId) as RosterRow[];
 }
 
 export function getGmSettings(userId: number) {

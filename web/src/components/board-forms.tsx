@@ -1,23 +1,27 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { createNoticeAction, replyNoticeAction, type FormState } from "@/app/actions";
+import { createNoticeAction, replyNoticeAction, type FormState, updateNoticeAction } from "@/app/actions";
 import { MAX_SPOTS } from "@/lib/board";
 import { SubmitButton } from "./submit-button";
 import { FieldError, Notice, errAttrs } from "./ui";
 import { Icon } from "./icon";
 import { useI18n } from "./i18n-provider";
 
-export function NoticeForm({ systems }: { systems: readonly string[] }) {
+export type NoticeDefaults = { id: number; kind: string; title: string; system: string; locationType: string; city: string; language: string; schedule: string; spots: string; body: string };
+
+/** Pin a new notice, or (with `existing`) edit your own. */
+export function NoticeForm({ systems, existing }: { systems: readonly string[]; existing?: NoticeDefaults }) {
   const { t } = useI18n();
-  const [state, action] = useActionState<FormState, FormData>(createNoticeAction, undefined);
-  const v = state?.values;
+  const [state, action] = useActionState<FormState, FormData>(existing ? updateNoticeAction : createNoticeAction, undefined);
+  const v: Record<string, string> | undefined = state?.values ?? (existing ? { ...existing, id: String(existing.id) } : undefined);
   const fe = state?.fieldErrors ?? {};
   const err = (k: string) => (fe[k] ? t(fe[k]) : undefined);
   const [kind, setKind] = useState(v?.kind ?? "lf_group");
   const [location, setLocation] = useState(v?.locationType ?? "online");
   return (
     <form action={action} className="space-y-5" noValidate>
+      {existing && <input type="hidden" name="postId" value={existing.id} />}
       <fieldset {...errAttrs("kind", err("kind"))}>
         <legend className="label">{t("board.kindLabel")}</legend>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -75,7 +79,11 @@ export function NoticeForm({ systems }: { systems: readonly string[] }) {
         <textarea id="body" {...errAttrs("body", err("body"))} name="body" rows={5} maxLength={1000} defaultValue={v?.body} className="input" placeholder={t("board.bodyPh")} />
       </Field>
       {state?.error && <Notice tone="danger">{t(state.error)}</Notice>}
-      <SubmitButton pendingText={t("hire.sending")}><Icon name="thumbtack" /> {t("board.pin")}</SubmitButton>
+      {existing ? (
+        <SubmitButton pendingText={t("common.saving")}><Icon name="check" /> {t("gameForm.saveChanges")}</SubmitButton>
+      ) : (
+        <SubmitButton pendingText={t("hire.sending")}><Icon name="thumbtack" /> {t("board.pin")}</SubmitButton>
+      )}
     </form>
   );
 }
