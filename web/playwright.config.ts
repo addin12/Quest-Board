@@ -6,8 +6,8 @@ import { defineConfig } from "@playwright/test";
 const PORT = 3100;
 // A second server on an empty database (no demo data), as on launch day: tests/e2e/empty-launch.spec.ts.
 const EMPTY_PORT = 3101;
-// The seeded specs are split over two identical servers with their own databases, run side by side
-// (each project one test at a time, so specs sharing a database never overlap). Roughly halves the run.
+// The seeded specs are split over two identical servers with their own databases: each database fills up
+// half as much, so pages stay fast (~16 min instead of ~27). Specs that depend on each other must share a project.
 const PORT_2 = 3102;
 const SECOND = /\/(a11y|ux-polish|hire-and-browse|share-calendar-live|board-social|gm-tools|taxonomy|notification-email|questions|language-urls|earnings|permissions)\.spec\.ts$/;
 const SEEDED_ENV = { QUESTBOARD_DEV_OUTBOX: "true", QUESTBOARD_RATE_LIMIT_OVERRIDES: "signup=500,login=40,loginIp=5000,resetIp=500", QUESTBOARD_CRON_SECRET: "e2e-cron-secret" };
