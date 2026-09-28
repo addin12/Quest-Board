@@ -38,8 +38,11 @@ test("a GM cancels a session with a message: players see it in the bell, on My g
   }
 });
 
-/** A time as the value of a datetime-local input, in this machine's timezone (the test browser's too). */
-const localInput = (ms: number) => new Date(ms - new Date(ms).getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+/**
+ * A time as the value of a datetime-local input in the test browser's timezone (Asia/Jakarta, UTC+7, no
+ * daylight saving — see playwright.config.ts). Not this machine's timezone: CI runs in UTC.
+ */
+const localInput = (ms: number) => new Date(ms + 7 * 3_600_000).toISOString().slice(0, 16);
 
 test("a GM changes a session's time: seats stay, players are told, reminders start over", async ({ page, browser }) => {
   const db = e2eDb();

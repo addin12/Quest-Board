@@ -10,7 +10,9 @@ const EMPTY_PORT = 3101;
 // half as much, so pages stay fast (~16 min instead of ~27). Specs that depend on each other must share a project.
 const PORT_2 = 3102;
 const SECOND = /\/(a11y|ux-polish|hire-and-browse|share-calendar-live|board-social|gm-tools|taxonomy|notification-email|questions|language-urls|earnings|permissions)\.spec\.ts$/;
-const SEEDED_ENV = { QUESTBOARD_DEV_OUTBOX: "true", QUESTBOARD_RATE_LIMIT_OVERRIDES: "signup=500,login=40,loginIp=5000,resetIp=500", QUESTBOARD_CRON_SECRET: "e2e-cron-secret" };
+// Chromium projects: the installed Edge locally (no download), Playwright's bundled Chromium on CI.
+const CHROMIUM = process.env.PW_CHANNEL || (process.env.CI ? undefined : "msedge");
+const SEEDED_ENV = { QUESTBOARD_INSECURE_COOKIES: "true", QUESTBOARD_DEV_OUTBOX: "true", QUESTBOARD_RATE_LIMIT_OVERRIDES: "signup=500,login=40,loginIp=5000,resetIp=500", QUESTBOARD_CRON_SECRET: "e2e-cron-secret" };
 
 export default defineConfig({
   testDir: "tests/e2e",
@@ -25,39 +27,41 @@ export default defineConfig({
   // Three servers and three browsers share one machine during a full run, so a page can take a few
   // seconds under load. Assertions retry until they pass, so a longer limit doesn't slow passing tests.
   expect: { timeout: 15_000 },
-  reporter: [["list"]],
+  // On CI, also report each failure as a GitHub annotation: those are public, unlike the raw job log.
+  reporter: process.env.CI ? [["list"], ["github"]] : [["list"]],
   use: {
     baseURL: `http://localhost:${PORT}`,
-    // Local: installed Edge (no download). CI: Playwright's bundled Chromium.
-    channel: process.env.PW_CHANNEL || (process.env.CI ? undefined : "msedge"),
     locale: "en-US",
     timezoneId: "Asia/Jakarta",
     trace: "retain-on-failure",
   },
   projects: [
-    { name: "seeded", testIgnore: [/empty-launch.spec.ts/, SECOND], workers: 1, metadata: { db: "data/e2e.db" } },
-    { name: "seeded-2", testMatch: SECOND, workers: 1, metadata: { db: "data/e2e-2.db" }, use: { baseURL: `http://localhost:${PORT_2}` } },
-    { name: "empty", testMatch: /empty-launch.spec.ts/, workers: 1, metadata: { db: "data/e2e-empty.db" }, use: { baseURL: `http://localhost:${EMPTY_PORT}` } },
+    { name: "seeded", testIgnore: [/empty-launch.spec.ts/, /cross-browser.spec.ts/, SECOND], workers: 1, metadata: { db: "data/e2e.db" }, use: { channel: CHROMIUM } },
+    { name: "seeded-2", testMatch: SECOND, workers: 1, metadata: { db: "data/e2e-2.db" }, use: { channel: CHROMIUM, baseURL: `http://localhost:${PORT_2}` } },
+    { name: "empty", testMatch: /empty-launch.spec.ts/, workers: 1, metadata: { db: "data/e2e-empty.db" }, use: { channel: CHROMIUM, baseURL: `http://localhost:${EMPTY_PORT}` } },
+    // The main journeys again in the other engines (WebKit = Safari, on every iPhone), on the "seeded" server.
+    { name: "firefox", testMatch: /cross-browser.spec.ts/, workers: 1, metadata: { db: "data/e2e.db" }, use: { browserName: "firefox" } },
+    { name: "webkit", testMatch: /cross-browser.spec.ts/, workers: 1, metadata: { db: "data/e2e.db" }, use: { browserName: "webkit" } },
   ],
   webServer: [{
-    command: `node scripts/reset-db.mjs data/e2e.db && npx next start -p ${PORT}`,
+    command: `node scripts/reset-db.mjs data/e2e.db data/e2e-uploads && npx next start -p ${PORT}`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: false,
     timeout: 120_000,
     // Many specs sign up and log in (as the same demo accounts) from one IP. Limits are raised for
     // sign-up and login; P1-9 still proves the login limiter works at the raised value (E2E_LOGIN_LIMIT).
-    env: { QUESTBOARD_DB: "data/e2e.db", ...SEEDED_ENV },
+    env: { QUESTBOARD_DB: "data/e2e.db", QUESTBOARD_UPLOAD_DIR: "data/e2e-uploads", ...SEEDED_ENV },
   }, {
-    command: `node scripts/reset-db.mjs data/e2e-2.db && npx next start -p ${PORT_2}`,
+    command: `node scripts/reset-db.mjs data/e2e-2.db data/e2e-2-uploads && npx next start -p ${PORT_2}`,
     url: `http://localhost:${PORT_2}`,
     reuseExistingServer: false,
     timeout: 120_000,
-    env: { QUESTBOARD_DB: "data/e2e-2.db", ...SEEDED_ENV },
+    env: { QUESTBOARD_DB: "data/e2e-2.db", QUESTBOARD_UPLOAD_DIR: "data/e2e-2-uploads", ...SEEDED_ENV },
   }, {
-    command: `node scripts/reset-db.mjs data/e2e-empty.db && npx next start -p ${EMPTY_PORT}`,
+    command: `node scripts/reset-db.mjs data/e2e-empty.db data/e2e-empty-uploads && npx next start -p ${EMPTY_PORT}`,
     url: `http://localhost:${EMPTY_PORT}`,
     reuseExistingServer: false,
     timeout: 120_000,
-    env: { QUESTBOARD_DB: "data/e2e-empty.db", QUESTBOARD_SEED: "false" },
+    env: { QUESTBOARD_DB: "data/e2e-empty.db", QUESTBOARD_UPLOAD_DIR: "data/e2e-empty-uploads", QUESTBOARD_SEED: "false" },
   }],
 });

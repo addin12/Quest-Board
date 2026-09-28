@@ -4,6 +4,7 @@ import { db, tx } from "./db";
 import { notify } from "./notifications";
 import { dropFromWaitlists, processWaitlist } from "./waitlist";
 import { DELETED_NAME } from "./i18n/dict";
+import { deleteUserUploads } from "./uploads";
 
 /**
  * Archive a game: hide it, cancel its upcoming sessions and release (and notify) every
@@ -73,6 +74,7 @@ export function deleteAccount(userId: number): void {
     c.prepare("DELETE FROM auth_tokens WHERE user_id = ?").run(userId);
     c.prepare("DELETE FROM notifications WHERE user_id = ?").run(userId);
   });
+  deleteUserUploads(userId); // their uploaded pictures (files and records)
 }
 
 /** Everything Quest Board holds about a person (UU PDP right of access), as plain JSON. */
@@ -93,6 +95,7 @@ export function exportAccount(userId: number) {
       userId,
     ),
     reviews: q("SELECT r.id, g.title AS game, r.rating, r.body, r.created_at FROM reviews r JOIN games g ON g.id = r.game_id WHERE r.player_id = ?", userId),
+    uploads: q("SELECT kind, '/uploads/' || file AS path, created_at FROM uploads WHERE user_id = ? ORDER BY created_at", userId),
     review_replies: q("SELECT g.title AS game, r.gm_reply AS reply, r.gm_replied_at AS replied_at FROM reviews r JOIN games g ON g.id = r.game_id WHERE g.gm_id = ? AND r.gm_reply <> ''", userId),
     table_messages: q("SELECT m.id, g.title AS game, m.body, m.created_at FROM messages m JOIN games g ON g.id = m.game_id WHERE m.user_id = ?", userId),
     games_run: q("SELECT id, title, system, status, price_idr, created_at FROM games WHERE gm_id = ?", userId),

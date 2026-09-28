@@ -11,6 +11,7 @@ import type { RegularIcon } from "@/lib/icons";
 import { GENRES, MAX_PER_GAME, STYLES, genreIcon, genreLabelKey, parseCategoryCsv, styleIcon, styleLabelKey } from "@/lib/categories";
 import { COVER_LIBRARY, libraryCoverPath } from "@/lib/placeholders";
 import type { MsgKey } from "@/lib/i18n/dict";
+import { UploadField } from "./upload-field";
 
 export type GameFormDefaults = {
   id?: number;
@@ -171,6 +172,7 @@ export function GameForm({ defaults: initial, systems }: { defaults: GameFormDef
           hue={hue}
           error={err("coverImage")}
         />
+        <UploadField name="coverUpload" label={t("upload.coverLabel")} hint={t("upload.hint")} shape="wide" />
         <Field id="coverHue" label={t("gameForm.gradientColour")} hint={t("gameForm.gradientHint")}>
           <div className="flex items-center gap-3">
             <input id="coverHue" name="coverHue" type="range" min={0} max={359} value={hue} onChange={(e) => setHue(Number(e.target.value))} className="flex-1 accent-[var(--accent)]" />

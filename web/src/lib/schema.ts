@@ -28,7 +28,8 @@
 // v23: reviews.gm_reply / gm_replied_at (the GM's public answer to a review).
 // v24: reports accept review_reply (a GM's reply to a review) + reviews.edited_at.
 // v25: lfg_posts.expiry_notified_at (the author was told the notice comes down soon).
-export const SCHEMA_VERSION = 25;
+// v26: uploads (pictures people uploaded for covers and portraits).
+export const SCHEMA_VERSION = 26;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -387,4 +388,14 @@ CREATE TABLE IF NOT EXISTS admin_log (
   created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_admin_log_created ON admin_log(created_at);
+
+-- v26: pictures people uploaded (game covers, portraits), re-encoded to WebP; files in QUESTBOARD_UPLOAD_DIR.
+CREATE TABLE IF NOT EXISTS uploads (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind       TEXT NOT NULL CHECK (kind IN ('cover','portrait')),
+  file       TEXT NOT NULL UNIQUE,   -- random name, served at /uploads/<file>
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_uploads_user ON uploads(user_id);
 `;

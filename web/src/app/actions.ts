@@ -30,6 +30,7 @@ import { LEGAL_VERSION } from "@/lib/legal";
 import { askQuestion, getQuestionThread, replyQuestion } from "@/lib/questions";
 import { getI18n } from "@/lib/i18n/server";
 import { siteOrigin } from "@/lib/site";
+import { saveUpload, ownsUpload, discardUpload } from "@/lib/uploads";
 
 /**
  * Errors are translation keys; client forms render them with t().
@@ -165,14 +166,20 @@ async function becomeGmActionImpl(_: FormState, form: FormData): Promise<FormSta
   const location = normalizeLocation(String(form.get("location") ?? ""));
   const bio = String(form.get("bio") ?? "").trim().slice(0, 2000);
   const paymentInfo = String(form.get("paymentInfo") ?? "").trim().slice(0, 500);
-  const avatarImage = String(form.get("avatarImage") ?? "");
+  let avatarImage = String(form.get("avatarImage") ?? "");
   const currentAvatar = (db().prepare("SELECT avatar_image FROM users WHERE id = ?").get(user.id) as { avatar_image: string }).avatar_image;
   const fieldErrors: FieldErrors = {};
-  // Only library portraits, "" (initials) or the current portrait — never an arbitrary URL.
-  if (!isAllowedPortrait(avatarImage, currentAvatar)) fieldErrors.avatarImage = "v.portrait";
+  // Only library portraits, "" (initials), the current portrait or their own upload — never an arbitrary URL.
+  if (!isAllowedPortrait(avatarImage, currentAvatar) && !ownsUpload(user.id, "portrait", avatarImage)) fieldErrors.avatarImage = "v.portrait";
   if (headline.length < 5) fieldErrors.headline = "v.headline";
   if (bio.length < 30) fieldErrors.bio = "v.bio";
   if (Object.keys(fieldErrors).length) return { fieldErrors };
+  const portraitFile = form.get("avatarUpload");
+  if (portraitFile instanceof File && portraitFile.size > 0) {
+    const up = await saveUpload(user.id, "portrait", portraitFile);
+    if (!up.ok) return { fieldErrors: { avatarImage: up.error } };
+    avatarImage = up.path;
+  }
   const before = db().prepare("SELECT payment_info FROM gm_profiles WHERE user_id = ?").get(user.id) as { payment_info: string } | undefined;
 
   tx((c) => {
@@ -183,6 +190,7 @@ async function becomeGmActionImpl(_: FormState, form: FormData): Promise<FormSta
          years_experience = excluded.years_experience, location = excluded.location, payment_info = excluded.payment_info`,
     ).run(user.id, headline, systems, years, location, paymentInfo);
   });
+  if (currentAvatar !== avatarImage) discardUpload(currentAvatar);
   if (user.role === "player") await rotateSession(user.id); // role changed: issue a fresh session token
   // Players pay the GM directly, so new payment details are what a hijacked account would change: tell the owner.
   if (before?.payment_info && before.payment_info !== paymentInfo) await sendPaymentDetailsChangedEmail(user.email, user.name, paymentInfo);
@@ -209,13 +217,22 @@ async function saveGameActionImpl(_: FormState, form: FormData): Promise<FormSta
   const g = parsed.value;
   const idRaw = Number(form.get("id") ?? 0);
   const hue = Math.max(0, Math.min(359, Number(form.get("coverHue") ?? 260) || 0));
-  const coverImage = String(form.get("coverImage") ?? "");
+  let coverImage = String(form.get("coverImage") ?? "");
   const genres = normalizeCategories(form.getAll("genres").map(String), "genre");
   const styles = normalizeCategories(form.getAll("styles").map(String), "style");
   const existing = idRaw ? getGameById(idRaw) : undefined;
   // Only library art, "" (gradient) or the game's current cover — never an arbitrary URL.
-  if (!isAllowedCover(coverImage, existing?.cover_image ?? "")) {
+  if (!isAllowedCover(coverImage, existing?.cover_image ?? "") && !ownsUpload(gm.id, "cover", coverImage)) {
     return { fieldErrors: { coverImage: "v.cover" }, error: "err.fixFields" };
+  }
+
+  // A picture uploaded with the form replaces the choice above (checked and re-encoded first).
+  const coverFile = form.get("coverUpload");
+  if (coverFile instanceof File && coverFile.size > 0) {
+    if (idRaw && (!existing || (existing.gm_id !== gm.id && gm.role !== "admin") || existing.status === "archived")) return { error: "err.notFound" };
+    const up = await saveUpload(gm.id, "cover", coverFile);
+    if (!up.ok) return { fieldErrors: { coverImage: up.error }, error: "err.fixFields" };
+    coverImage = up.path;
   }
 
   let gameId: number;
@@ -245,6 +262,7 @@ async function saveGameActionImpl(_: FormState, form: FormData): Promise<FormSta
         g.priceIdr, g.seatsTotal, g.experienceLevel, g.minAge, g.contentWarnings, g.safetyTools, g.tags, hue, coverImage, genres, styles, g.status, idRaw,
       );
     gameId = idRaw;
+    if (existing.cover_image !== coverImage) discardUpload(existing.cover_image); // an old uploaded cover goes
     // More seats (or re-publishing) may free places for people on the waitlist.
     const upcomingIds = db().prepare("SELECT id FROM game_sessions WHERE game_id = ? AND status = 'scheduled' AND starts_at > ?").all(idRaw, new Date().toISOString()) as { id: number }[];
     tx((c) => {
@@ -581,13 +599,20 @@ function ownReview(reviewId: number, userId: number) {
 async function updateProfileActionImpl(_: FormState, form: FormData): Promise<FormState> {
   const user = await requireUser("/settings");
   const parsed = parseProfile(fd(form));
-  const avatarImage = String(form.get("avatarImage") ?? "");
+  let avatarImage = String(form.get("avatarImage") ?? "");
   const fieldErrors: FieldErrors = parsed.ok ? {} : { ...parsed.errors };
-  if (!isAllowedPortrait(avatarImage, user.avatar_image)) fieldErrors.avatarImage = "v.portrait";
+  if (!isAllowedPortrait(avatarImage, user.avatar_image) && !ownsUpload(user.id, "portrait", avatarImage)) fieldErrors.avatarImage = "v.portrait";
   if (parsed.ok && (user.role === "gm" || user.role === "admin") && parsed.value.bio.length < 30) fieldErrors.bio = "v.bio";
   if (!parsed.ok || Object.keys(fieldErrors).length) return { fieldErrors, error: "err.fixFields" };
+  const portraitFile = form.get("avatarUpload");
+  if (portraitFile instanceof File && portraitFile.size > 0) {
+    const up = await saveUpload(user.id, "portrait", portraitFile);
+    if (!up.ok) return { fieldErrors: { avatarImage: up.error }, error: "err.fixFields" };
+    avatarImage = up.path;
+  }
   db().prepare("UPDATE users SET name = ?, bio = ?, avatar_image = ?, email_reminders = ?, email_notifications = ? WHERE id = ?")
     .run(parsed.value.name, parsed.value.bio, avatarImage, form.get("emailReminders") === "1" ? 1 : 0, form.get("emailNotifications") === "1" ? 1 : 0, user.id);
+  if (user.avatar_image !== avatarImage) discardUpload(user.avatar_image);
   const lang = form.get("language");
   if (lang === "id" || lang === "en") (await cookies()).set(LANG_COOKIE, lang, { path: "/", sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
   revalidatePath("/", "layout");
@@ -1056,6 +1081,19 @@ export async function setSuspendedAction(form: FormData) {
   if (userId === admin.id) throw new Error("Cannot suspend yourself");
   if (form.get("suspend") === "1") { if (suspendUser(userId, admin.id)) logAdminAction(admin.id, "suspend", userId); }
   else if (unsuspendUser(userId)) logAdminAction(admin.id, "unsuspend", userId);
+  revalidatePath("/", "layout");
+}
+
+/** A moderator puts someone's picture back to initials (e.g. an inappropriate upload). Logged. */
+export async function resetPortraitAction(form: FormData) {
+  const admin = await requireAdmin();
+  const userId = Number(form.get("userId"));
+  const u = db().prepare("SELECT avatar_image FROM users WHERE id = ?").get(userId) as { avatar_image: string } | undefined;
+  if (!u || !u.avatar_image) return;
+  db().prepare("UPDATE users SET avatar_image = '' WHERE id = ?").run(userId);
+  discardUpload(u.avatar_image);
+  logAdminAction(admin.id, "reset_portrait", userId);
+  await toast("toast.portraitReset");
   revalidatePath("/", "layout");
 }
 

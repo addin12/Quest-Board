@@ -34,6 +34,7 @@ const COVERAGE: Record<string, string> = {
   feedback: "feedback",
   waitlist: "waitlist",
   reports: "reports_filed",
+  uploads: "uploads",
   auth_sessions: "excluded: sign-in session tokens (secrets, no personal content)",
   auth_tokens: "excluded: one-time link tokens (secrets)",
   session_reminders: "excluded: which reminders were sent (bookkeeping; the notifications are exported)",

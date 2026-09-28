@@ -370,6 +370,16 @@ export const MIGRATIONS: Record<number, string> = {
   25: `
     ALTER TABLE lfg_posts ADD COLUMN expiry_notified_at TEXT;
   `,
+  26: `
+    CREATE TABLE IF NOT EXISTS uploads (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind       TEXT NOT NULL CHECK (kind IN ('cover','portrait')),
+      file       TEXT NOT NULL UNIQUE,   -- random name, served at /uploads/<file>
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_uploads_user ON uploads(user_id);
+  `,
 };
 
 export type UpgradePlan =

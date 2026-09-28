@@ -34,6 +34,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Forms may carry an uploaded picture (≤ 5 MB, lib/upload-rules.ts) plus the other fields.
+  experimental: { serverActions: { bodySizeLimit: "6mb" } },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },

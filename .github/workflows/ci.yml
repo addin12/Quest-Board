@@ -31,8 +31,8 @@ jobs:
       - run: npm run lint
       - run: npm test
 
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright browsers (Chromium; Firefox and WebKit for the cross-browser journeys)
+        run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Build + end-to-end (incl. axe accessibility sweep)
         run: npm run test:e2e

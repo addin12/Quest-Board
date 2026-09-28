@@ -289,3 +289,12 @@ ALTER TABLE reviews ADD COLUMN edited_at TEXT;  -- the reviewer changed it after
 ALTER TABLE lfg_posts ADD COLUMN expiry_notified_at TEXT;  -- the author was reminded; cleared when they keep it up
 ```
 - `remindExpiringNotices()` (cron and browse fallback) notifies the author (`notice_expiring`, emailed) once when an open notice has 3 days or less left. "Keep it up" (`renewNotice`) sets `expires_at` to 30 days from now and clears the reminder.
+
+## v26: uploaded pictures
+```sql
+uploads(id, user_id → users (CASCADE), kind 'cover' | 'portrait', file UNIQUE, created_at)
+```
+- A GM can upload a game cover, and anyone a portrait, from the same forms as the library pictures (`coverUpload`, `avatarUpload`). The server checks the first bytes (JPEG, PNG or WebP only, ≤ 5 MB), then **re-encodes with sharp**: upright, cropped to 1600×800 (cover) or 512×512 (portrait), WebP. That drops hidden metadata such as a photo's GPS location and turns malformed or disguised files into a refusal.
+- Files get random names (`<32 hex>.webp`) in `QUESTBOARD_UPLOAD_DIR` (default `data/uploads`) and are served only by `GET /uploads/{name}` (`image/webp`, immutable cache, `nosniff`).
+- `games.cover_image` / `users.avatar_image` hold `/uploads/<name>`; the allow-list accepts it only if the uploader is the one saving (`ownsUpload`). A replaced picture is deleted (`discardUpload`); deleting an account deletes its uploads; admins can reset a portrait ("Reset picture", logged as `reset_portrait`). Uploads are in "Download my data".
+- `npm run db:backup` also mirrors the upload folder into `<backup dir>/uploads`; `db:restore` puts missing pictures back.

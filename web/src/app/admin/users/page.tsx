@@ -5,7 +5,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { adminStats, listUsersForAdmin } from "@/lib/moderation";
 import { ConfirmButton } from "@/components/submit-button";
 import { Icon } from "@/components/icon";
-import { setSuspendedAction } from "@/app/actions";
+import { resetPortraitAction, setSuspendedAction } from "@/app/actions";
 import { AdminNav } from "../admin-nav";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -50,6 +50,14 @@ export default async function AdminUsersPage(props: PageProps<"/admin/users">) {
                 <td className="px-4 py-3 max-sm:hidden">{t(`admin.role.${r.role}` as "admin.role.player")}{r.suspended_at ? <span className="chip ml-2">{t("admin.suspendedChip")}</span> : null}</td>
                 <td className="px-4 py-3 max-sm:hidden">{r.open_reports > 0 ? <span className="font-bold text-danger">{r.open_reports}</span> : 0}</td>
                 <td className="px-4 py-3 text-right">
+                  {r.avatar_image.startsWith("/uploads/") && (
+                    <form action={resetPortraitAction} className="mb-1">
+                      <input type="hidden" name="userId" value={r.id} />
+                      <ConfirmButton className="btn-ghost px-3! py-1! text-xs!" message={t("admin.resetPortraitConfirm", { name: r.name })} ariaLabel={t("admin.resetPortraitNamed", { name: r.name })}>
+                        <Icon name="user" /> {t("admin.resetPortrait")}
+                      </ConfirmButton>
+                    </form>
+                  )}
                   {r.role !== "admin" && r.id !== admin.id && (
                     <form action={setSuspendedAction}>
                       <input type="hidden" name="userId" value={r.id} />

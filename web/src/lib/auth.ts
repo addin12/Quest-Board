@@ -28,7 +28,9 @@ export async function createSession(userId: number) {
   (await cookies()).set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    // HTTPS-only in production. QUESTBOARD_INSECURE_COOKIES is for the e2e servers only (production builds
+    // on http://localhost, where WebKit — unlike Chromium and Firefox — drops Secure cookies). Never set it live.
+    secure: process.env.NODE_ENV === "production" && process.env.QUESTBOARD_INSECURE_COOKIES !== "true",
     path: "/",
     expires,
   });

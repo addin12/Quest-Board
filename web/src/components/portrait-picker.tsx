@@ -4,6 +4,7 @@ import { ImageChoiceGrid } from "./image-choice";
 import { Avatar, initialsOf } from "./ui";
 import { useI18n } from "./i18n-provider";
 import { PORTRAIT_LIBRARY, libraryPortraitPath } from "@/lib/placeholders";
+import { UploadField } from "./upload-field";
 
 /**
  * Profile-picture picker (players and GMs): Initials → current portrait (if it
@@ -60,6 +61,7 @@ export function PortraitPicker({
           </span>
         }
       />
+      <UploadField name="avatarUpload" label={t("upload.portraitLabel")} hint={t("upload.hint")} shape="round" />
     </div>
   );
 }

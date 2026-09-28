@@ -2,10 +2,14 @@
 //
 //   npm run db:backup                     consistent copy while the app runs (VACUUM INTO),
 //                                         checked, into QUESTBOARD_BACKUP_DIR (default data/backups);
-//                                         keeps the newest QUESTBOARD_BACKUP_KEEP (default 14)
+//                                         keeps the newest QUESTBOARD_BACKUP_KEEP (default 14), and mirrors
+//                                         uploaded pictures (QUESTBOARD_UPLOAD_DIR, default data/uploads)
+//                                         into <backup dir>/uploads (names are random and never change,
+//                                         so only new files are copied)
 //   npm run db:restore -- <file> --yes    STOP THE APP FIRST. Checks the backup, saves the current
 //                                         database next to it as *.before-restore-<time>.db, then
-//                                         puts the backup in place.
+//                                         puts the backup in place; pictures missing from the upload
+//                                         folder are copied back from <backup dir>/uploads.
 //
 // Schedule backups nightly on the server (cron / systemd timer) and copy the folder off-site.
 import { DatabaseSync } from "node:sqlite";
@@ -33,7 +37,20 @@ export function inspect(file) {
   }
 }
 
-export function backup(dbFile, dir, keep = 14, now = new Date()) {
+/** Copy files from `from` that `to` doesn't have yet. Returns how many were copied. */
+function mirror(from, to) {
+  if (!existsSync(from)) return 0;
+  mkdirSync(to, { recursive: true });
+  let n = 0;
+  for (const name of readdirSync(from)) {
+    if (!/^[a-f0-9]{32}\.webp$/.test(name) || existsSync(join(to, name))) continue;
+    copyFileSync(join(from, name), join(to, name));
+    n++;
+  }
+  return n;
+}
+
+export function backup(dbFile, dir, keep = 14, now = new Date(), uploadsDir = "data/uploads") {
   if (!existsSync(dbFile)) throw new Error(`No database at ${dbFile}.`);
   mkdirSync(dir, { recursive: true });
   let out = join(dir, `questboard-${stamp(now)}.db`);
@@ -50,10 +67,11 @@ export function backup(dbFile, dir, keep = 14, now = new Date()) {
   const all = readdirSync(dir).filter((f) => /^questboard-\d{8}-\d{6}(-\d+)?\.db$/.test(f)).sort();
   const removed = all.slice(0, Math.max(0, all.length - keep));
   for (const f of removed) rmSync(join(dir, f));
-  return { file: out, bytes: statSync(out).size, removed: removed.length, ...info };
+  const pictures = mirror(uploadsDir, join(dir, "uploads"));
+  return { file: out, bytes: statSync(out).size, removed: removed.length, pictures, ...info };
 }
 
-export function restore(backupFile, dbFile, now = new Date()) {
+export function restore(backupFile, dbFile, now = new Date(), uploadsDir = "data/uploads") {
   if (!existsSync(backupFile)) throw new Error(`No backup at ${backupFile}.`);
   const info = inspect(backupFile);
   if (info.version > SCHEMA_VERSION) throw new Error(`Backup is schema v${info.version}; this app only knows up to v${SCHEMA_VERSION}.`);
@@ -66,17 +84,19 @@ export function restore(backupFile, dbFile, now = new Date()) {
   }
   for (const suffix of ["-wal", "-shm"]) rmSync(dbFile + suffix, { force: true });
   copyFileSync(backupFile, dbFile);
-  return { saved, ...info };
+  const pictures = mirror(join(dirname(backupFile), "uploads"), uploadsDir);
+  return { saved, pictures, ...info };
 }
 
 function main([cmd, arg, ...rest]) {
   const dbFile = process.env.QUESTBOARD_DB ?? "data/questboard.db";
+  const uploadsDir = process.env.QUESTBOARD_UPLOAD_DIR ?? "data/uploads";
   try {
     if (cmd === "backup") {
       const dir = arg ?? process.env.QUESTBOARD_BACKUP_DIR ?? "data/backups";
       const keep = Number(process.env.QUESTBOARD_BACKUP_KEEP ?? 14) || 14;
-      const r = backup(dbFile, dir, keep);
-      console.log(`Backed up ${dbFile} → ${r.file} (${(r.bytes / 1024).toFixed(0)} KB, schema v${r.version}, ${r.users} users, ${r.games} games).${r.removed ? ` Removed ${r.removed} old backup(s).` : ""}`);
+      const r = backup(dbFile, dir, keep, new Date(), uploadsDir);
+      console.log(`Backed up ${dbFile} → ${r.file} (${(r.bytes / 1024).toFixed(0)} KB, schema v${r.version}, ${r.users} users, ${r.games} games).${r.removed ? ` Removed ${r.removed} old backup(s).` : ""}${r.pictures ? ` Copied ${r.pictures} new picture(s).` : ""}`);
       return 0;
     }
     if (cmd === "restore") {
@@ -84,8 +104,8 @@ function main([cmd, arg, ...rest]) {
         console.error("Usage: npm run db:restore -- <backup-file> --yes   (stop the app first)");
         return 1;
       }
-      const r = restore(arg, dbFile);
-      console.log(`Restored ${arg} → ${dbFile} (schema v${r.version}, ${r.users} users, ${r.games} games).${r.saved ? ` The previous database was saved as ${r.saved}.` : ""} Start the app again.`);
+      const r = restore(arg, dbFile, new Date(), uploadsDir);
+      console.log(`Restored ${arg} → ${dbFile} (schema v${r.version}, ${r.users} users, ${r.games} games).${r.saved ? ` The previous database was saved as ${r.saved}.` : ""}${r.pictures ? ` Put back ${r.pictures} picture(s).` : ""} Start the app again.`);
       return 0;
     }
     console.log("Usage: node scripts/db-backup.mjs backup [dir] | restore <file> --yes");
