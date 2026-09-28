@@ -20,8 +20,8 @@ import { movedEmail, seatRemovedEmail } from "@/lib/session-mail";
 import { deliverNotificationEmails } from "@/lib/notification-mail";
 import { consumeToken, issueToken, peekToken } from "@/lib/tokens";
 import { archiveGame, deleteAccount } from "@/lib/account";
-import { createReport, decideReport, setGmVerified, suspendUser, unsuspendUser, logAdminAction } from "@/lib/moderation";
-import { isReportDecision, parseReport } from "@/lib/reports";
+import { createReport, decideReport, setGmVerified, suspendUser, unsuspendUser, logAdminAction, removeDirectly } from "@/lib/moderation";
+import { isReportDecision, parseReport, isReportTarget } from "@/lib/reports";
 import { heldSeats, joinWaitlist, leaveWaitlist, processWaitlist } from "@/lib/waitlist";
 import { addReply, announceGameIfNew, createNotice, getNotice, renewNotice, setFollowing, setSaved, updateNotice } from "@/lib/community";
 import { parseNotice, parseReply } from "@/lib/board";
@@ -220,7 +220,8 @@ async function saveGameActionImpl(_: FormState, form: FormData): Promise<FormSta
 
   let gameId: number;
   if (idRaw) {
-    if (!existing || (existing.gm_id !== gm.id && gm.role !== "admin")) return { error: "err.notFound" };
+    // Archived games stay archived: otherwise a game moderators removed could simply be re-published.
+    if (!existing || (existing.gm_id !== gm.id && gm.role !== "admin") || existing.status === "archived") return { error: "err.notFound" };
     // Never let an edit overbook: seats can't drop below what an upcoming session already holds.
     const seatsTaken = maxSeatsTakenUpcoming(idRaw);
     if (g.seatsTotal < seatsTaken) {
@@ -288,10 +289,11 @@ export async function archiveGameAction(form: FormData) {
   redirect("/gm");
 }
 
+/** The signed-in GM's own (or, for admins, any) game — never an archived one: archiving, or a moderator removing it, is final. */
 async function ownedGameOrThrow(gameId: number) {
   const gm = await requireGm();
   const game = getGameById(gameId);
-  if (!game || (game.gm_id !== gm.id && gm.role !== "admin")) throw new Error("Not found");
+  if (!game || (game.gm_id !== gm.id && gm.role !== "admin") || game.status === "archived") throw new Error("Not found");
   return { gm, game };
 }
 
@@ -1035,6 +1037,16 @@ export async function decideReportAction(form: FormData) {
   const decision = form.get("decision");
   if (!isReportDecision(decision)) throw new Error("Bad decision");
   if (decideReport(Number(form.get("reportId")), admin.id, decision, String(form.get("note") ?? "").trim().slice(0, 500))) await toast("toast.reportDecided");
+  revalidatePath("/", "layout");
+}
+
+/** A moderator's "Remove" on a game, review, GM reply, chat message, notice or reply — no report needed. */
+export async function moderatorRemoveAction(form: FormData) {
+  const admin = await requireAdmin();
+  const type = form.get("targetType");
+  const id = Number(form.get("targetId"));
+  if (!isReportTarget(type) || !Number.isInteger(id)) throw new Error("Not found");
+  if (removeDirectly(admin.id, type, id, "")) await toast("toast.modRemoved");
   revalidatePath("/", "layout");
 }
 

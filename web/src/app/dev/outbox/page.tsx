@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { emailHtml } from "@/lib/email-html";
 import { devOutboxEnabled, listOutbox } from "@/lib/mailer";
 
 export const metadata: Metadata = { title: "Dev outbox", robots: { index: false } };
@@ -22,6 +23,10 @@ export default function DevOutboxPage() {
             <p className="text-sm"><strong>To:</strong> <span data-testid="outbox-to">{m.to_address}</span> · <strong>Subject:</strong> {m.subject}</p>
             <p className="text-xs text-muted">{m.created_at} · {m.sent_at ? `sent ${m.sent_at}` : m.error ? `error: ${m.error}` : "queued (no provider)"}</p>
             <pre className="mt-2 whitespace-pre-wrap text-sm" data-testid="outbox-body">{m.body_text}</pre>
+            <details className="mt-2">
+              <summary className="cursor-pointer text-xs text-accent">HTML version</summary>
+              <iframe title={`HTML version of “${m.subject}”`} sandbox="" srcDoc={emailHtml(m.subject, m.body_text)} className="mt-2 h-[28rem] w-full rounded border border-border bg-white" />
+            </details>
           </li>
         ))}
         {mails.length === 0 && <li className="text-sm text-muted">No emails yet.</li>}

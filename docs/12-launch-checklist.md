@@ -11,6 +11,8 @@ The code is launch-ready (see IMPROVEMENTS.md, "Launch ·" rows). What's left ne
 - [ ] **Email:** a Resend account with your domain verified. Set `RESEND_API_KEY` and `QUESTBOARD_MAIL_FROM`.
 - [ ] **Founding GMs:** 5–10 real Game Masters who list games *before* you open to players, so the first visitors find tables.
 
+- [ ] **Load test the real server** before opening it: `npm run load-test -- --base https://<staging> --users 40 --seconds 60` against a copy with demo data and `QUESTBOARD_RATE_LIMIT=off` (never the live database). Expect 0 errors and 0 overbooked sessions; compare p95 with TESTING.md.
+
 ## Launch day
 
 - [ ] Deploy with `QUESTBOARD_SEED=false`. **Never** set `QUESTBOARD_DEV_OUTBOX` or `QUESTBOARD_ALLOW_RESET` in production.

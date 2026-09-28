@@ -6,15 +6,25 @@ import { defineConfig } from "@playwright/test";
 const PORT = 3100;
 // A second server on an empty database (no demo data), as on launch day: tests/e2e/empty-launch.spec.ts.
 const EMPTY_PORT = 3101;
+// The seeded specs are split over two identical servers with their own databases, run side by side
+// (each project one test at a time, so specs sharing a database never overlap). Roughly halves the run.
+const PORT_2 = 3102;
+const SECOND = /\/(a11y|ux-polish|hire-and-browse|share-calendar-live|board-social|gm-tools|taxonomy|notification-email|questions|language-urls|earnings|permissions)\.spec\.ts$/;
+const SEEDED_ENV = { QUESTBOARD_DEV_OUTBOX: "true", QUESTBOARD_RATE_LIMIT_OVERRIDES: "signup=500,login=40,loginIp=5000,resetIp=500", QUESTBOARD_CRON_SECRET: "e2e-cron-secret" };
 
 export default defineConfig({
   testDir: "tests/e2e",
   fullyParallel: false,
-  workers: 1,
+  // One project at a time by default: on a laptop, three servers plus three browsers at once starve each
+  // other (no faster, and tests time out at random). E2E_WORKERS=3 runs them side by side on a bigger machine.
+  workers: Number(process.env.E2E_WORKERS ?? 1),
   retries: 0,
   // Multi-account journeys take ~15 s on an idle machine; 60 s keeps a busy moment from failing
   // them. Individual steps keep their own short timeouts, so a real hang still fails fast.
   timeout: 60_000,
+  // Three servers and three browsers share one machine during a full run, so a page can take a few
+  // seconds under load. Assertions retry until they pass, so a longer limit doesn't slow passing tests.
+  expect: { timeout: 15_000 },
   reporter: [["list"]],
   use: {
     baseURL: `http://localhost:${PORT}`,
@@ -25,8 +35,9 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
-    { name: "seeded", testIgnore: /empty-launch.spec.ts/ },
-    { name: "empty", testMatch: /empty-launch.spec.ts/, use: { baseURL: `http://localhost:${EMPTY_PORT}` } },
+    { name: "seeded", testIgnore: [/empty-launch.spec.ts/, SECOND], workers: 1, metadata: { db: "data/e2e.db" } },
+    { name: "seeded-2", testMatch: SECOND, workers: 1, metadata: { db: "data/e2e-2.db" }, use: { baseURL: `http://localhost:${PORT_2}` } },
+    { name: "empty", testMatch: /empty-launch.spec.ts/, workers: 1, metadata: { db: "data/e2e-empty.db" }, use: { baseURL: `http://localhost:${EMPTY_PORT}` } },
   ],
   webServer: [{
     command: `node scripts/reset-db.mjs data/e2e.db && npx next start -p ${PORT}`,
@@ -35,7 +46,13 @@ export default defineConfig({
     timeout: 120_000,
     // Many specs sign up and log in (as the same demo accounts) from one IP. Limits are raised for
     // sign-up and login; P1-9 still proves the login limiter works at the raised value (E2E_LOGIN_LIMIT).
-    env: { QUESTBOARD_DB: "data/e2e.db", QUESTBOARD_DEV_OUTBOX: "true", QUESTBOARD_RATE_LIMIT_OVERRIDES: "signup=500,login=40,loginIp=5000,resetIp=500", QUESTBOARD_CRON_SECRET: "e2e-cron-secret" },
+    env: { QUESTBOARD_DB: "data/e2e.db", ...SEEDED_ENV },
+  }, {
+    command: `node scripts/reset-db.mjs data/e2e-2.db && npx next start -p ${PORT_2}`,
+    url: `http://localhost:${PORT_2}`,
+    reuseExistingServer: false,
+    timeout: 120_000,
+    env: { QUESTBOARD_DB: "data/e2e-2.db", ...SEEDED_ENV },
   }, {
     command: `node scripts/reset-db.mjs data/e2e-empty.db && npx next start -p ${EMPTY_PORT}`,
     url: `http://localhost:${EMPTY_PORT}`,

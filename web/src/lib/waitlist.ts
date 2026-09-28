@@ -72,8 +72,14 @@ export function refreshAllWaitlists(): number {
 /** Convenience wrapper for pages: bring a set of sessions up to date. */
 export function refreshWaitlists(sessionIds: number[]): void {
   if (sessionIds.length === 0) return;
+  // Called on every game-page view: only take the write lock when someone is actually waiting
+  // (nearly never), so busy pages don't queue behind each other on SQLite's single writer.
+  const active = db()
+    .prepare(`SELECT DISTINCT session_id FROM waitlist WHERE status IN ('waiting','offered') AND session_id IN (${sessionIds.map(() => "?").join(",")})`)
+    .all(...sessionIds) as { session_id: number }[];
+  if (active.length === 0) return;
   tx((c) => {
-    for (const id of sessionIds) processWaitlist(c, id);
+    for (const { session_id } of active) processWaitlist(c, session_id);
   });
 }
 

@@ -158,3 +158,33 @@ test("admins verify Game Masters, which shows the badge publicly", async ({ brow
   await admin.getByRole("row").filter({ hasText: "Vivi Verified" }).getByRole("link", { name: "Vivi Verified" }).click();
   await expect(admin.getByRole("heading", { level: 1 }).getByRole("img", { name: /Verified/ })).toBeVisible();
 });
+
+test("admins can remove content directly, without a report; others don't see the button", async ({ browser }) => {
+  const db = e2eDb();
+  const fajar = db.prepare("SELECT id FROM users WHERE email = 'fajar@questboard.test'").get() as { id: number };
+  const post = Number(db.prepare("INSERT INTO lfg_posts (author_id, kind, title, schedule, body, expires_at) VALUES (?, 'lf_group', 'Cheap dice, click here', 'Always', 'Buy the cheapest dice from my shop, link in bio, hurry now!', ?)").run(fajar.id, new Date(Date.now() + 10 * 86_400_000).toISOString()).lastInsertRowid);
+  try {
+    const player = await newPage(browser);
+    await login(player, "player@questboard.test");
+    await player.goto(`/board/${post}`);
+    await expect(player.getByRole("button", { name: "Remove (moderator)" })).toHaveCount(0);
+
+    const admin = await newPage(browser);
+    await login(admin, "admin@questboard.test");
+    await admin.goto(`/board/${post}`);
+    admin.once("dialog", (d) => void d.accept());
+    await admin.getByRole("button", { name: "Remove (moderator)" }).first().click();
+    await expect(admin.getByText("Removed. The author was told", { exact: false })).toBeVisible();
+    expect(db.prepare("SELECT 1 FROM lfg_posts WHERE id = ?").get(post)).toBeUndefined();
+
+    const author = await newPage(browser);
+    await login(author, "fajar@questboard.test");
+    await author.goto("/notifications");
+    await expect(author.getByText("A moderator removed your notice because it broke the community guidelines").first()).toBeVisible();
+    await admin.goto("/admin");
+    await expect(admin.getByRole("region", { name: "Recent moderator actions" }).getByText(/removed content by Fajar/).first()).toBeVisible();
+  } finally {
+    db.prepare("DELETE FROM lfg_posts WHERE id = ?").run(post);
+    db.close();
+  }
+});

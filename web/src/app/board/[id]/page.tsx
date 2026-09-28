@@ -10,6 +10,7 @@ import { LocalTime } from "@/components/local-time";
 import { Icon } from "@/components/icon";
 import { ReplyForm } from "@/components/board-forms";
 import { ReportButton } from "@/components/report-button";
+import { ModRemoveButton } from "@/components/mod-remove-button";
 import { ShareButtons } from "@/components/share-buttons";
 import { ConfirmButton } from "@/components/submit-button";
 import { AutoRefresh } from "@/components/auto-refresh";
@@ -84,6 +85,7 @@ export default async function NoticePage(props: PageProps<"/board/[id]">) {
         <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border pt-4">
           {open && <ShareButtons url={url} text={t("board.shareText", { title: n.title })} />}
           {user && !isAuthor && <ReportButton targetType="lfg_post" targetId={n.id} />}
+          {user?.role === "admin" && <ModRemoveButton targetType="lfg_post" targetId={n.id} />}
           {isAuthor && open && (
             <form action={closeNoticeAction} className="ml-auto">
               <input type="hidden" name="postId" value={n.id} />
@@ -104,6 +106,7 @@ export default async function NoticePage(props: PageProps<"/board/[id]">) {
                 <p className="text-sm"><span className="font-semibold">{shownName(r.name, t)}</span>{r.author_id === n.author_id && <span className="ml-1.5 rounded bg-accent-soft px-1.5 text-xs font-semibold text-accent">{t("board.author")}</span>}<span className="ml-2 text-xs text-muted"><LocalTime iso={r.created_at} /></span></p>
                 <p className="whitespace-pre-line text-sm">{r.body}</p>
                 {user && r.author_id !== user.id && <ReportButton targetType="lfg_reply" targetId={r.id} className="mt-1" />}
+                {user?.role === "admin" && <ModRemoveButton targetType="lfg_reply" targetId={r.id} className="mt-1" />}
               </div>
             </li>
           ))}

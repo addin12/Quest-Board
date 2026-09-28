@@ -1,9 +1,11 @@
 import "server-only";
 import { db } from "./db";
+import { emailHtml } from "./email-html";
 
 // Transactional email. Every message is written to `email_outbox` first (audit trail,
 // and the dev outbox page reads it). If RESEND_API_KEY + QUESTBOARD_MAIL_FROM are set,
-// it is also delivered through Resend's HTTP API (no SDK dependency). Delivery errors
+// it is also delivered through Resend's HTTP API (no SDK dependency), as plain text plus the
+// same text laid out as branded HTML (lib/email-html.ts). Delivery errors
 // are recorded on the row and never break the user's request.
 
 /** `secret`: a one-time link inside `text` (reset/verify) that must not be stored readable. */
@@ -30,7 +32,7 @@ async function deliver(id: number, mail: Email): Promise<boolean> {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [mail.to], subject: mail.subject, text: mail.text }),
+      body: JSON.stringify({ from, to: [mail.to], subject: mail.subject, text: mail.text, html: emailHtml(mail.subject, mail.text) }),
       signal: AbortSignal.timeout(8_000),
     });
     if (!res.ok) throw new Error(`Resend ${res.status}: ${(await res.text()).slice(0, 200)}`);

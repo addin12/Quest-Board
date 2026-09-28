@@ -38,6 +38,10 @@ test("a failed delivery is retried by the cron until it succeeds, then left alon
   assert.equal(row("Retry me").error, null);
   assert.equal(await retryFailedEmails(), 0); // nothing left to retry
   assert.equal(sent.filter((m) => m.subject === "Retry me").length, 1);
+  // Sent as plain text plus the same text laid out as HTML.
+  const delivered = sent.find((m) => m.subject === "Retry me") as unknown as { text: string; html: string };
+  assert.equal(delivered.text, "hello");
+  assert.match(delivered.html, /<!doctype html>[\s\S]*hello/);
 });
 
 test(`retries stop after ${MAX_ATTEMPTS} attempts; blanked one-time links are never resent`, async () => {

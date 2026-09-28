@@ -200,6 +200,24 @@ export function decideReport(reportId: number, adminId: number, decision: Report
   return true;
 }
 
+/**
+ * A moderator removes something directly, without waiting for a member's report. Recorded as a report
+ * by the moderator and decided at once, so it follows the same path: the author is told why, it's in
+ * the moderator log, and any open reports about the same thing are resolved too.
+ */
+export function removeDirectly(adminId: number, type: ReportTarget, id: number, note: string): boolean {
+  if (type === "user") return false; // people are suspended, not removed
+  const target = resolveTarget(type, id);
+  if (!target) return false;
+  const reportId = Number(
+    db().prepare(
+      `INSERT INTO reports (reporter_id, target_type, target_id, target_owner_id, reason, details, snapshot, href)
+       VALUES (?, ?, ?, ?, 'other', 'Removed directly by a moderator', ?, ?)`,
+    ).run(adminId, type, id, target.ownerId, target.snapshot, target.href).lastInsertRowid,
+  );
+  return decideReport(reportId, adminId, "remove", note);
+}
+
 export function setGmVerified(userId: number, verified: boolean): boolean {
   return Number(db().prepare("UPDATE gm_profiles SET verified = ? WHERE user_id = ? AND verified <> ?").run(verified ? 1 : 0, userId, verified ? 1 : 0).changes) > 0;
 }

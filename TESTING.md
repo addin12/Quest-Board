@@ -8,9 +8,9 @@ The full QA strategy and manual checklist are in `docs/09-testing-and-qa.md`.
 | `npm run typecheck` (runs `next typegen` first) | Types, **translation keys** (`MsgKey`), **icon names** | Run first; fastest signal |
 | `npm run lint` | ESLint (next config) | |
 | `npm test` | `tests/unit/*.test.ts`: policy (IDR, canBook, canCancel, location), validation, i18n parity + default language, icon subset vs registry, **placeholder art exists + is script-free + migration v6 back-fill**, **categories (normalize, systemSlug, dictionary coverage, request/offer/profile validation, migration v7 back-fill)**, D&D editions, crypto | Node's built-in runner with native TS stripping. Runs with `--conditions=react-server` (so `server-only` is a no-op) and `--import ./tests/loader.mjs`, a resolve hook for `@/…` and extensionless imports. So **server modules can be unit-tested too**: set `QUESTBOARD_DB` to a temp file and `QUESTBOARD_SEED=false` *before* importing them, and stub `globalThis.fetch` for email (see `mail-delivery.test.ts`, `review-prompts.test.ts`) |
-| `npm run test:e2e` | `next build`, then Playwright on **:3100** against a fresh `data/e2e.db` | Uses installed **Edge**; `PW_CHANNEL=chrome` for Chrome. Default locale `en-US`, timezone `Asia/Jakarta` |
+| `npm run test:e2e` | `next build`, then Playwright on **three servers side by side**: `seeded` on **:3100** (`data/e2e.db`), `seeded-2` on **:3102** (`data/e2e-2.db`, the specs listed in `SECOND` in `playwright.config.ts`), and `empty` on **:3101** (`data/e2e-empty.db`) | Uses installed **Edge**; `PW_CHANNEL=chrome` for Chrome. Default locale `en-US`, timezone `Asia/Jakarta` |
 
-Current baseline (2026-09-27): **114 unit tests, 117 e2e tests** (113 in the `seeded` project across 22 spec files, 4 in `empty-launch.spec.ts` on an empty database), all green. The full e2e run takes about 11 minutes: run it in the background, and **don't rebuild while it runs** (the test server uses `.next`).
+Current baseline (2026-09-28): **117 unit tests, 122 e2e tests** (57 in `seeded`, 61 in `seeded-2`, 4 in `empty`), all green. Each project runs on its own server and database, one test at a time. The projects run one after another by default, and the full run takes about 16 minutes (it took ~27 when every spec shared one database: pages get slower as a test database fills up). Running the projects side by side (`E2E_WORKERS=3`) was no faster on the dev laptop and made tests time out at random, so it is only worth trying on a machine with more cores: run it in the background, and **don't rebuild while it runs** (the test server uses `.next`).
 
 **Notification assertions:** earlier specs may create similar notifications for the same demo account, so use `.first()` or unique titles.
 
@@ -24,7 +24,7 @@ Current baseline (2026-09-27): **114 unit tests, 117 e2e tests** (113 in the `se
 **Accessibility sweep** (`a11y.spec.ts`): `@axe-core/playwright` with WCAG 2.1 A/AA tags on the public pages × EN/ID × light/dark, the same pages at 360 px phone width, signed-in, admin and brand-new GM/player pages, and a form with errors. It fails with one line per violation (page → rule → selectors). Add new pages to its lists. Update these numbers when you add tests.
 
 ## Writing e2e tests
-- **Tests share one DB and run serially** (`workers: 1`), so pick seed data that other tests don't mutate:
+- **Specs in the same project share one DB and run serially** (`workers: 1` per project), so pick seed data that other tests don't mutate. `e2eDb()` opens the database of the project the test runs in; keep specs that depend on each other in the same project (e.g. `hardening` and `marketplace` below).
   - **The demo player (Andi, `player@questboard.test`) has no seat in** *Neon Run* (`neon-run-satu-malam-di-neo-surabaya`) or *Starfall Salvage* (`starfall-salvage`). Use these for booking flows.
   - **Andi has an unreviewed past session in** *Mercusuar di Pulau Kabut*. Use it for the review flow.
 - **Spec files run alphabetically** against the same DB: `hardening`, then `marketplace`. `hardening` archives *Panen Harapan*, so don't use that game elsewhere.
@@ -51,3 +51,9 @@ Current baseline (2026-09-27): **114 unit tests, 117 e2e tests** (113 in the `se
 - [ ] Checked in EN **and** ID, light **and** dark, desktop **and** mobile
 - [ ] No payment details leak: check the API output and public pages
 - [ ] Docs, MEMORY.md and the test counts above are updated
+
+## Security and load checks
+
+- **Permissions** (`permissions.spec.ts`): signed in as one person, each form's hidden ids are pointed at someone else's booking, session, review, notice, request or game and submitted (as someone editing the page in their browser would); nothing may change. Add new actions to it.
+- **Keyboard only** (`keyboard.spec.ts`): the newest flows are finished with Tab / Enter / arrows and typing, and every focus stop must show a focus ring.
+- **Load test** (`npm run load-test -- --base <url> --users 40 --seconds 60 [--db <file>]`): virtual users sign up, log in, browse, book and chat at once (forms posted like a browser without JavaScript); reports p50/p95/p99 per operation, errors, and with `--db` whether any session was overbooked. Run it against a throwaway server (`QUESTBOARD_RATE_LIMIT=off`), never production data. Baseline on the dev laptop (one Node process): ~65–90 requests/s, **0 errors, 0 overbooked** at 40 and 100 users with no think time (p95 ≈ 0.8 s at 40 users; the limit is page rendering CPU, ~11–29 ms per page).

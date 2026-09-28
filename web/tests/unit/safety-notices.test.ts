@@ -153,3 +153,21 @@ test("a notice's author is reminded once, 3 days before it comes down; keeping i
   assert.equal(Date.parse(renewed.expires_at), created + 58 * day); // 30 days from when it was kept up
   assert.equal(remindExpiringNotices(new Date(created + 56 * day)), 1); // reminded again next time round
 });
+
+test("a moderator removes a notice directly: gone, the author is told, logged, and open reports about it resolved", async () => {
+  const { removeDirectly, createReport, listAdminLog } = await import("../../src/lib/moderation.ts");
+  const author = user("spammer@x.test");
+  const reporter = user("watchful@x.test");
+  const admin = user("mod5@x.test");
+  const post = createNotice(author, { kind: "lf_group", title: "Buy cheap dice here", system: "", locationType: "online", city: "", language: "id", schedule: "Always", spots: 0, body: "Visit my shop for the cheapest dice anywhere, click now!" });
+  assert.equal(createReport(reporter, "lfg_post", post, "spam", ""), "ok"); // someone reported it earlier
+
+  assert.equal(removeDirectly(admin, "user", author, ""), false); // people are suspended, not removed
+  assert.equal(removeDirectly(admin, "lfg_post", post, ""), true);
+  assert.equal(db().prepare("SELECT 1 FROM lfg_posts WHERE id = ?").get(post), undefined);
+  assert.ok(kinds(author).includes("content_removed"));
+  assert.ok(kinds(reporter).includes("report_resolved")); // the earlier report is closed too
+  assert.equal(db().prepare("SELECT COUNT(*) AS n FROM reports WHERE target_type = 'lfg_post' AND target_id = ? AND status = 'open'").get(post)?.n, 0);
+  assert.equal(listAdminLog(1)[0].action, "report_remove");
+  assert.equal(removeDirectly(admin, "lfg_post", post, ""), false); // already gone
+});

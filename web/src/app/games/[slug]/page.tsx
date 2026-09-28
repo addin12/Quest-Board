@@ -23,6 +23,7 @@ import { LocalTime } from "@/components/local-time";
 import { MessageForm, ReviewForm, ReviewReplyForm } from "@/components/forms";
 import { ShareButtons } from "@/components/share-buttons";
 import { ReportButton } from "@/components/report-button";
+import { ModRemoveButton } from "@/components/mod-remove-button";
 import { ConfirmButton } from "@/components/submit-button";
 import { deleteReviewAction } from "@/app/actions";
 import { CalendarLinks } from "@/components/calendar-links";
@@ -101,6 +102,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                   {user && user.id !== game.gm_id && <SaveGameButton gameId={game.id} slug={game.slug} saved={isSaved(user.id, game.id)} t={t} />}
                 </div>
                 {user && user.id !== game.gm_id && <ReportButton targetType="game" targetId={game.id} />}
+                {user?.role === "admin" && game.status === "published" && <ModRemoveButton targetType="game" targetId={game.id} />}
               </div>
             )}
 
@@ -156,6 +158,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                         </p>
                         <p className="whitespace-pre-line text-sm">{m.body}</p>
                         {user && m.user_id !== user.id && <ReportButton targetType="message" targetId={m.id} className="mt-1" />}
+                        {user?.role === "admin" && <ModRemoveButton targetType="message" targetId={m.id} className="mt-1" />}
                       </div>
                     </li>
                   ))}
@@ -189,6 +192,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                             <p className="text-xs font-semibold">{t("reviews.gmReply", { name: shownName(game.gm_name, t) })}</p>
                             <p className="mt-0.5 whitespace-pre-line">{r.gm_reply}</p>
                             {user && user.id !== game.gm_id && <ReportButton targetType="review_reply" targetId={r.id} className="mt-1" />}
+                            {user?.role === "admin" && <ModRemoveButton targetType="review_reply" targetId={r.id} className="mt-1" />}
                           </div>
                         )}
                         {user?.id === r.player_id && (
@@ -203,6 +207,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                         )}
                         {user?.id === game.gm_id && <ReviewReplyForm reviewId={r.id} current={r.gm_reply} />}
                         {user && r.player_id !== user.id && <ReportButton targetType="review" targetId={r.id} className="mt-1" />}
+                        {user?.role === "admin" && <ModRemoveButton targetType="review" targetId={r.id} className="mt-1" />}
                       </div>
                     </li>
                   ))}
