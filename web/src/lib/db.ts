@@ -7,8 +7,9 @@ import { MIGRATIONS, planSchemaUpgrade } from "./migrations";
 import { seedDatabase } from "./seed";
 
 // One connection per server process. Cached on globalThis so dev hot-reloads
-// don't open a new handle on every edit.
-const globalForDb = globalThis as unknown as { __questboardDb?: DatabaseSync };
+// don't open a new handle on every edit. The cache remembers which schema it was
+// prepared for: when a hot reload brings a newer SCHEMA_VERSION, db() migrates first.
+const globalForDb = globalThis as unknown as { __questboardDb?: DatabaseSync; __questboardDbFile?: string; __questboardDbSchema?: number };
 
 /**
  * Dev-only escape hatch when no migration path exists (e.g. pre-v4 demo DBs):
@@ -71,8 +72,10 @@ function prepareSchema(conn: DatabaseSync, file: string) {
   }
 }
 
+const dbFile = () => process.env.QUESTBOARD_DB ?? path.join(process.cwd(), "data", "questboard.db");
+
 function open(): DatabaseSync {
-  const file = process.env.QUESTBOARD_DB ?? path.join(process.cwd(), "data", "questboard.db");
+  const file = dbFile();
   if (file !== ":memory:") mkdirSync(path.dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
   // busy_timeout: wait (up to 5 s) for another writer — a backup, the admin CLI — instead of failing.
@@ -84,7 +87,15 @@ function open(): DatabaseSync {
 }
 
 export function db(): DatabaseSync {
-  if (!globalForDb.__questboardDb) globalForDb.__questboardDb = open();
+  if (!globalForDb.__questboardDb) {
+    globalForDb.__questboardDb = open();
+    globalForDb.__questboardDbFile = dbFile();
+  } else if (globalForDb.__questboardDbSchema !== SCHEMA_VERSION) {
+    // Dev: new code hot-reloaded over an open connection. Migrate it now, instead of
+    // querying tables that don't exist yet ("no such table") until the server restarts.
+    prepareSchema(globalForDb.__questboardDb, globalForDb.__questboardDbFile ?? dbFile());
+  }
+  globalForDb.__questboardDbSchema = SCHEMA_VERSION;
   return globalForDb.__questboardDb;
 }
 
