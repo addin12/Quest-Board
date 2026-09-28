@@ -12,11 +12,11 @@ import { canBook, canCancel, isSafeNext, normalizeLocation, slugify } from "@/li
 import { isAllowedCover, isAllowedPortrait } from "@/lib/placeholders";
 import { parseGame, parseGmRequest, parseOffer, parseProfile, parseRepeat, parseReview, parseSessionStart, parseSignup, weeklyStarts, type FieldErrors } from "@/lib/validation";
 import { normalizeCategories } from "@/lib/categories";
-import { canReview, getGameById, getGmRequest, getGmSettings, getSessionWithGame, isGameMember, maxSeatsTakenUpcoming } from "@/lib/queries";
+import { canReview, getGameById, getGmRequest, getGmSettings, getSessionWithGame, isGameMember, maxSeatsTakenUpcoming, removedFromSession } from "@/lib/queries";
 import { LANG_COOKIE, type MsgKey } from "@/lib/i18n/dict";
 import { markAllRead, notify } from "@/lib/notifications";
 import { sendEmail } from "@/lib/mailer";
-import { movedEmail } from "@/lib/session-mail";
+import { movedEmail, seatRemovedEmail } from "@/lib/session-mail";
 import { deliverNotificationEmails } from "@/lib/notification-mail";
 import { consumeToken, issueToken, peekToken } from "@/lib/tokens";
 import { archiveGame, deleteAccount } from "@/lib/account";
@@ -97,9 +97,15 @@ async function signupActionImpl(_: FormState, form: FormData): Promise<FormState
   if (!parsed.ok) return { fieldErrors: parsed.errors };
   const { name, email, password, role } = parsed.value;
   if (!hit("signup", await clientIp())) return { error: "err.rateLimited" };
+  const after = role === "gm" ? "/gm" : safeNext(form.get("next"));
 
-  const exists = db().prepare("SELECT 1 FROM users WHERE email = ?").get(email);
-  if (exists) return { fieldErrors: { email: "v.emailTaken" } };
+  // Never reveal whether an address is registered: an existing account gets the same "check your
+  // email" page as a new one, and its owner a heads-up (at most twice an hour) instead of a link.
+  const existing = db().prepare("SELECT email, name FROM users WHERE email = ? AND deleted_at IS NULL").get(email) as { email: string; name: string } | undefined;
+  if (existing) {
+    if (hit("signupNotice", email)) await sendSignupAttemptEmail(existing.email, existing.name);
+    redirect("/signup/check-email");
+  }
 
   let userId: number;
   try {
@@ -114,12 +120,12 @@ async function signupActionImpl(_: FormState, form: FormData): Promise<FormState
     });
   } catch (err) {
     // Two sign-ups with the same email at the same moment: the second hits the UNIQUE index.
-    if (isUniqueViolation(err)) return { fieldErrors: { email: "v.emailTaken" } };
+    if (isUniqueViolation(err)) redirect("/signup/check-email");
     throw err;
   }
-  await createSession(userId);
-  await sendVerificationEmail(userId, email, name);
-  redirect(role === "gm" ? "/gm" : safeNext(form.get("next")));
+  // Signed in only once they open the emailed link (it proves the address is theirs).
+  await sendVerificationEmail(userId, email, name, after);
+  redirect("/signup/check-email");
 }
 
 async function loginActionImpl(_: FormState, form: FormData): Promise<FormState> {
@@ -363,6 +369,32 @@ async function rescheduleSessionActionImpl(_: FormState, form: FormData): Promis
   return { ok: true };
 }
 
+/** GM releases one player's seat in an upcoming session (e.g. they never replied, or broke the table rules). */
+export async function removePlayerAction(form: FormData) {
+  const b = db()
+    .prepare(
+      `SELECT b.id, b.player_id, b.status, b.session_id, s.status AS session_status, s.starts_at, s.game_id
+         FROM bookings b JOIN game_sessions s ON s.id = b.session_id WHERE b.id = ?`,
+    )
+    .get(Number(form.get("bookingId"))) as
+    | { id: number; player_id: number; status: string; session_id: number; session_status: string; starts_at: string; game_id: number } | undefined;
+  if (!b) throw new Error("Not found");
+  const { gm } = await ownedGameOrThrow(b.game_id);
+  if (b.status !== "confirmed" || b.session_status !== "scheduled" || new Date(b.starts_at) <= new Date()) throw new Error("Only upcoming seats can be released");
+  const reason = String(form.get("reason") ?? "").trim().replace(/\s+/g, " ").slice(0, 300);
+  tx((c) => {
+    c.prepare("UPDATE bookings SET status = 'cancelled', cancelled_by = 'gm', cancelled_at = ? WHERE id = ? AND status = 'confirmed'").run(new Date().toISOString(), b.id);
+    notify({ userId: b.player_id, kind: "seat_removed", actorId: gm.id, sessionId: b.session_id }, c);
+    processWaitlist(c, b.session_id); // the freed seat goes to the next person waiting
+  });
+  const s = getSessionWithGame(b.session_id);
+  const p = db().prepare("SELECT email, name, locale FROM users WHERE id = ? AND email_verified_at IS NOT NULL AND deleted_at IS NULL").get(b.player_id) as
+    | { email: string; name: string; locale: "en" | "id" } | undefined;
+  if (s && p) await sendEmail(seatRemovedEmail(p, s, reason, await siteOrigin()));
+  await toast("toast.playerRemoved");
+  revalidatePath("/", "layout");
+}
+
 export async function completeSessionAction(form: FormData) {
   const sessionId = Number(form.get("sessionId"));
   const s = getSessionWithGame(sessionId);
@@ -419,6 +451,7 @@ async function reserveSeatActionImpl(_: FormState, form: FormData): Promise<Form
     const verdict = canBook({
       sessionStatus: s.status, gameStatus: s.game_status, startsAt: new Date(s.starts_at), now: new Date(),
       seatsTotal: s.seats_total, seatsTaken: s.seats_taken + heldSeats(c, sessionId, user.id), isGm: s.gm_id === user.id, alreadyBooked: !!already,
+      removedByGm: removedFromSession(sessionId, user.id),
     });
     if (!verdict.ok) return verdict.reason;
     // The GM changed the time or price while this page was open: show the new details and ask again.
@@ -693,10 +726,39 @@ export async function closeRequestAction(form: FormData) {
 
 // ─── Email verification, password reset, account deletion ───────────────
 
-async function sendVerificationEmail(userId: number, email: string, name: string) {
+async function sendVerificationEmail(userId: number, email: string, name: string, next?: string) {
   const { t } = await getI18n();
-  const link = `${await siteOrigin()}/verify-email?token=${issueToken(userId, "verify")}`;
+  const then = next && next !== "/dashboard" ? `&next=${encodeURIComponent(next)}` : "";
+  const link = `${await siteOrigin()}/verify-email?token=${issueToken(userId, "verify")}${then}`;
   await sendEmail({ to: email, subject: t("mail.verifySubject"), text: t("mail.verifyBody", { name, link }), secret: link });
+}
+
+/** Someone signed up with an address that already has an account: tell its owner (no link that signs anyone in). */
+async function sendSignupAttemptEmail(email: string, name: string) {
+  const { t, lang } = await getI18n();
+  const origin = await siteOrigin();
+  await sendEmail({
+    to: email,
+    subject: t("mail.signupAttemptSubject"),
+    text: t("mail.signupAttemptBody", { name, when: nowWib(lang), login: `${origin}/login`, reset: `${origin}/forgot-password` }),
+  });
+}
+
+/**
+ * The button on the emailed link's page (a POST, so mail scanners that open links don't use it up).
+ * Confirms the address; the first time, it also signs the person in — that's how a new account starts.
+ */
+export async function confirmEmailAction(form: FormData) {
+  const userId = consumeToken(String(form.get("token") ?? ""), "verify");
+  if (!userId) redirect("/verify-email?invalid=1");
+  const u = db().prepare("SELECT email_verified_at, suspended_at, deleted_at FROM users WHERE id = ?").get(userId) as
+    | { email_verified_at: string | null; suspended_at: string | null; deleted_at: string | null } | undefined;
+  if (!u || u.deleted_at) redirect("/verify-email?invalid=1");
+  db().prepare("UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?").run(new Date().toISOString(), userId);
+  const current = await getCurrentUser();
+  if (!u.email_verified_at && !u.suspended_at && current?.id !== userId) await createSession(userId);
+  await toast("toast.emailVerified");
+  redirect(safeNext(form.get("next")));
 }
 
 const nowWib = (lang: string) =>
@@ -780,6 +842,7 @@ async function deleteAccountActionImpl(_: FormState, form: FormData): Promise<Fo
 export async function joinWaitlistAction(form: FormData) {
   const sessionId = Number(form.get("sessionId"));
   const user = await requireUser(`/games/${String(form.get("slug") ?? "")}`);
+  if (removedFromSession(sessionId, user.id)) return revalidatePath("/", "layout"); // the GM released their seat here
   const joined = joinWaitlist(sessionId, user.id); // "notFull" etc. just re-render the page with the right button
   if (joined === "ok") await toast("toast.waitJoined");
   revalidatePath("/", "layout");

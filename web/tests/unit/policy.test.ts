@@ -67,3 +67,9 @@ test("GM location is a city or Online", () => {
   assert.equal(normalizeLocation(""), "Online");
   assert.ok(isOnlineLocation("Online") && !isOnlineLocation("Jakarta"));
 });
+
+test("canBook: a player the GM removed can't book that session again (even with seats free)", () => {
+  assert.deepEqual(canBook({ ...base, removedByGm: true }), { ok: false, reason: "err.removedByGm" });
+  // Their own GM table / a session that's over still say so first.
+  assert.deepEqual(canBook({ ...base, removedByGm: true, isGm: true }), { ok: false, reason: "err.ownGame" });
+});

@@ -5,7 +5,7 @@ test("new GMs get a getting-started checklist; set-up GMs don't", async ({ page,
   await signup(page, "Fresh Game Master", unique("fresh-gm"), true);
   await page.goto("/gm");
   const card = page.locator("section", { has: page.getByRole("heading", { name: "Get your table ready" }) });
-  await expect(card.getByText("0 of 6 done")).toBeVisible();
+  await expect(card.getByText("1 of 6 done")).toBeVisible(); // the email was confirmed at sign-up
   await card.getByRole("link", { name: "Write your GM profile (headline and about you)" }).click();
   await expect(page).toHaveURL(/\/become-a-gm$/);
 

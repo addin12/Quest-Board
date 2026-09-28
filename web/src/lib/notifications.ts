@@ -17,6 +17,7 @@ export type NotificationKind =
   | "booking_cancelled"  // → GM: a player cancelled their seat
   | "session_cancelled"  // → player: the GM cancelled a session they had booked
   | "session_moved"      // → player: the GM changed the time of a session they had booked
+  | "seat_removed"       // → player: the GM released their seat in one session (their own email is sent directly)
   | "waitlist_session_moved" // → player on the waitlist: the GM changed that session's time
   | "game_place_changed" // → player with an upcoming seat: the game moved (city, online ↔ in person, platform)
   | "report_new"         // → admins: a member reported something

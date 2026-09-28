@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
 import { db } from "@/lib/db";
-import { getSessionWithGame } from "@/lib/queries";
+import { getSessionWithGame, removedFromSession } from "@/lib/queries";
 import { canBook } from "@/lib/policy";
 import { heldSeats, myWaitlist, refreshWaitlists } from "@/lib/waitlist";
 import { Cover, Notice, priceLabel } from "@/components/ui";
@@ -34,6 +34,7 @@ export default async function BookPage(props: PageProps<"/book/[sessionId]">) {
   const verdict = canBook({
     sessionStatus: s.status, gameStatus: s.game_status, startsAt: new Date(s.starts_at), now: new Date(),
     seatsTotal: s.seats_total, seatsTaken: s.seats_taken + held, isGm: s.gm_id === user.id, alreadyBooked: already,
+    removedByGm: removedFromSession(id, user.id),
   });
   const price = priceLabel(s.price_idr, t);
 

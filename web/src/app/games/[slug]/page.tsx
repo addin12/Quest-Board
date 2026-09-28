@@ -12,6 +12,7 @@ import {
   listMessages,
   listSessions,
   playerBookedSessionIds,
+  playerRemovedSessionIds,
 } from "@/lib/queries";
 import { canBook, splitList } from "@/lib/policy";
 import { Avatar, Cover, Stars, Notice, VerifiedBadge, languageLabel, priceLabel } from "@/components/ui";
@@ -59,6 +60,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
   const waits = user ? myWaitlist(user.id, game.id) : [];
   const reviews = listGameReviews(game.id);
   const booked = user ? playerBookedSessionIds(game.id, user.id) : [];
+  const removed = user ? playerRemovedSessionIds(game.id, user.id) : [];
   const member = user ? isGameMember(game.id, user.id) : false;
   const reviewable = user ? canReview(game.id, user.id) : false;
   const messages = member ? listMessages(game.id) : [];
@@ -232,8 +234,9 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                     const verdict = canBook({
                       sessionStatus: s.status, gameStatus: game.status, startsAt: new Date(s.starts_at), now,
                       seatsTotal: game.seats_total, seatsTaken: s.seats_taken + heldForOthers, isGm: user?.id === game.gm_id, alreadyBooked: mine,
+                      removedByGm: removed.includes(s.id),
                     });
-                    const full = !verdict.ok && verdict.reason === "err.full";
+                    const full = !verdict.ok && verdict.reason === "err.full" && !removed.includes(s.id);
                     return (
                       <li key={s.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-3">
                         <div className="min-w-44 text-sm">
@@ -263,7 +266,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                           <WaitlistControls sessionId={s.id} slug={game.slug} wait={wait} signedIn={!!user} t={t} />
                         ) : (
                           <span className="text-xs text-muted" title={t(verdict.reason)}>
-                            {user?.id === game.gm_id ? t("game.yourTable") : left <= 0 ? t("common.full") : t("game.unavailable")}
+                            {user?.id === game.gm_id ? t("game.yourTable") : verdict.reason === "err.removedByGm" ? t("game.seatReleased") : left <= 0 ? t("common.full") : t("game.unavailable")}
                           </span>
                         )}
                       </li>

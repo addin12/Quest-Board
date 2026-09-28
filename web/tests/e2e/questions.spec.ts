@@ -53,7 +53,7 @@ test("questions before booking: a private player ↔ GM thread with notification
 
     // Strangers can't open it; unverified accounts can't start one.
     const stranger = await newPage(browser);
-    await signup(stranger, "Curious Stranger", unique("stranger"));
+    await signup(stranger, "Curious Stranger", unique("stranger"), false, { confirm: false });
     expect((await stranger.goto(threadUrl))?.status()).toBe(404);
     await stranger.goto("/games/signal-from-tartarus-station/ask");
     await expect(stranger.getByText(/verify/i).first()).toBeVisible();

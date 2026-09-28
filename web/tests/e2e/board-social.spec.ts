@@ -65,7 +65,7 @@ test("pin a notice, filter the board, reply (author notified), take it down", as
 });
 
 test("unverified accounts can read the board but can't pin notices", async ({ page }) => {
-  await signup(page, "Una Unverified", unique("board-unverified"));
+  await signup(page, "Una Unverified", unique("board-unverified"), false, { confirm: false });
   await page.goto("/board/new");
   await expect(page.getByText(/Verify your email first/).first()).toBeVisible();
 });

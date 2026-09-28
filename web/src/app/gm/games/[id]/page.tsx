@@ -10,7 +10,7 @@ import { LocalTime } from "@/components/local-time";
 import { Icon } from "@/components/icon";
 import { AddSessionForm, RescheduleSessionForm } from "@/components/forms";
 import { ConfirmButton, SubmitButton } from "@/components/submit-button";
-import { archiveGameAction, cancelSessionAction, completeSessionAction, duplicateGameAction, markPaidAction } from "@/app/actions";
+import { archiveGameAction, cancelSessionAction, completeSessionAction, duplicateGameAction, markPaidAction, removePlayerAction } from "@/app/actions";
 import { waitingCounts } from "@/lib/waitlist";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -79,7 +79,7 @@ export default async function ManageGamePage(props: PageProps<"/gm/games/[id]">)
         ) : (
           <div className="space-y-3">
             {upcoming.map((s) => (
-              <SessionCard key={s.id} s={s} seatsTotal={game.seats_total} t={t} paid={paidOn} waiting={waiting.get(s.id) ?? 0}>
+              <SessionCard key={s.id} s={s} seatsTotal={game.seats_total} t={t} paid={paidOn} waiting={waiting.get(s.id) ?? 0} removable>
                 <details className="group w-full sm:w-auto">
                   <summary className="btn-secondary cursor-pointer list-none py-1.5! [&::-webkit-details-marker]:hidden"><Icon name="calendar-clock" /> {t("manage.moveSession")}</summary>
                   <RescheduleSessionForm sessionId={s.id} startsAt={s.starts_at} duration={s.duration_minutes} booked={s.seats_taken} />
@@ -145,6 +145,7 @@ function SessionCard({
   children,
   paid = false,
   waiting = 0,
+  removable = false,
 }: {
   s: { id: number; starts_at: string; duration_minutes: number; seats_taken: number };
   seatsTotal: number;
@@ -152,6 +153,7 @@ function SessionCard({
   children: React.ReactNode;
   paid?: boolean;
   waiting?: number;
+  removable?: boolean; // upcoming sessions: the GM can release one player's seat
 }) {
   const active = listSessionRoster(s.id).filter((r) => r.status === "confirmed");
   return (
@@ -188,6 +190,21 @@ function SessionCard({
             </li>
           ))}
         </ul>
+      )}
+      {removable && active.length > 0 && (
+        <details className="mt-3">
+          <summary className="btn-ghost inline-flex cursor-pointer list-none px-2! py-1! text-xs [&::-webkit-details-marker]:hidden"><Icon name="user-slash" /> {t("manage.removePlayer")}</summary>
+          <form action={removePlayerAction} className="mt-2 space-y-2 sm:w-80">
+            <label htmlFor={`remove-${s.id}`} className="label">{t("manage.removeWho")}</label>
+            <select id={`remove-${s.id}`} name="bookingId" required className="input">
+              {active.map((p) => <option key={p.booking_id} value={p.booking_id}>{p.name}</option>)}
+            </select>
+            <label htmlFor={`remove-reason-${s.id}`} className="label">{t("manage.removeReason")}</label>
+            <textarea id={`remove-reason-${s.id}`} name="reason" rows={2} maxLength={300} className="input" />
+            <p className="text-xs text-muted">{t("manage.removeHint")}</p>
+            <ConfirmButton className="btn-danger py-1.5!" message={t("manage.removeConfirm")}><Icon name="user-slash" /> {t("manage.removeButton")}</ConfirmButton>
+          </form>
+        </details>
       )}
     </div>
   );

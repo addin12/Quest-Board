@@ -73,6 +73,7 @@ test("waitlist: full session → join → a freed seat is offered to #1 and held
 });
 
 test("people on a waitlist can leave it, or pass an offer to the next person", async ({ browser }) => {
+  test.setTimeout(120_000); // four new accounts, each confirmed by email; slow under a full run
   const gm = await newPage(browser);
   const slug = await createGmWithGame(gm, "Lulu Leaves", unique("leave-gm"), "Tiny Table", { seats: 1 });
   const a = await newPage(browser);

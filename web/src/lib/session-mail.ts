@@ -4,6 +4,22 @@ import { formatWib } from "./reminder-plan.ts";
 
 export type Mail = { to: string; subject: string; text: string };
 
+/** "The GM released your seat" email for one removed player, with the GM's message if any. */
+export function seatRemovedEmail(
+  person: { email: string; name: string; locale: Lang },
+  s: { title: string; starts_at: string },
+  reason: string,
+  origin: string,
+): Mail {
+  const t = makeT(person.locale);
+  const when = formatWib(s.starts_at, person.locale);
+  return {
+    to: person.email,
+    subject: t("mail.seatRemovedSubject", { title: s.title, when }),
+    text: t("mail.seatRemovedBody", { name: person.name, title: s.title, when, reason: reason ? t("mail.cancelReason", { reason }) + "\n\n" : "", link: `${origin}/games` }),
+  };
+}
+
 /** "The GM moved your session" email for a booked player: old and new time, and how to cancel if it no longer works. */
 export function movedEmail(
   person: { email: string; name: string; locale: Lang },

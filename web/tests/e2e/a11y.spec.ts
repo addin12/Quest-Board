@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { confirmLink, signup } from "./helpers";
 
 // Automated WCAG 2.1 A/AA checks (axe-core) on the main pages, in both languages
 // and both colour schemes. Axe catches roughly a third of real issues — keep
@@ -71,16 +72,22 @@ test("the admin console has no axe violations", async ({ page }) => {
   expect(found).toEqual([]);
 });
 
-test("a brand-new GM's dashboard (with the getting-started checklist) has no axe violations", async ({ page }) => {
+test("sign-up's check-email and confirm pages, and a brand-new GM's dashboard (with the checklist), have no axe violations", async ({ page }) => {
+  const email = `axe-gm-${Date.now()}@questboard.test`;
   await page.goto("/signup");
   await page.getByText("Run games").click();
   await page.getByLabel("Display name").fill("Axe Check GM");
-  await page.getByLabel("Email").fill(`axe-gm-${Date.now()}@questboard.test`);
+  await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill("password123");
   await page.getByRole("button", { name: "Create account" }).click();
+  await page.waitForURL("**/signup/check-email");
+  const found = await violationsOf(page, "/signup/check-email");
+  await page.goto(await confirmLink(email));
+  found.push(...(await violationsOf(page, "/verify-email (confirm)")));
+  await page.getByRole("button", { name: "Confirm my email" }).click();
   await page.waitForURL("**/gm");
   await expect(page.getByRole("heading", { name: "Get your table ready" })).toBeVisible();
-  const found = await violationsOf(page, "/gm (new GM)");
+  found.push(...(await violationsOf(page, "/gm (new GM)")));
   await page.goto("/settings");
   found.push(...(await violationsOf(page, "/settings (new GM)")));
   expect(found).toEqual([]);
@@ -96,12 +103,7 @@ test.describe("phone width", () => {
       await page.goto(path);
       found.push(...(await violationsOf(page, `${path} [360px]`)));
     }
-    await page.goto("/signup");
-    await page.getByLabel("Display name").fill("Axe Check Player");
-    await page.getByLabel("Email").fill(`axe-player-${Date.now()}@questboard.test`);
-    await page.getByLabel("Password").fill("password123");
-    await page.getByRole("button", { name: "Create account" }).click();
-    await page.waitForURL("**/dashboard");
+    await signup(page, "Axe Check Player", `axe-player-${Date.now()}@questboard.test`);
     await expect(page.getByRole("heading", { name: "Welcome to the tavern!" })).toBeVisible();
     found.push(...(await violationsOf(page, "/dashboard (new player) [360px]")));
     expect(found).toEqual([]);

@@ -7,7 +7,7 @@ The code is launch-ready (see IMPROVEMENTS.md, "Launch ·" rows). What's left ne
 - [ ] **Legal pages.** Read Terms and Privacy (`/terms`, `/privacy`) in both languages. Ideally a lawyer checks them against UU PDP 27/2022. Then set `QUESTBOARD_LEGAL_FINAL=true`. Also update `LEGAL_VERSION` in `web/src/lib/legal.ts` (for example to the approval date), so new sign-ups record which version they agreed to.
 - [ ] **Contact email** for questions and data requests (UU PDP expects one): set `QUESTBOARD_CONTACT_EMAIL`.
 - [ ] **Domain**, e.g. `questboard.id`. Set `QUESTBOARD_BASE_URL=https://…`.
-- [ ] **Hosting:** one small server with a persistent disk, close to Indonesia (Jakarta or Singapore), behind a reverse proxy with HTTPS (Caddy is simplest). Set `QUESTBOARD_ENFORCE_HTTPS=true` and `QUESTBOARD_PROXY_HOPS` to match.
+- [ ] **Hosting:** one small server with a persistent disk, close to Indonesia (Jakarta or Singapore), behind a reverse proxy with HTTPS (Caddy is simplest). Set `QUESTBOARD_ENFORCE_HTTPS=true` and `QUESTBOARD_PROXY_HOPS` to match. Let the proxy compress responses (Caddy: `encode zstd gzip`) and set `compress: false` in `web/next.config.ts`: Next's own gzip logs harmless `MaxListenersExceededWarning … Gzip` warnings while streaming large pages (seen in every e2e run).
 - [ ] **Email:** a Resend account with your domain verified. Set `RESEND_API_KEY` and `QUESTBOARD_MAIL_FROM`.
 - [ ] **Founding GMs:** 5–10 real Game Masters who list games *before* you open to players, so the first visitors find tables.
 

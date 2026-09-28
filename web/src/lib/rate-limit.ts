@@ -9,6 +9,7 @@ export const LIMITS = {
   login: { limit: 10, windowMs: 10 * 60_000 },   // per IP + email
   loginIp: { limit: 60, windowMs: 10 * 60_000 }, // per IP, any email (credential stuffing)
   signup: { limit: 10, windowMs: 60 * 60_000 },  // per IP
+  signupNotice: { limit: 2, windowMs: 60 * 60_000 }, // "someone tried to sign up with your email", per address
   chat: { limit: 30, windowMs: 10 * 60_000 },    // per user
   reserve: { limit: 30, windowMs: 10 * 60_000 }, // per user
   review: { limit: 10, windowMs: 60 * 60_000 },  // per user

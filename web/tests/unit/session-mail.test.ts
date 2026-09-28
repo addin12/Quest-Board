@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cancellationEmail, movedEmail } from "../../src/lib/session-mail.ts";
+import { cancellationEmail, movedEmail, seatRemovedEmail } from "../../src/lib/session-mail.ts";
 
 const s = { title: "Naga", slug: "naga", starts_at: "2026-10-03T12:00:00.000Z" };
 
@@ -33,4 +33,15 @@ test("cancellation email for an archived game links to other games, not the gone
   const m = cancellationEmail({ email: "a@x.test", name: "Ben", locale: "en" }, { ...s, archived: true }, "", "https://qb.test");
   assert.match(m.text, /https:\/\/qb\.test\/games\n/);
   assert.doesNotMatch(m.text, /\/games\/naga/);
+});
+
+test("seat-released email: the GM's message when given, and where to find other games", () => {
+  const id = seatRemovedEmail({ email: "a@x.test", name: "Sari", locale: "id" }, s, "Maaf, meja ini khusus pemain lama.", "https://qb.test");
+  assert.equal(id.subject, "Kursimu dilepas: Naga — Sab, 3 Okt, 19.00 WIB");
+  assert.match(id.text, /Pesan dari GM: “Maaf, meja ini khusus pemain lama.”/);
+  assert.match(id.text, /https:\/\/qb\.test\/games\n/);
+  const en = seatRemovedEmail({ email: "b@x.test", name: "Ben", locale: "en" }, s, "", "https://qb.test");
+  assert.equal(en.subject, "Your seat was released: Naga — Sat 3 Oct, 19.00 WIB");
+  assert.doesNotMatch(en.text, /Message from the GM|\{reason\}/);
+  assert.match(en.text, /arrange the refund directly with the GM/);
 });

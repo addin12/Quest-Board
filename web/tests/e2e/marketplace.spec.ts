@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { confirmSignup } from "./helpers";
 
 // Journeys run in English (browser locale en-US) unless a test opts into Indonesian.
 
@@ -171,7 +172,7 @@ test("new GM signs up, sets payment details, lists a game in Rupiah and it appea
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill("password123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await page.waitForURL("**/gm");
+  await confirmSignup(page, email, true);
   await expect(page.getByRole("heading", { name: "GM dashboard" })).toBeVisible();
 
   await page.getByRole("link", { name: /Edit profile & payment details/ }).click();
@@ -292,10 +293,11 @@ test("a GM can pick an illustrated portrait instead of initials", async ({ page 
   await page.goto("/signup");
   await page.getByText("Run games").click();
   await page.getByLabel("Display name").fill("Laras Wibisono");
-  await page.getByLabel("Email").fill(`laras-${Date.now()}@questboard.test`);
+  const larasEmail = `laras-${Date.now()}@questboard.test`;
+  await page.getByLabel("Email").fill(larasEmail);
   await page.getByLabel("Password").fill("password123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await page.waitForURL("**/gm");
+  await confirmSignup(page, larasEmail, true);
 
   await page.getByRole("link", { name: /Edit profile & payment details/ }).click();
   await expect(page.getByRole("radio", { name: "Initials" })).toBeChecked(); // default for new GMs

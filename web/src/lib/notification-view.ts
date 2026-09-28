@@ -46,6 +46,8 @@ export function describeNotification(n: NotificationSource, t: T): NotificationV
   const game = n.game_title ?? "";
   const requestHref = n.request_id ? `/hire-a-gm/requests/${n.request_id}` : "/dashboard";
   const gameHref = n.game_slug && n.game_status !== "archived" ? `/games/${n.game_slug}` : "/dashboard";
+  // A notice that was removed has no title (the join finds nothing) and no page: go to the board.
+  const postHref = n.post_id && n.post_title ? `/board/${n.post_id}` : "/board";
   const base = {
     id: n.id,
     createdAt: n.created_at,
@@ -58,7 +60,7 @@ export function describeNotification(n: NotificationSource, t: T): NotificationV
     case "offer_chosen": return { ...base, href: requestHref, icon: "handshake", text: t("notif.offerChosen", { name: who, title: request }) };
     case "offer_not_chosen": return { ...base, href: "/gm/requests", icon: "briefcase", text: t("notif.offerNotChosen", { name: who, title: request }) };
     case "request_closed": return { ...base, href: "/gm/requests", icon: "briefcase", text: t("notif.requestClosed", { name: who, title: request }) };
-    case "lfg_thread_reply": return { ...base, href: n.post_id ? `/board/${n.post_id}` : "/board", icon: "thumbtack", text: t("notif.lfgThreadReply", { name: who, title: n.post_title ?? "" }) };
+    case "lfg_thread_reply": return { ...base, href: postHref, icon: "thumbtack", text: t("notif.lfgThreadReply", { name: who, title: n.post_title ?? "" }) };
     case "gm_suspended": return { ...base, actor: null, href: "/dashboard", icon: "triangle-warning", text: t("notif.gmSuspended", { name: who }) };
     case "request_message": return { ...base, href: requestHref, icon: "comment-dots", text: t("notif.requestMessage", { name: who, title: request }) };
     case "booking_new": return { ...base, href: "/gm", icon: "user-add", text: t("notif.bookingNew", { name: who, title: game }) };
@@ -69,7 +71,7 @@ export function describeNotification(n: NotificationSource, t: T): NotificationV
     case "report_new": return { ...base, href: "/admin/reports", icon: "flag", text: t("notif.reportNew", { name: who }) };
     case "waitlist_offer": return { ...base, href: gameHref, icon: "ticket", text: t("notif.waitlistOffer", { title: game }) };
     case "payment_confirmed": return { ...base, href: "/dashboard", icon: "wallet", text: t("notif.paymentConfirmed", { name: who, title: game }) };
-    case "lfg_reply": return { ...base, href: n.post_id ? `/board/${n.post_id}` : "/board", icon: "thumbtack", text: t("notif.lfgReply", { name: who, title: n.post_title ?? "" }) };
+    case "lfg_reply": return { ...base, href: postHref, icon: "thumbtack", text: t("notif.lfgReply", { name: who, title: n.post_title ?? "" }) };
     case "followed_gm_game": return { ...base, href: gameHref, icon: "dice-d20", text: t("notif.followedGame", { name: who, title: game }) };
     case "session_reminder_24h": return { ...base, actor: null, href: gameHref, icon: "calendar-clock", text: t("notif.reminder24", { title: game }) };
     case "session_reminder_1h": return { ...base, actor: null, href: gameHref, icon: "hourglass-end", text: t("notif.reminder1", { title: game }) };
@@ -79,7 +81,8 @@ export function describeNotification(n: NotificationSource, t: T): NotificationV
     case "content_removed": return { ...base, actor: null, href: "/terms#s6", icon: "shield", text: t(REMOVED[n.report_target ?? ""] ?? "notif.removedOther") };
     case "review_reply": return { ...base, href: n.game_slug ? `/games/${n.game_slug}#reviews-h` : "/dashboard", icon: "comment", text: t("notif.reviewReply", { name: who, title: game }) };
     case "waitlist_session_moved": return { ...base, href: gameHref, icon: "calendar-clock", text: t("notif.waitlistSessionMoved", { title: game }) };
-    case "notice_expiring": return { ...base, actor: null, href: n.post_id ? `/board/${n.post_id}` : "/board", icon: "hourglass-end", text: t("notif.noticeExpiring", { title: n.post_title ?? "" }) };
+    case "notice_expiring": return { ...base, actor: null, href: postHref, icon: "hourglass-end", text: t("notif.noticeExpiring", { title: n.post_title ?? "" }) };
+    case "seat_removed": return { ...base, href: gameHref, icon: "user-slash", text: t("notif.seatRemoved", { title: game }) };
     case "report_resolved": return { ...base, actor: null, href: "/notifications", icon: "shield-check", text: t("notif.reportResolved") };
   }
 }

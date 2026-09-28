@@ -1,25 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
+import { e2eDb, login, signup } from "./helpers";
 
 // Iteration 3: email verification, password reset, data export, account deletion, legal pages.
 // Emails land in the dev outbox (QUESTBOARD_DEV_OUTBOX=true in playwright.config.ts).
-
-async function login(page: Page, email: string, password = "password123") {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Log in" }).click();
-  await page.waitForURL("**/dashboard");
-}
-
-async function signup(page: Page, name: string, email: string, gm = false) {
-  await page.goto("/signup");
-  if (gm) await page.getByText("Run games").click();
-  await page.getByLabel("Display name").fill(name);
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill("password123");
-  await page.getByRole("button", { name: "Create account" }).click();
-  await page.waitForURL(gm ? "**/gm" : "**/dashboard");
-}
 
 /** The newest link in the outbox sent to `email` whose URL contains `path`. */
 async function linkFromOutbox(page: Page, email: string, path: string): Promise<string> {
@@ -33,30 +16,68 @@ async function linkFromOutbox(page: Page, email: string, path: string): Promise<
 
 const unique = (tag: string) => `${tag}-${Date.now()}-${Math.floor(Math.random() * 1e4)}@questboard.test`;
 
-test("new accounts verify their email from the emailed link; unverified accounts can't post GM requests", async ({ page }) => {
+test("new accounts confirm their email from the emailed link; until then they can't post GM requests", async ({ page }) => {
   const email = unique("verify");
-  await signup(page, "Vera Verify", email);
+  await signup(page, "Vera Verify", email, false, { confirm: false }); // logged in with the password, not yet confirmed
   await expect(page.getByText(/Please verify .* — we sent you a link/)).toBeVisible();
 
-  // Gated: posting a GM request needs a verified email.
+  // Gated: posting a GM request needs a confirmed email.
   await page.goto("/hire-a-gm/request");
   await expect(page.getByText("Verify your email first — we sent you a link when you signed up.")).toBeVisible();
 
+  // Just opening the link doesn't use it up (mail scanners open links); the button does.
   const link = await linkFromOutbox(page, email, "/verify-email");
   await page.goto(link);
-  await expect(page.getByText("Thanks — your email is verified.")).toBeVisible();
+  await page.goto(link);
+  await page.getByRole("button", { name: "Confirm my email" }).click();
+  await expect(page.getByText("Your email is confirmed — welcome to Quest Board!")).toBeVisible();
   await page.goto("/dashboard");
   await expect(page.getByText(/Please verify/)).toHaveCount(0);
   await page.goto("/settings");
   await expect(page.getByLabel("Email status")).toContainText("verified");
 
-  // Links are single-use: reopening it signed out says invalid; signed in (already verified) it still says done.
+  // Used up: signed in (already confirmed) it says done; signed out it says so and offers to log in.
   await page.goto(link);
   await expect(page.getByText("Thanks — your email is verified.")).toBeVisible();
   const anon = await page.context().browser()!.newPage();
   await anon.goto(link);
-  await expect(anon.getByText("This link is invalid or has expired.", { exact: false })).toBeVisible();
+  await expect(anon.getByText("This link is invalid, expired or already used.", { exact: false })).toBeVisible();
+  await expect(anon.getByRole("button", { name: "Confirm my email" })).toHaveCount(0);
   await anon.close();
+});
+
+test("sign-up never reveals a registered email: same page, the owner gets a note, nobody is signed in", async ({ page, browser }) => {
+  const email = unique("taken");
+  await signup(page, "Tara Taken", email); // a real, confirmed account
+  const db = e2eDb();
+  const mark = (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM email_outbox").get() as { n: number }).n;
+  try {
+    const impostor = await (await browser.newContext()).newPage();
+    await impostor.goto("/signup");
+    await impostor.getByLabel("Display name").fill("Impostor");
+    await impostor.getByLabel("Email").fill(email);
+    await impostor.getByLabel("Password").fill("another-password-1");
+    await impostor.getByRole("button", { name: "Create account" }).click();
+    await impostor.waitForURL("**/signup/check-email");
+    await expect(impostor.getByRole("heading", { level: 1, name: "Check your email" })).toBeVisible();
+    await impostor.goto("/dashboard");
+    await expect(impostor).toHaveURL(/\/login/); // not signed in as anyone
+
+    // The owner hears about it — with no link that signs anyone in — and nothing else changed.
+    const mails = db.prepare("SELECT subject, body_text FROM email_outbox WHERE id > ? AND to_address = ?").all(mark, email) as { subject: string; body_text: string }[];
+    expect(mails.map((m) => m.subject)).toEqual(["Someone tried to sign up with your email"]);
+    expect(mails[0].body_text).not.toContain("token=");
+    expect(mails[0].body_text).toContain("/forgot-password");
+    const u = db.prepare("SELECT name FROM users WHERE email = ?").get(email) as { name: string };
+    expect(u.name).toBe("Tara Taken");
+    await impostor.goto("/login");
+    await impostor.getByLabel("Email").fill(email);
+    await impostor.getByLabel("Password", { exact: true }).fill("another-password-1");
+    await impostor.getByRole("button", { name: "Log in" }).click();
+    await expect(impostor.getByText("Incorrect email or password.")).toBeVisible();
+  } finally {
+    db.close();
+  }
 });
 
 test("forgot password: same answer for any email, a one-time link, and other devices are signed out", async ({ browser }) => {

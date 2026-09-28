@@ -378,6 +378,27 @@ export function isGameMember(gameId: number, userId: number): boolean {
   return !!row;
 }
 
+/** Sessions of a game where the GM released this player's seat (the session itself still on). */
+export function playerRemovedSessionIds(gameId: number, userId: number): number[] {
+  return (
+    db()
+      .prepare(
+        `SELECT DISTINCT b.session_id FROM bookings b JOIN game_sessions s ON s.id = b.session_id
+          WHERE s.game_id = ? AND b.player_id = ? AND b.status = 'cancelled' AND b.cancelled_by = 'gm' AND s.status = 'scheduled'`,
+      )
+      .all(gameId, userId) as { session_id: number }[]
+  ).map((r) => r.session_id);
+}
+
+export function removedFromSession(sessionId: number, userId: number): boolean {
+  return !!db()
+    .prepare(
+      `SELECT 1 FROM bookings b JOIN game_sessions s ON s.id = b.session_id
+        WHERE b.session_id = ? AND b.player_id = ? AND b.status = 'cancelled' AND b.cancelled_by = 'gm' AND s.status = 'scheduled'`,
+    )
+    .get(sessionId, userId);
+}
+
 export function playerBookedSessionIds(gameId: number, userId: number): number[] {
   return (
     db()

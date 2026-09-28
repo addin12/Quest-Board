@@ -194,6 +194,50 @@ test("a GM replies to a review: everyone sees it, the reviewer is told, and the 
   }
 });
 
+test("a GM removes one player: the seat goes to the waitlist, the player is told and can't rebook", async ({ page, browser }) => {
+  const db = e2eDb();
+  const game = db.prepare("SELECT id, seats_total FROM games WHERE slug = 'mercusuar-di-pulau-kabut'").get() as { id: number; seats_total: number };
+  const id = (email: string) => (db.prepare("SELECT id FROM users WHERE email = ?").get(email) as { id: number }).id;
+  const player = id("player@questboard.test");
+  const waiter = id("citra@questboard.test");
+  const sid = Number(db.prepare("INSERT INTO game_sessions (game_id, starts_at) VALUES (?, ?)").run(game.id, new Date(Date.now() + 48 * 86_400_000).toISOString()).lastInsertRowid);
+  // Full session: the demo player plus fillers; Citra waits for a seat.
+  const fillers = (db.prepare("SELECT id FROM users WHERE email NOT IN ('player@questboard.test', 'citra@questboard.test', 'gm@questboard.test') AND role = 'player' AND deleted_at IS NULL LIMIT ?").all(game.seats_total - 1) as { id: number }[]).map((u) => u.id);
+  for (const u of [player, ...fillers]) db.prepare("INSERT INTO bookings (session_id, player_id, price_idr) VALUES (?, ?, 0)").run(sid, u);
+  db.prepare("INSERT INTO waitlist (session_id, player_id) VALUES (?, ?)").run(sid, waiter);
+  const mark = (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM email_outbox").get() as { n: number }).n;
+  try {
+    await login(page, "gm@questboard.test");
+    await page.goto(`/gm/games/${game.id}`);
+    const card = page.locator(".card", { has: page.locator(`select#remove-${sid}`) });
+    await card.getByText("Remove a player").click();
+    await card.getByLabel("Player", { exact: true }).selectOption({ label: "Andi Wijaya" });
+    await card.getByLabel("Message to the player (optional)").fill("Sorry — this table is for the campaign's regulars.");
+    page.once("dialog", (d) => void d.accept());
+    await card.getByRole("button", { name: "Remove from this session" }).click();
+    await expect(page.getByText("The player was removed and told.", { exact: false })).toBeVisible();
+
+    expect(db.prepare("SELECT status, cancelled_by FROM bookings WHERE session_id = ? AND player_id = ?").get(sid, player)).toEqual({ status: "cancelled", cancelled_by: "gm" });
+    expect(db.prepare("SELECT status FROM waitlist WHERE session_id = ? AND player_id = ?").get(sid, waiter)).toEqual({ status: "offered" }); // the freed seat is offered
+    const mail = db.prepare("SELECT subject, body_text FROM email_outbox WHERE id > ? AND to_address = 'player@questboard.test' AND subject LIKE 'Your seat was released:%'").get(mark) as { subject: string; body_text: string };
+    expect(mail.body_text).toContain("Sorry — this table is for the campaign's regulars.");
+
+    const p = await newPage(browser);
+    await login(p, "player@questboard.test");
+    await p.goto("/notifications");
+    await expect(p.getByText("The GM released your seat in a session of Mercusuar di Pulau Kabut").first()).toBeVisible();
+    await p.goto("/games/mercusuar-di-pulau-kabut");
+    await expect(p.getByText("Seat released by the GM")).toBeVisible();
+    await p.goto(`/book/${sid}`);
+    await expect(p.getByText("The GM released your seat in this session, so you can't book it again.")).toBeVisible();
+    await expect(p.getByRole("button", { name: "Reserve my seat" })).toHaveCount(0);
+  } finally {
+    db.exec("PRAGMA foreign_keys = ON");
+    db.prepare("DELETE FROM game_sessions WHERE id = ?").run(sid);
+    db.close();
+  }
+});
+
 test("a GM duplicates a game: a draft copy without sessions, ready to edit", async ({ page }) => {
   await login(page, "gm@questboard.test");
   const db = e2eDb();

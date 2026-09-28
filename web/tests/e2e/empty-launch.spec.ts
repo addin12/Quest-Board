@@ -41,7 +41,7 @@ test("outside dev, the email outbox never keeps a working verification link", as
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill("password123");
   await page.getByRole("button", { name: /create account|sign up/i }).click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/signup\/check-email$/);
   const { DatabaseSync } = await import("node:sqlite");
   const db = new DatabaseSync("data/e2e-empty.db", { readOnly: true });
   const row = db.prepare("SELECT body_text FROM email_outbox WHERE to_address = ?").get(email) as { body_text: string };

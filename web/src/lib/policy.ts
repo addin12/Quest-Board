@@ -33,6 +33,7 @@ export type BookabilityInput = {
   seatsTaken: number;
   isGm: boolean;
   alreadyBooked: boolean;
+  removedByGm?: boolean; // the GM released this player's seat in this session
 };
 
 export type BookabilityResult = { ok: true } | { ok: false; reason: MsgKey };
@@ -43,6 +44,7 @@ export function canBook(i: BookabilityInput): BookabilityResult {
   if (i.sessionStatus !== "scheduled") return { ok: false, reason: "err.notScheduled" };
   if (i.startsAt.getTime() <= i.now.getTime()) return { ok: false, reason: "err.started" };
   if (i.alreadyBooked) return { ok: false, reason: "err.alreadyBooked" };
+  if (i.removedByGm) return { ok: false, reason: "err.removedByGm" };
   if (i.seatsTaken >= i.seatsTotal) return { ok: false, reason: "err.full" };
   return { ok: true };
 }

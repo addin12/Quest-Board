@@ -18,13 +18,46 @@ export async function login(page: Page, email: string, password = "password123")
   await page.waitForURL("**/dashboard");
 }
 
-export async function signup(page: Page, name: string, email: string, gm = false) {
+/**
+ * Sign up. By default also confirms the email (the emailed link's "Confirm my email" signs you in).
+ * `confirm: false` leaves the address unconfirmed and logs in with the password instead.
+ */
+export async function signup(page: Page, name: string, email: string, gm = false, opts: { confirm?: boolean } = {}) {
   await page.goto("/signup");
   if (gm) await page.getByText("Run games").click();
   await page.getByLabel("Display name").fill(name);
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill("password123");
   await page.getByRole("button", { name: "Create account" }).click();
+  if (opts.confirm === false) {
+    await page.waitForURL("**/signup/check-email");
+    await login(page, email);
+    return;
+  }
+  await confirmSignup(page, email, gm);
+}
+
+/** The newest emailed confirmation link for `email` (read from the e2e outbox), as a path. */
+export async function confirmLink(email: string): Promise<string> {
+  const db = e2eDb();
+  try {
+    for (let i = 0; i < 50; i++) {
+      const row = db.prepare("SELECT body_text FROM email_outbox WHERE to_address = ? AND body_text LIKE '%/verify-email?token=%' ORDER BY id DESC").get(email) as { body_text: string } | undefined;
+      const m = row && /https?:\/\/\S+\/verify-email\?token=[\w-]+(?:&next=\S+)?/.exec(row.body_text);
+      if (m) return new URL(m[0]).pathname + new URL(m[0]).search;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    throw new Error(`no confirmation link emailed to ${email}`);
+  } finally {
+    db.close();
+  }
+}
+
+/** After "Create account": the check-email page, then the emailed link and "Confirm my email" (which signs in). */
+export async function confirmSignup(page: Page, email: string, gm = false) {
+  await page.waitForURL("**/signup/check-email");
+  await page.goto(await confirmLink(email));
+  await page.getByRole("button", { name: "Confirm my email" }).click();
   await page.waitForURL(gm ? "**/gm" : "**/dashboard");
 }
 

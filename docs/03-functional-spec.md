@@ -46,7 +46,10 @@ All authorization is enforced **on the server**, in the page or server action it
 | Price input | Accepts `75.000`, `75,000`, `Rp 75.000` or `75000`: all non-digits are stripped. Empty means 0. |
 
 ## 3. Accounts
-- **Sign up:** role (Main game / Jadi GM), display name (2–50 characters), unique email (case-insensitive), password ≥ 8 characters. Any role other than `gm` becomes `player`. A GM sign-up creates an empty `gm_profiles` row and lands on `/gm`.
+- **Sign up:** role (Main game / Jadi GM), display name (2–50 characters), email (case-insensitive), password ≥ 8 characters. Any role other than `gm` becomes `player`. A GM sign-up creates an empty `gm_profiles` row.
+  - **Verify first** (so sign-up never reveals whether an address is registered): every sign-up ends on `/signup/check-email`. A new address gets a confirmation link; its page has a **Confirm my email** button (a POST, so mail scanners that open links don't use it up), which confirms the address, signs the person in the first time, and goes on to `/gm` for GMs or the page they came from. An address that already has an account creates nothing: its owner gets “Someone tried to sign up with your email” (log in / reset links, no sign-in link; at most twice an hour per address).
+  - Password login still works before confirming; confirming is needed to post GM requests, notices and questions.
+- **GM removes a player** from an upcoming session (`removePlayerAction`, optional message ≤ 300 chars): the seat is released and offered to the waitlist; the player gets a notification (`seat_removed`) and an email with the message; they can't book or wait-list that session again (`canBook` → `err.removedByGm`).
 - **Log in:** the same error for an unknown email and a wrong password (`err.badLogin`). `?next=` accepts only same-site relative paths.
 - **Session:** a 30-day httpOnly, SameSite=Lax cookie `qb_session` holding a random 256-bit token. Only its SHA-256 hash is stored.
 

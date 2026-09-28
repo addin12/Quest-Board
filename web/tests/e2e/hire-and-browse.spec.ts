@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { e2eDb } from "./helpers";
+import { e2eDb, signup } from "./helpers";
 
 // v0.9: profile settings, browse by category, hire a GM.
 
@@ -132,13 +132,7 @@ test("hire flow: request → GM offer → choose → private chat with payment d
   await expect(player.getByText("Rp 60.000")).toBeVisible();
   // A brand-new GM without a finished profile can't make offers yet.
   const newGm = await (await browser.newContext()).newPage();
-  await newGm.goto("/signup");
-  await newGm.getByText("Run games").click();
-  await newGm.getByLabel("Display name").fill("Fresh GM");
-  await newGm.getByLabel("Email").fill(`fresh-${Date.now()}@questboard.test`);
-  await newGm.getByLabel("Password").fill("password123");
-  await newGm.getByRole("button", { name: "Create account" }).click();
-  await newGm.waitForURL("**/gm");
+  await signup(newGm, "Fresh GM", `fresh-${Date.now()}@questboard.test`, true);
   await newGm.goto(requestUrl);
   await expect(newGm.getByText(/Finish your GM profile/)).toBeVisible();
   await expect(newGm.getByRole("button", { name: "Send offer" })).toHaveCount(0);
