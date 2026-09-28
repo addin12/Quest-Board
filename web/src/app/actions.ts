@@ -176,6 +176,7 @@ async function becomeGmActionImpl(_: FormState, form: FormData): Promise<FormSta
   if (Object.keys(fieldErrors).length) return { fieldErrors };
   const portraitFile = form.get("avatarUpload");
   if (portraitFile instanceof File && portraitFile.size > 0) {
+    if (!hit("upload", String(user.id))) return { fieldErrors: { avatarImage: "err.rateLimited" } };
     const up = await saveUpload(user.id, "portrait", portraitFile);
     if (!up.ok) return { fieldErrors: { avatarImage: up.error } };
     avatarImage = up.path;
@@ -230,6 +231,7 @@ async function saveGameActionImpl(_: FormState, form: FormData): Promise<FormSta
   const coverFile = form.get("coverUpload");
   if (coverFile instanceof File && coverFile.size > 0) {
     if (idRaw && (!existing || (existing.gm_id !== gm.id && gm.role !== "admin") || existing.status === "archived")) return { error: "err.notFound" };
+    if (!hit("upload", String(gm.id))) return { fieldErrors: { coverImage: "err.rateLimited" }, error: "err.fixFields" };
     const up = await saveUpload(gm.id, "cover", coverFile);
     if (!up.ok) return { fieldErrors: { coverImage: up.error }, error: "err.fixFields" };
     coverImage = up.path;
@@ -606,6 +608,7 @@ async function updateProfileActionImpl(_: FormState, form: FormData): Promise<Fo
   if (!parsed.ok || Object.keys(fieldErrors).length) return { fieldErrors, error: "err.fixFields" };
   const portraitFile = form.get("avatarUpload");
   if (portraitFile instanceof File && portraitFile.size > 0) {
+    if (!hit("upload", String(user.id))) return { fieldErrors: { avatarImage: "err.rateLimited" }, error: "err.fixFields" };
     const up = await saveUpload(user.id, "portrait", portraitFile);
     if (!up.ok) return { fieldErrors: { avatarImage: up.error }, error: "err.fixFields" };
     avatarImage = up.path;

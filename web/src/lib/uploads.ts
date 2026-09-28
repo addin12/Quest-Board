@@ -56,6 +56,27 @@ export function discardUpload(value: string | null | undefined): void {
   db().prepare("DELETE FROM uploads WHERE file = ?").run(name);
 }
 
+/**
+ * Housekeeping (from the cron route): pictures nothing shows any more — a save that failed after the
+ * upload, a picture replaced by one that was never saved — are removed after `olderThanMs` (a day).
+ */
+export function pruneOrphanUploads(olderThanMs = 86_400_000, now = Date.now()): number {
+  const cutoff = new Date(now - olderThanMs).toISOString();
+  const orphans = db()
+    .prepare(
+      `SELECT u.file FROM uploads u
+        WHERE u.created_at < ?
+          AND NOT EXISTS (SELECT 1 FROM games g WHERE g.cover_image = '/uploads/' || u.file)
+          AND NOT EXISTS (SELECT 1 FROM users x WHERE x.avatar_image = '/uploads/' || u.file)`,
+    )
+    .all(cutoff) as { file: string }[];
+  for (const o of orphans) {
+    rmSync(path.join(uploadDir(), o.file), { force: true });
+    db().prepare("DELETE FROM uploads WHERE file = ?").run(o.file);
+  }
+  return orphans.length;
+}
+
 /** Account deletion: every picture the person uploaded goes. */
 export function deleteUserUploads(userId: number): void {
   const rows = db().prepare("SELECT file FROM uploads WHERE user_id = ?").all(userId) as { file: string }[];

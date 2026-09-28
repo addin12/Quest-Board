@@ -11,7 +11,7 @@ process.env.QUESTBOARD_DB = join(root, "test.db");
 process.env.QUESTBOARD_UPLOAD_DIR = join(root, "uploads");
 process.env.QUESTBOARD_SEED = "false";
 const { db } = await import("../../src/lib/db.ts");
-const { saveUpload, ownsUpload, discardUpload, deleteUserUploads, readUpload } = await import("../../src/lib/uploads.ts");
+const { saveUpload, ownsUpload, discardUpload, deleteUserUploads, readUpload, pruneOrphanUploads } = await import("../../src/lib/uploads.ts");
 const { detectImageType, parseUploadPath, UPLOAD_MAX_BYTES } = await import("../../src/lib/upload-rules.ts");
 
 const user = (email: string) => Number(db().prepare("INSERT INTO users (email, password_hash, name) VALUES (?, 'x', ?)").run(email, email).lastInsertRowid);
@@ -82,4 +82,18 @@ test("only the uploader can use a picture; replaced and deleted-account pictures
   deleteUserUploads(a);
   assert.ok(!existsSync(join(process.env.QUESTBOARD_UPLOAD_DIR!, parseUploadPath(again.path)!)));
   assert.equal((db().prepare("SELECT COUNT(*) AS n FROM uploads WHERE user_id = ?").get(a) as { n: number }).n, 0);
+});
+
+test("the daily clean-up removes pictures nothing shows, after a day, and keeps the ones in use", async () => {
+  const gm = user("tidy@x.test");
+  const used = await saveUpload(gm, "portrait", file(await photo()));
+  const orphan = await saveUpload(gm, "portrait", file(await photo()));
+  assert.ok(used.ok && orphan.ok);
+  db().prepare("UPDATE users SET avatar_image = ? WHERE id = ?").run(used.path, gm);
+  const dir = process.env.QUESTBOARD_UPLOAD_DIR!;
+  assert.equal(pruneOrphanUploads(), 0); // too new: the person may still be saving the form
+  const tomorrow = Date.now() + 2 * 86_400_000;
+  assert.ok(pruneOrphanUploads(86_400_000, tomorrow) >= 1);
+  assert.ok(existsSync(join(dir, parseUploadPath(used.path)!)));
+  assert.ok(!existsSync(join(dir, parseUploadPath(orphan.path)!)));
 });

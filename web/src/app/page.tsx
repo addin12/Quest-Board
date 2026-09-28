@@ -15,9 +15,9 @@ export default async function HomePage(props: PageProps<"/">) {
   return (
     <>
       {deleted && <div className="mx-auto max-w-6xl px-4 pt-6"><Notice tone="success">{t("delete.done")}</Notice></div>}
-      {/* Tavern hero: candlelit scene (public/images/tavern/hero.svg, npm run tavern-art) under a dark wash for legible text. */}
+      {/* Tavern hero: candlelit scene (hero.webp, pre-rendered from hero.svg by npm run tavern-art) under a dark wash for legible text. */}
       <section className="on-wood relative overflow-hidden border-b-2 border-[#8a6a3a] bg-[#1b1008]">
-        <Image src="/images/tavern/hero.svg" alt="" fill priority sizes="100vw" className="object-cover object-[70%_center]" />
+        <Image src="/images/tavern/hero.webp" alt="" fill priority sizes="100vw" className="object-cover object-[70%_center]" />
         <div aria-hidden className="absolute inset-0 bg-linear-to-r from-[#140b05]/95 from-15% via-[#140b05]/65 via-50% to-[#140b05]/0 to-85%" />
         <div aria-hidden className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-[#140b05]/80 to-transparent" />
         <div className="relative mx-auto max-w-6xl px-4 py-20 sm:py-28">

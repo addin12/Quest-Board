@@ -3,10 +3,13 @@
 //   public/textures/wood.svg        dark oak grain tile (header, footer, tab bar)
 //   public/textures/wood-faint.svg  subtle grain tile (dark-mode body)
 //   public/textures/flourish.svg    ornament used as a CSS mask (.ornament)
-//   public/images/tavern/hero.svg   candlelit tavern scene (home hero)
+//   public/images/tavern/hero.svg   candlelit tavern scene (source)
+//   public/images/tavern/hero.webp  the same scene pre-rendered: what the home page shows (its SVG blur and
+//                                   noise filters are slow to draw on phones; a picture is decoded once)
 // Run: npm run tavern-art
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import sharp from "sharp";
 
 const root = join(import.meta.dirname, "..", "public");
 mkdirSync(join(root, "textures"), { recursive: true });
@@ -169,6 +172,8 @@ write("images/tavern/hero.svg", `
 
   <rect width="${W}" height="${H}" fill="url(#vignette)"/>
 </svg>`);
+// 2400 px wide: sharp enough for large and high-density screens; Next resizes it per device.
+await sharp(readFileSync(join(root, "images/tavern/hero.svg")), { density: 144 }).resize(2400).webp({ quality: 80 }).toFile(join(root, "images/tavern/hero.webp"));
 
 console.log("tavern art written");
 

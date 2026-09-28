@@ -26,6 +26,7 @@ export const LIMITS = {
   question: { limit: 20, windowMs: 60 * 60_000 }, // new questions to GMs per user
   feedback: { limit: 5, windowMs: 60 * 60_000 }, // feedback messages per user (or IP when signed out)
   api: { limit: 120, windowMs: 60_000 },         // public JSON API requests per IP per minute
+  upload: { limit: 30, windowMs: 60 * 60_000 },  // pictures per user (each one is decoded and re-encoded: CPU)
 } as const;
 
 export type Bucket = keyof typeof LIMITS;

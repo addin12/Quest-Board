@@ -9,11 +9,12 @@ import { pruneErrorLog } from "@/lib/error-log";
 import { deliverNotificationEmails } from "@/lib/notification-mail";
 import { siteOrigin } from "@/lib/site";
 import { remindExpiringNotices } from "@/lib/community";
+import { pruneOrphanUploads } from "@/lib/uploads";
 import { timingSafeEqual } from "node:crypto";
 
 // Scheduler endpoint: session reminders, expired waitlist offers passed on to the next person,
 // notification emails (and retries of failed ones), review prompts, "your notice comes down soon", and housekeeping (old read
-// notifications, outbox rows, error log, expired sign-in sessions and rate-limit windows). Call it every 5–10 minutes with
+// notifications, outbox rows, error log, expired sign-in sessions and rate-limit windows, unused pictures). Call it every 5–10 minutes with
 // "Authorization: Bearer $QUESTBOARD_CRON_SECRET". Without the secret configured the
 // route doesn't exist (404); the site then falls back to checking while people browse.
 export const dynamic = "force-dynamic";
@@ -38,7 +39,7 @@ async function run(request: Request) {
   const retried = await retryFailedEmails();
   purgeExpiredSessions();
   purgeOldWindows();
-  const pruned = { notifications: pruneNotifications(), outbox: pruneOutbox(), errors: pruneErrorLog() };
+  const pruned = { notifications: pruneNotifications(), outbox: pruneOutbox(), errors: pruneErrorLog(), uploads: pruneOrphanUploads() };
   return Response.json({ ok: true, emailed, notificationEmails, retried, reviewPrompts, noticeReminders, waitlists, pruned });
 }
 
