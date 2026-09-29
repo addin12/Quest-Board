@@ -38,3 +38,16 @@ test("admins get one summary a day, only when there were errors", async () => {
   assert.equal(await sendErrorDigest("https://qb.test", new Date(t0 + 26 * H)), 2); // next day: only the new one
   assert.match(sent.at(-1)!.subject, /1 server error since|1 error server sejak/);
 });
+
+test("emails the provider couldn't deliver are reported too, even without server errors", async () => {
+  const at = t0 + 60 * H;
+  db().prepare("INSERT INTO email_outbox (to_address, subject, body_text, created_at, error, attempts) VALUES ('p@x.test', 's', 'b', ?, 'Error: Resend 503: provider down', 3), ('p@x.test', 's', 'b', ?, 'Error: Resend 503: provider down', 1)")
+    .run(new Date(at - H).toISOString(), new Date(at - 2 * H).toISOString());
+  db().prepare("INSERT INTO email_outbox (to_address, subject, body_text, created_at, sent_at) VALUES ('p@x.test', 's', 'b', ?, ?)").run(new Date(at - H).toISOString(), new Date(at - H).toISOString()); // delivered: not counted
+  const before = sent.length;
+  assert.equal(await sendErrorDigest("https://qb.test", new Date(at)), 2);
+  const en = sent.slice(before).find((m) => m.to.includes("a1@x.test"))!;
+  assert.equal(en.subject, "Quest Board: 2 failed emails since the last summary");
+  assert.match(en.text, /2 emails couldn't be delivered \(last error: Error: Resend 503: provider down\)/);
+  assert.doesNotMatch(en.text, /The server logged/);
+});

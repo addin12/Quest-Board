@@ -2,7 +2,7 @@
 
 import { useActionState, useId } from "react";
 import { createReportAction, type FormState } from "@/app/actions";
-import { REPORT_REASONS, reasonKey, targetKey, type ReportTarget } from "@/lib/reports";
+import { REPORT_REASONS, reasonKey, targetKey, type ReportReason, type ReportTarget } from "@/lib/reports";
 import { SubmitButton } from "./submit-button";
 import { FieldError, Notice, errAttrs } from "./ui";
 import { Icon } from "./icon";
@@ -12,7 +12,13 @@ import { useI18n } from "./i18n-provider";
  * "Report" disclosure: a small link that expands (in place) into a reason + details form.
  * Rendered only for signed-in people who don't own the content (the server re-checks both).
  */
-export function ReportButton({ targetType, targetId, className = "" }: { targetType: ReportTarget; targetId: number; className?: string }) {
+export function ReportButton({ targetType, targetId, className = "", label, defaultReason }: {
+  targetType: ReportTarget; targetId: number; className?: string;
+  /** Instead of "Report", e.g. "Report these payment details". */
+  label?: string;
+  /** Pre-selected reason (the person can still change it). */
+  defaultReason?: ReportReason;
+}) {
   const { t } = useI18n();
   const [state, action] = useActionState<FormState, FormData>(createReportAction, undefined);
   const id = useId();
@@ -25,7 +31,7 @@ export function ReportButton({ targetType, targetId, className = "" }: { targetT
   return (
     <details className={`group text-xs ${className}`}>
       <summary className="inline-flex cursor-pointer list-none items-center gap-1 rounded px-1 text-muted hover:text-danger focus-visible:outline-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden">
-        <Icon name="flag" /> {t("report.button")}<span className="sr-only">: {what}</span>
+        <Icon name="flag" /> {label ?? <>{t("report.button")}<span className="sr-only">: {what}</span></>}
       </summary>
       <form action={action} className="parchment popover mt-2 max-w-md space-y-3 p-4 text-sm">
         <input type="hidden" name="targetType" value={targetType} />
@@ -35,7 +41,7 @@ export function ReportButton({ targetType, targetId, className = "" }: { targetT
           <div className="grid gap-1.5 sm:grid-cols-2">
             {REPORT_REASONS.map((r) => (
               <label key={r} className="flex items-center gap-2">
-                <input type="radio" name="reason" value={r} defaultChecked={state?.values?.reason === r} className="accent-[var(--accent)]" />
+                <input type="radio" name="reason" value={r} defaultChecked={(state?.values?.reason ?? defaultReason) === r} className="accent-[var(--accent)]" />
                 {t(reasonKey(r))}
               </label>
             ))}

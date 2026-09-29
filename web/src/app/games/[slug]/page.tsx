@@ -16,7 +16,7 @@ import {
   playerRemovedSessionIds,
 } from "@/lib/queries";
 import { canBook, splitList } from "@/lib/policy";
-import { Avatar, Cover, Stars, Notice, VerifiedBadge, languageLabel, priceLabel } from "@/components/ui";
+import { Avatar, Cover, NewGmBadge, Stars, Notice, VerifiedBadge, languageLabel, priceLabel } from "@/components/ui";
 import { Icon } from "@/components/icon";
 import type { RegularIcon } from "@/lib/icons";
 import { genreIcon, genreLabelKey, isGenre, isStyle, mechanicsForSystem, parseCategoryCsv, styleIcon, styleLabelKey, systemSlug } from "@/lib/categories";
@@ -287,6 +287,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                 <h2 className="eyebrow flex items-center gap-1.5 text-accent!"><Icon name="wallet" /> {t("game.howToPay")}</h2>
                 <p className="mt-2 whitespace-pre-line text-sm">{game.gm_payment_info || t("game.howToPayEmpty")}</p>
                 {game.gm_payment_info && <PaymentChangedNote gmId={game.gm_id} />}
+                {game.gm_payment_info && <ReportButton targetType="user" targetId={game.gm_id} label={t("report.paymentDetails")} defaultReason="scam" className="mt-2" />}
                 <p className="mt-3 flex items-start gap-1.5 border-t border-border pt-3 text-xs text-muted">
                   <Icon name="shield-check" className="mt-0.5 shrink-0 text-accent" /> {t("game.scamWarning")}
                 </p>
@@ -304,6 +305,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                   <span className="block text-sm text-muted">{game.gm_headline}</span>
                 </span>
               </Link>
+              {game.gm_new ? <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted"><NewGmBadge t={t} /> {t("common.newGmHint")}</p> : null}
               <p className="mt-3 line-clamp-4 text-sm text-muted">{game.gm_bio}</p>
               {user?.id !== game.gm_id && game.status === "published" && (
                 <Link href={`/games/${game.slug}/ask`} className="btn-secondary mt-4 w-full"><Icon name="comment-dots" /> {t("ask.button")}</Link>

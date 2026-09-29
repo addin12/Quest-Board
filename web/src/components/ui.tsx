@@ -141,6 +141,7 @@ export function GameCard({ game, t }: { game: GameCardData; t: T }) {
             <Avatar name={game.gm_name} hue={game.gm_hue} image={game.gm_image} size={26} />
             <span className="truncate">{game.gm_name}</span>
             {game.gm_verified ? <VerifiedBadge label={t("common.verifiedGm")} /> : null}
+            {game.gm_new ? <NewGmBadge t={t} /> : null}
           </span>
           <Stars rating={game.avg_rating} count={game.review_count} t={t} />
         </div>
@@ -171,6 +172,15 @@ export function FieldError({ msg, id }: { msg?: string; id?: string }) {
 /** aria-invalid + aria-describedby for a control whose <FieldError id={id}> is showing `msg`. */
 export function errAttrs(id: string, msg?: string | false): { "aria-invalid"?: true; "aria-describedby"?: string } {
   return msg ? { "aria-invalid": true, "aria-describedby": `${id}-error` } : {};
+}
+
+/** "New GM": joined recently, no reviews yet (queries.ts NEW_GM_SQL). The hint says why it's shown. */
+export function NewGmBadge({ t, className = "" }: { t: T; className?: string }) {
+  return (
+    <span title={t("common.newGmHint")} className={`inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-semibold text-muted ring-1 ring-border ${className}`}>
+      <Icon name="seedling" /> {t("common.newGm")}
+    </span>
+  );
 }
 
 export function VerifiedBadge({ label, className = "" }: { label: string; className?: string }) {

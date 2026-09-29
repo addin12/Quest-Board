@@ -6,7 +6,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { shownName } from "@/lib/i18n/dict";
 import { markRequestRead } from "@/lib/notifications";
 import { getGmRequest, getGmSettings, getOffer, getPaymentInfo, isSuspended, listOffers, listRequestMessages } from "@/lib/queries";
-import { Avatar, Notice, Stars, VerifiedBadge, priceLabel } from "@/components/ui";
+import { Avatar, Notice, Stars, NewGmBadge, VerifiedBadge, priceLabel } from "@/components/ui";
 import { LocalTime } from "@/components/local-time";
 import { ConfirmButton, SubmitButton } from "@/components/submit-button";
 import { OfferForm, RequestMessageForm } from "@/components/hire-forms";
@@ -84,6 +84,7 @@ export default async function RequestPage(props: PageProps<"/hire-a-gm/requests/
               <p className="eyebrow flex items-center gap-1.5 text-accent!"><Icon name="wallet" /> {t("game.howToPay")}</p>
               <p className="mt-2 whitespace-pre-line text-sm">{getPaymentInfo(matchedOffer.gm_id) || t("game.howToPayEmpty")}</p>
               {getPaymentInfo(matchedOffer.gm_id) && <PaymentChangedNote gmId={matchedOffer.gm_id} />}
+              {getPaymentInfo(matchedOffer.gm_id) && <ReportButton targetType="user" targetId={matchedOffer.gm_id} label={t("report.paymentDetails")} defaultReason="scam" className="mt-2" />}
               <p className="mt-2 text-xs text-muted">{t("game.scamWarning")}</p>
             </div>
           )}
@@ -120,6 +121,7 @@ export default async function RequestPage(props: PageProps<"/hire-a-gm/requests/
                       <p className="flex items-center gap-1.5 font-semibold">
                         <Link href={`/gms/${o.gm_id}`} className="hover:text-accent">{o.gm_name}</Link>
                         {o.gm_verified ? <VerifiedBadge label={t("common.verifiedGm")} /> : null}
+                        {o.gm_new ? <NewGmBadge t={t} /> : null}
                       </p>
                       <p className="text-sm text-muted">{o.gm_headline}</p>
                       <div className="mt-1"><Stars rating={o.avg_rating} count={o.review_count} t={t} /></div>

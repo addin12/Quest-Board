@@ -288,3 +288,22 @@ test("Settings lists where you're logged in; a new device is emailed, a known on
   await expect(other).toHaveURL(/\/login\?next=/);
   db.close();
 });
+
+test("after a Privacy Policy update, signed-in people see what changed once; new sign-ups don't", async ({ page }) => {
+  const email = unique("policy");
+  await signup(page, "Policy Reader", email);
+  const banner = page.getByRole("complementary", { name: "Privacy Policy update" });
+  await expect(banner).toHaveCount(0); // they just agreed to this version
+  // As if they had signed up under the previous version.
+  const db = e2eDb();
+  db.prepare("UPDATE users SET legal_seen_version = '2026-09-25-draft' WHERE email = ?").run(email);
+  await page.goto("/games");
+  await expect(banner.getByText(/We've updated our Privacy Policy: it now covers two-step login/)).toBeVisible();
+  await expect(banner.getByRole("link", { name: "Read the policy" })).toHaveAttribute("href", "/privacy");
+  await banner.getByRole("button", { name: "Got it" }).click();
+  await expect(banner).toHaveCount(0);
+  await page.reload();
+  await expect(banner).toHaveCount(0);
+  expect((db.prepare("SELECT legal_seen_version FROM users WHERE email = ?").get(email) as { legal_seen_version: string }).legal_seen_version).not.toBe("2026-09-25-draft");
+  db.close();
+});

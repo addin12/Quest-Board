@@ -330,5 +330,14 @@ login_devices(user_id → users (CASCADE), device_hash, device, first_seen_at, l
 - `qb_device` is a random, httpOnly, 2-year cookie; only its SHA-256 is stored. A login from an unknown one emails the account (not for its first device; `LIMITS.newDevice` 10/h). In "Download my data" (`login_devices`, without the hash).
 
 ## v31: automatic flags
+## v32: policy update banner
+```sql
+users.legal_seen_version   -- the Terms/Privacy version whose "we've updated" banner they've seen
+```
+- Set to `LEGAL_VERSION` at sign-up, for demo accounts and for `npm run admin -- create`; the migration copies `terms_version`. When `LEGAL_VERSION` changes and `LEGAL_CHANGES` has a summary for it, signed-in people see a banner until they press "Got it".
+
+## Retention (cron)
+- `pruneSecurityRecords`: `login_devices` unused for a year, `payment_changes` older than a year, expired `login_challenges`.
+
 - `reports` rebuilt so `reporter_id` may be NULL: an **automatic flag** (`autoFlag`, `lib/scam-signals.ts`) with `reason = 'scam'` and `details` = the matched signals (`credentials,newAccount,…`), shown in words in `/admin/reports`. One open automatic flag per piece of content.
 - Not in "Download my data" (the secret is a credential; challenges last minutes). `npm run admin -- reset-2fa <email>` clears the three columns and the account's sessions and challenges.

@@ -14,6 +14,7 @@ import { randomBytes } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { hashPassword } from "../src/lib/password.ts";
 import { SCHEMA_VERSION } from "../src/lib/schema.ts";
+import { LEGAL_VERSION } from "../src/lib/legal.ts";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const active = "deleted_at IS NULL AND suspended_at IS NULL";
@@ -33,8 +34,8 @@ export function createAdmin(db, email, name) {
   }
   const password = randomBytes(12).toString("base64url");
   const now = new Date().toISOString();
-  db.prepare("INSERT INTO users (email, password_hash, name, role, email_verified_at) VALUES (?, ?, ?, 'admin', ?)")
-    .run(email, hashPassword(password), name, now);
+  db.prepare("INSERT INTO users (email, password_hash, name, role, email_verified_at, legal_seen_version) VALUES (?, ?, ?, 'admin', ?, ?)")
+    .run(email, hashPassword(password), name, now, LEGAL_VERSION);
   return { password };
 }
 

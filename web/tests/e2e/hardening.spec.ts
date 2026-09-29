@@ -159,6 +159,7 @@ test("P1-12 booked players see an anti-scam note next to the GM's payment detail
   await page.goto("/games/mercusuar-di-pulau-kabut"); // Andi holds a seat here
   await expect(page.getByText("How to pay the GM")).toBeVisible();
   await expect(page.getByText(/will never ask for your OTP, PIN or password/)).toBeVisible();
+  await expect(page.getByText("Joined Quest Board less than 30 days ago and has no reviews yet.")).toHaveCount(0); // an established GM
 });
 
 test("forms keep what the user typed after a validation error", async ({ page }) => {

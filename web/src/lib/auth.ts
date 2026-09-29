@@ -19,6 +19,8 @@ export type CurrentUser = {
   avatar_hue: number;
   avatar_image: string;
   email_verified: boolean;
+  /** The Terms/Privacy version whose update banner they've seen (lib/legal.ts). */
+  legal_seen_version: string;
 };
 
 /** HTTPS-only cookies in production. QUESTBOARD_INSECURE_COOKIES is for the e2e servers only (production builds
@@ -73,7 +75,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   if (!token) return null;
   const row = db()
     .prepare(
-      `SELECT u.id, u.email, u.name, u.role, u.avatar_hue, u.avatar_image, u.email_verified_at, u.locale, s.expires_at, s.last_seen_at
+      `SELECT u.id, u.email, u.name, u.role, u.avatar_hue, u.avatar_image, u.email_verified_at, u.locale, u.legal_seen_version, s.expires_at, s.last_seen_at
          FROM auth_sessions s JOIN users u ON u.id = s.user_id
         WHERE s.token_hash = ? AND u.deleted_at IS NULL AND u.suspended_at IS NULL`,
     )
@@ -88,7 +90,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   if (row.locale !== lang) db().prepare("UPDATE users SET locale = ? WHERE id = ?").run(lang, row.id);
   return {
     id: row.id, email: row.email, name: row.name, role: row.role, avatar_hue: row.avatar_hue, avatar_image: row.avatar_image,
-    email_verified: !!row.email_verified_at,
+    email_verified: !!row.email_verified_at, legal_seen_version: row.legal_seen_version,
   };
 });
 

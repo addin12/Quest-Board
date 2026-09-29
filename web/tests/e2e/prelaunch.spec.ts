@@ -74,6 +74,8 @@ test("players are warned about recently changed payment details; admins see GMs 
   await player.goto(`/games/${slug}`);
   await expect(player.getByText("How to pay the GM")).toBeVisible();
   await expect(player.getByText(/These payment details were changed on/)).toHaveCount(0); // set once, never changed
+  // A brand-new GM without reviews: players see why to be a little careful.
+  await expect(player.getByText("Joined Quest Board less than 30 days ago and has no reviews yet.")).toBeVisible();
 
   const change = async (payment: string) => {
     await page.goto("/gm");
@@ -94,6 +96,16 @@ test("players are warned about recently changed payment details; admins see GMs 
   await change("OVO 0877-2222 a.n. Another Person");
   await admin.reload();
   await expect(row().getByText("Payment details changed 2 times in 30 days")).toBeVisible();
+
+  // The player can report the details right where they are, with "scam" already chosen.
+  await player.reload();
+  const reportPayment = player.locator("details", { hasText: "Report these payment details" });
+  await reportPayment.getByText("Report these payment details").click();
+  await expect(reportPayment.getByLabel("Scam or fake payment details")).toBeChecked();
+  await reportPayment.getByRole("button", { name: "Send report" }).click();
+  await expect(player.getByText("Thanks — our moderators will take a look.")).toBeVisible();
+  await admin.goto("/admin/reports");
+  await expect(admin.getByRole("listitem").filter({ hasText: "Payment details: OVO 0877-2222 a.n. Another Person" }).first()).toBeVisible();
 
   // After the warning window, the note goes away.
   const db = e2eDb();

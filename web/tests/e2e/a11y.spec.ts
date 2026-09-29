@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { confirmLink, signup } from "./helpers";
+import { confirmLink, e2eDb, signup } from "./helpers";
+import { totpCode, totpStep } from "../../src/lib/totp";
 
 // Automated WCAG 2.1 A/AA checks (axe-core) on the main pages, in both languages
 // and both colour schemes. Axe catches roughly a third of real issues — keep
@@ -90,6 +91,58 @@ test("sign-up's check-email and confirm pages, and a brand-new GM's dashboard (w
   found.push(...(await violationsOf(page, "/gm (new GM)")));
   await page.goto("/settings");
   found.push(...(await violationsOf(page, "/settings (new GM)")));
+  expect(found).toEqual([]);
+});
+
+test("two-step, payment-change and automatic-flag screens have no axe violations", async ({ browser }) => {
+  const db = e2eDb();
+  const email = `axe-admin-${Date.now()}@questboard.test`;
+  db.prepare("INSERT INTO users (email, password_hash, name, role, email_verified_at) SELECT ?, password_hash, 'Axe Admin', 'admin', created_at FROM users WHERE email = 'admin@questboard.test'").run(email);
+  const adminId = (db.prepare("SELECT id FROM users WHERE email = ?").get(email) as { id: number }).id;
+  // A recent payment change by the GM of a game the demo player sits in, twice (so the admin flag shows too),
+  // and an automatic flag on that game's chat.
+  db.prepare("INSERT INTO payment_changes (user_id) VALUES (1), (1)").run();
+  db.prepare("INSERT INTO reports (reporter_id, target_type, target_id, target_owner_id, reason, details, snapshot, href) VALUES (NULL, 'message', 1, 1, 'scam', 'credentials,newAccount', 'Table chat (axe check)', '/games/mercusuar-di-pulau-kabut#chat-h')").run();
+  const found: string[] = [];
+  try {
+    const admin = await (await browser.newContext()).newPage();
+    await login(admin, email);
+    for (const path of ["/admin", "/admin/reports", "/admin/gms"]) { await admin.goto(path); found.push(...(await violationsOf(admin, `${path} (flags)`))); }
+    await admin.goto("/settings");
+    await admin.getByRole("button", { name: "Set up two-step login" }).click();
+    await expect(admin.getByRole("img", { name: "QR code for your authenticator app" })).toBeVisible();
+    found.push(...(await violationsOf(admin, "/settings (two-step setup)")));
+    const key = (await admin.getByTestId("totp-key").innerText()).replace(/\s/g, "");
+    await admin.getByLabel("6-digit code").fill("000000");
+    await admin.getByRole("button", { name: "Turn on" }).click();
+    await expect(admin.getByText("That code didn't work.")).toBeVisible();
+    found.push(...(await violationsOf(admin, "/settings (two-step, wrong code)")));
+    await admin.getByLabel("6-digit code").fill(totpCode(key, totpStep(Date.now()) - 1));
+    await admin.getByRole("button", { name: "Turn on" }).click();
+    await expect(admin.getByText(/Two-step login is on \(since/)).toBeVisible();
+    found.push(...(await violationsOf(admin, "/settings (two-step on)")));
+
+    const second = await (await browser.newContext()).newPage();
+    await second.goto("/login");
+    await second.locator("#email").fill(email);
+    await second.locator("#password").fill("password123");
+    await second.locator("form button.btn-primary").click();
+    await second.waitForURL("**/login/code");
+    found.push(...(await violationsOf(second, "/login/code")));
+    await second.goto("/login?step=locked");
+    found.push(...(await violationsOf(second, "/login?step=locked")));
+
+    const player = await (await browser.newContext()).newPage();
+    await login(player, "player@questboard.test");
+    await player.goto("/games/mercusuar-di-pulau-kabut");
+    await expect(player.getByText(/These payment details were changed on/)).toBeVisible();
+    found.push(...(await violationsOf(player, "/games/… (payment changed)")));
+  } finally {
+    db.prepare("DELETE FROM payment_changes WHERE user_id = 1").run();
+    db.prepare("DELETE FROM reports WHERE reporter_id IS NULL AND snapshot = 'Table chat (axe check)'").run();
+    db.prepare("DELETE FROM users WHERE id = ?").run(adminId);
+    db.close();
+  }
   expect(found).toEqual([]);
 });
 

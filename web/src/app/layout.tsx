@@ -13,6 +13,7 @@ import { logoutAction, setLanguageAction, setThemeAction } from "./actions";
 import { cookies, headers } from "next/headers";
 import { languageAlternates } from "@/lib/seo";
 import { readToast } from "@/lib/toast";
+import { LegalUpdateBanner } from "@/components/legal-update-banner";
 import { isMsgKey, type T } from "@/lib/i18n/dict";
 import { Toaster } from "@/components/toaster";
 import { Avatar } from "@/components/ui";
@@ -124,6 +125,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               </div>
             </nav>
           </header>
+          {user && <LegalUpdateBanner user={user} t={t} />}
           <main id="main" className="flex-1">{children}</main>
           <footer className="on-wood wood-plank mt-16 border-t-2 border-[#8a6a3a]">
             <span aria-hidden className="ornament mx-auto -mb-2 pt-6" />

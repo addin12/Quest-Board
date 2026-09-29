@@ -30,7 +30,8 @@ test("P2-12 session reminders: in-app + email in the person's language, once eac
     expect(typeof cron.waitlists).toBe("number"); // expired offers are passed on here too
     expect(typeof cron.reviewPrompts).toBe("number");
     expect(typeof cron.retried).toBe("number");
-    expect(cron.pruned).toEqual({ notifications: expect.any(Number), outbox: expect.any(Number), errors: expect.any(Number), uploads: expect.any(Number) });
+    expect(cron.pruned).toEqual({ notifications: expect.any(Number), outbox: expect.any(Number), errors: expect.any(Number), uploads: expect.any(Number),
+    devices: expect.any(Number), paymentChanges: expect.any(Number), loginSteps: expect.any(Number) });
 
     // The player (Indonesian) and the GM (English) each got exactly one 24h email.
     let mails = mailsSince(mark);

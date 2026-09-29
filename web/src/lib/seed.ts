@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { hashPassword } from "./password";
 import { slugify } from "./policy";
+import { LEGAL_VERSION } from "./legal";
 import { COVER_ART, GM_PORTRAITS, coverPath, portraitPath } from "./placeholders";
 
 // Demo data (Indonesia) so the marketplace is browsable on first run.
@@ -227,6 +228,7 @@ export function seedDatabase(conn: DatabaseSync) {
     });
 
     conn.exec("UPDATE users SET email_verified_at = created_at"); // demo accounts are verified
+    conn.prepare("UPDATE users SET legal_seen_version = ?").run(LEGAL_VERSION); // …and have no policy-update banner
     conn.exec("UPDATE games SET announced_at = created_at WHERE status = 'published'");
     conn.exec("COMMIT");
   } catch (err) {

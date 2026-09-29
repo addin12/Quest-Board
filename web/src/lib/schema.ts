@@ -34,7 +34,8 @@
 // v29: payment_changes (when a GM changed their payment details).
 // v30: where you're logged in (auth_sessions.device/created_at/last_seen_at, login_devices).
 // v31: automatic scam flags (reports.reporter_id may be NULL).
-export const SCHEMA_VERSION = 31;
+// v32: users.legal_seen_version (the "we've updated our Privacy Policy" banner).
+export const SCHEMA_VERSION = 32;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -60,7 +61,8 @@ CREATE TABLE IF NOT EXISTS users (
   email_notifications INTEGER NOT NULL DEFAULT 1, -- v19: email me about bookings, questions and offers
   totp_secret     TEXT,                       -- v28: two-step login secret (base32); set during setup
   totp_enabled_at TEXT,                       -- v28: when two-step login was turned on (NULL = off)
-  totp_last_step  INTEGER NOT NULL DEFAULT -1 -- v28: last code's 30-second step (each code works once)
+  totp_last_step  INTEGER NOT NULL DEFAULT -1, -- v28: last code's 30-second step (each code works once)
+  legal_seen_version TEXT NOT NULL DEFAULT '' -- v32: the Terms/Privacy version whose update banner they've seen
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_users_calendar_token ON users(calendar_token);
 

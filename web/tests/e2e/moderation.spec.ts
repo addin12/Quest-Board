@@ -108,10 +108,12 @@ test("a scam report leads to suspension: login blocked, profile hidden, game arc
   await signup(player, "Pia Player", unique("victim"));
   await bookFirstOpenSeat(player, [slug]);
   await player.goto(`/games/${slug}`);
-  await player.locator("summary", { hasText: "Report" }).first().click();
-  await player.getByLabel("Scam or fake payment details").check();
-  await player.getByLabel("Details (optional)").fill("Asked me to pay a different account by DM.");
-  await player.getByRole("button", { name: "Send report" }).click();
+  // The game's own report form (the payment box has one too).
+  const reportGame = player.locator("details", { has: player.locator("summary", { hasText: "Report: game" }) });
+  await reportGame.locator("summary").click();
+  await reportGame.getByLabel("Scam or fake payment details").check();
+  await reportGame.getByLabel("Details (optional)").fill("Asked me to pay a different account by DM.");
+  await reportGame.getByRole("button", { name: "Send report" }).click();
   await expect(player.getByText("Thanks — our moderators will take a look.")).toBeVisible();
 
   const admin = await newPage(browser);

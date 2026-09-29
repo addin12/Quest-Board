@@ -445,6 +445,10 @@ export const MIGRATIONS: Record<number, string> = {
     CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, created_at);
     CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_type, target_id);
   `,
+  32: `
+    ALTER TABLE users ADD COLUMN legal_seen_version TEXT NOT NULL DEFAULT '';
+    UPDATE users SET legal_seen_version = terms_version; -- they've seen what they agreed to
+  `,
 };
 
 export type UpgradePlan =

@@ -5,7 +5,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { shownName } from "@/lib/i18n/dict";
 import { countGames, getGmProfile, listGmGames, listGmReviews } from "@/lib/queries";
 import { isOnlineLocation, splitList } from "@/lib/policy";
-import { Avatar, EmptyState, GameCard, Stars, VerifiedBadge } from "@/components/ui";
+import { Avatar, EmptyState, GameCard, NewGmBadge, Stars, VerifiedBadge } from "@/components/ui";
 import { Icon } from "@/components/icon";
 import { ShareButtons } from "@/components/share-buttons";
 import { ReportButton } from "@/components/report-button";
@@ -41,6 +41,7 @@ export default async function GmProfilePage(props: PageProps<"/gms/[id]">) {
             {gm.name} {gm.verified ? <VerifiedBadge label={t("common.verifiedGm")} className="align-[-2px] text-2xl" /> : null}
           </h1>
           <p className="flex items-center gap-2 text-lg text-muted"><Icon name="hat-wizard" /> {gm.headline}</p>
+          {gm.is_new ? <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted"><NewGmBadge t={t} /> {t("common.newGmHint")}</p> : null}
           <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
             <Stars rating={gm.avg_rating} count={gm.review_count} t={t} size="lg" />
             <span className="inline-flex items-center gap-1.5"><Icon name="users" className="text-muted" /><strong>{gm.seats_played}</strong> <span className="text-muted">{t("profile.seatsPlayed")}</span></span>

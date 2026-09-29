@@ -115,8 +115,8 @@ async function signupActionImpl(_: FormState, form: FormData): Promise<FormState
     userId = tx((c) => {
       const id = Number(
         c
-          .prepare("INSERT INTO users (email, password_hash, name, role, avatar_hue, terms_accepted_at, terms_version) VALUES (?, ?, ?, ?, ?, ?, ?)")
-          .run(email, hashPassword(password), name, role, Math.floor(Math.random() * 360), new Date().toISOString(), LEGAL_VERSION).lastInsertRowid,
+          .prepare("INSERT INTO users (email, password_hash, name, role, avatar_hue, terms_accepted_at, terms_version, legal_seen_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+          .run(email, hashPassword(password), name, role, Math.floor(Math.random() * 360), new Date().toISOString(), LEGAL_VERSION, LEGAL_VERSION).lastInsertRowid,
       );
       if (role === "gm") c.prepare("INSERT INTO gm_profiles (user_id) VALUES (?)").run(id);
       return id;
@@ -234,6 +234,13 @@ async function sendTwoStepEmail(email: string, name: string, state: "on" | "off"
 export async function logoutAction() {
   await destroySession();
   redirect("/");
+}
+
+/** "Got it" on the policy-update banner. */
+export async function dismissLegalUpdateAction() {
+  const user = await requireUser();
+  db().prepare("UPDATE users SET legal_seen_version = ? WHERE id = ?").run(LEGAL_VERSION, user.id);
+  revalidatePath("/", "layout");
 }
 
 /** Log out one of my other devices (Settings → Where you're logged in). */

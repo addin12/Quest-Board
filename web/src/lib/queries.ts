@@ -33,6 +33,8 @@ export type GameCard = {
   gm_hue: number;
   gm_image: string;
   gm_verified: number;
+  /** 1 = "New GM" badge (NEW_GM_SQL). */
+  gm_new: number;
   avg_rating: number | null;
   review_count: number;
   next_session_id: number | null;
@@ -40,10 +42,19 @@ export type GameCard = {
   next_session_seats_taken: number | null;
 };
 
+/**
+ * "New GM" (users u, gm_profiles p in scope): joined in the last NEW_GM_DAYS, no reviews yet and not
+ * verified by a moderator. Players see a badge — a stolen or brand-new account is where scams start.
+ */
+export const NEW_GM_DAYS = 30;
+const NEW_GM_SQL = `(COALESCE(p.verified, 0) = 0 AND u.created_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-${NEW_GM_DAYS} days')
+  AND NOT EXISTS (SELECT 1 FROM reviews r2 JOIN games g2 ON g2.id = r2.game_id WHERE g2.gm_id = u.id))`;
+
 const CARD_SELECT = `
   SELECT g.id, g.slug, g.title, g.system, g.summary, g.format, g.location_type, g.language, g.city,
          g.price_idr, g.seats_total, g.experience_level, g.tags, g.cover_hue, g.cover_image, g.genres, g.styles,
          u.id AS gm_id, u.name AS gm_name, u.avatar_hue AS gm_hue, u.avatar_image AS gm_image, COALESCE(p.verified, 0) AS gm_verified,
+         ${NEW_GM_SQL} AS gm_new,
          (SELECT ROUND(AVG(r.rating), 1) FROM reviews r WHERE r.game_id = g.id) AS avg_rating,
          (SELECT COUNT(*) FROM reviews r WHERE r.game_id = g.id) AS review_count,
          ns.id AS next_session_id, ns.starts_at AS next_session_at,
@@ -312,7 +323,7 @@ export function listGameReviews(gameId: number): ReviewRow[] {
 export function getGmProfile(userId: number) {
   return db()
     .prepare(
-      `SELECT u.id, u.name, u.bio, u.avatar_hue, u.avatar_image, u.created_at, p.headline, p.systems, p.years_experience, p.location, p.verified,
+      `SELECT u.id, u.name, u.bio, u.avatar_hue, u.avatar_image, u.created_at, p.headline, p.systems, p.years_experience, p.location, p.verified, ${NEW_GM_SQL} AS is_new,
               (SELECT ROUND(AVG(r.rating),1) FROM reviews r JOIN games g ON g.id = r.game_id WHERE g.gm_id = u.id) AS avg_rating,
               (SELECT COUNT(*) FROM reviews r JOIN games g ON g.id = r.game_id WHERE g.gm_id = u.id) AS review_count,
               (SELECT COUNT(*) FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id
@@ -322,7 +333,7 @@ export function getGmProfile(userId: number) {
     .get(userId) as
     | {
         id: number; name: string; bio: string; avatar_hue: number; avatar_image: string; created_at: string; headline: string; systems: string;
-        years_experience: number; location: string; verified: number; avg_rating: number | null; review_count: number; seats_played: number;
+        years_experience: number; location: string; verified: number; is_new: number; avg_rating: number | null; review_count: number; seats_played: number;
       }
     | undefined;
 }
@@ -641,14 +652,14 @@ export function countOpenRequestsForGm(gmId: number): number {
 
 export type OfferRow = {
   id: number; request_id: number; gm_id: number; message: string; price_idr: number; created_at: string;
-  gm_name: string; gm_hue: number; gm_image: string; gm_headline: string; gm_verified: number; avg_rating: number | null; review_count: number;
+  gm_name: string; gm_hue: number; gm_image: string; gm_headline: string; gm_verified: number; gm_new: number; avg_rating: number | null; review_count: number;
 };
 
 export function listOffers(requestId: number): OfferRow[] {
   return db()
     .prepare(
       `SELECT o.*, u.name AS gm_name, u.avatar_hue AS gm_hue, u.avatar_image AS gm_image,
-              COALESCE(p.headline, '') AS gm_headline, COALESCE(p.verified, 0) AS gm_verified,
+              COALESCE(p.headline, '') AS gm_headline, COALESCE(p.verified, 0) AS gm_verified, ${NEW_GM_SQL} AS gm_new,
               (SELECT ROUND(AVG(rv.rating), 1) FROM reviews rv JOIN games g ON g.id = rv.game_id WHERE g.gm_id = u.id) AS avg_rating,
               (SELECT COUNT(*) FROM reviews rv JOIN games g ON g.id = rv.game_id WHERE g.gm_id = u.id) AS review_count
          FROM gm_request_offers o JOIN users u ON u.id = o.gm_id LEFT JOIN gm_profiles p ON p.user_id = u.id
