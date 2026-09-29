@@ -10,6 +10,9 @@ import { logoutEverywhereAction, resetCalendarFeedAction } from "../actions";
 import { CalendarFeedLinks } from "@/components/calendar-feed";
 import { ConfirmButton, SubmitButton } from "@/components/submit-button";
 import { siteOrigin } from "@/lib/site";
+import { twoStepState } from "@/lib/two-step";
+import { TwoStepConfirmForm, TwoStepDisableForm } from "@/components/two-step-forms";
+import { beginTwoStepAction, cancelTwoStepAction } from "../actions";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -19,7 +22,8 @@ export async function generateMetadata(): Promise<Metadata> {
 /** Profile & account settings for every user; GMs also get a link to their GM profile. */
 export default async function SettingsPage() {
   const user = await requireUser("/settings");
-  const { t } = await getI18n();
+  const { t, lang } = await getI18n();
+  const twoStep = await twoStepState(user.id, user.email);
   const me = getUserSettings(user.id)!;
   const origin = await siteOrigin();
   const isGm = user.role === "gm" || user.role === "admin";
@@ -84,6 +88,41 @@ export default async function SettingsPage() {
         <h2 id="pw-h" className="mb-5 flex items-center gap-2 text-xl font-bold"><Icon name="lock" className="text-muted" /> {t("settings.password")}</h2>
         <PasswordForm />
       </section>
+
+      {(user.role === "admin" || twoStep.state === "on") && (
+        <section className="card mt-6 p-6" aria-labelledby="two-step-h" id="two-step">
+          <h2 id="two-step-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="fingerprint" className="text-muted" /> {t("twoStep.title")}</h2>
+          {twoStep.state === "off" && (
+            <>
+              <p className="mt-2 max-w-prose text-sm text-muted">{t("twoStep.lead")}</p>
+              <form action={beginTwoStepAction} className="mt-4"><SubmitButton className="btn-primary"><Icon name="shield-check" /> {t("twoStep.setUp")}</SubmitButton></form>
+            </>
+          )}
+          {twoStep.state === "pending" && (
+            <div className="mt-4 space-y-5">
+              <div>
+                <p className="font-semibold">{t("twoStep.scan")}</p>
+                {/* eslint-disable-next-line @next/next/no-img-element -- a data: URI made on the server, nothing to optimise */}
+                <img src={twoStep.qr} alt={t("twoStep.qrAlt")} width={176} height={176} className="mt-3 rounded-lg bg-white p-2" />
+                <p className="mt-3 text-sm text-muted">{t("twoStep.manualKey")}</p>
+                <p className="mt-1 font-mono text-sm tracking-wider break-all select-all" data-testid="totp-key">{twoStep.secret.match(/.{1,4}/g)!.join(" ")}</p>
+              </div>
+              <div>
+                <p className="mb-3 font-semibold">{t("twoStep.enterCode")}</p>
+                <TwoStepConfirmForm />
+              </div>
+              <form action={cancelTwoStepAction}><button className="text-sm font-semibold text-accent hover:underline">{t("twoStep.cancel")}</button></form>
+            </div>
+          )}
+          {twoStep.state === "on" && (
+            <div className="mt-2 space-y-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-success"><Icon name="check-circle" /> {t("twoStep.on", { date: new Date(twoStep.since).toLocaleDateString(lang === "id" ? "id-ID" : "en-GB", { dateStyle: "medium", timeZone: "Asia/Jakarta" }) })}</p>
+              <TwoStepDisableForm />
+              <p className="text-xs text-muted">{t("twoStep.lostPhone")}</p>
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="card mt-6 p-6" aria-labelledby="sec-h">
         <h2 id="sec-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="shield-check" className="text-muted" /> {t("dash.securityTitle")}</h2>

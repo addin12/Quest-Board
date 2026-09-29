@@ -48,7 +48,7 @@ export default async function HomePage(props: PageProps<"/">) {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 pt-14">
+      <section className="defer-render mx-auto max-w-6xl px-4 pt-14">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
           <h2 className="flex items-center gap-2 text-2xl font-bold"><Icon name="hourglass-end" className="text-accent" /> {t("home.soon")}</h2>
           <Link href="/games" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">{t("home.browseAll")} <Icon name="arrow-right" /></Link>
@@ -62,7 +62,7 @@ export default async function HomePage(props: PageProps<"/">) {
         )}
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 pt-16">
+      <section className="defer-render mx-auto max-w-6xl px-4 pt-16">
         <div className="grid gap-8 rounded-2xl border border-border bg-surface p-8 md:grid-cols-3">
           {([
             ["1", "search", "home.step1Title", "home.step1Body"],
@@ -81,7 +81,7 @@ export default async function HomePage(props: PageProps<"/">) {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 pt-16 text-center" aria-labelledby="cats-h">
+      <section className="defer-render mx-auto max-w-6xl px-4 pt-16 text-center" aria-labelledby="cats-h">
         <h2 id="cats-h" className="text-3xl font-bold">{t("home.browseCategories")}</h2>
         <p className="mt-1 text-muted">{t("home.browseCategoriesLead")}</p>
         <ul className="mt-8 grid grid-cols-2 gap-x-8 gap-y-8 px-2 sm:grid-cols-4 sm:gap-x-6 sm:px-0">
@@ -104,7 +104,7 @@ export default async function HomePage(props: PageProps<"/">) {
         <Link href="/browse" className="btn-secondary mt-8">{t("home.browseAllCategories")}</Link>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 pt-16">
+      <section className="defer-render mx-auto max-w-6xl px-4 pt-16">
         <Link href="/board" className="on-wood wood-plank flex flex-col items-start gap-4 rounded-lg border-2 border-[#8a6a3a] p-6 sm:flex-row sm:items-center">
           <span className="parchment notice flex h-14 w-14 shrink-0 -rotate-3 items-center justify-center text-2xl text-accent"><Icon name="thumbtack" solid /></span>
           <span className="min-w-0 flex-1">
@@ -115,7 +115,7 @@ export default async function HomePage(props: PageProps<"/">) {
         </Link>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 pt-6">
+      <section className="defer-render mx-auto max-w-6xl px-4 pt-6">
         <Link href="/hire-a-gm" className="card flex flex-col items-start gap-4 p-6 hover:border-accent sm:flex-row sm:items-center">
           <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-2xl text-accent"><Icon name="briefcase" /></span>
           <span className="min-w-0 flex-1">
@@ -127,7 +127,7 @@ export default async function HomePage(props: PageProps<"/">) {
       </section>
 
       {beginner.length > 0 && (
-        <section className="mx-auto max-w-6xl px-4 pt-16">
+        <section className="defer-render mx-auto max-w-6xl px-4 pt-16">
           <div className="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
             <div>
               <h2 className="flex items-center gap-2 text-2xl font-bold"><Icon name="seedling" className="text-success" /> {t("home.newTitle")}</h2>
@@ -141,7 +141,7 @@ export default async function HomePage(props: PageProps<"/">) {
         </section>
       )}
 
-      <section className="mx-auto max-w-6xl px-4 pt-16">
+      <section className="defer-render mx-auto max-w-6xl px-4 pt-16">
         <div className="flex flex-col items-start justify-between gap-6 rounded-2xl bg-accent p-8 text-accent-ink sm:flex-row sm:items-center">
           <div className="flex items-start gap-4">
             <span className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent-ink/15 text-3xl sm:flex"><Icon name="hat-wizard" /></span>

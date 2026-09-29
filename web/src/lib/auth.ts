@@ -19,6 +19,10 @@ export type CurrentUser = {
   email_verified: boolean;
 };
 
+/** HTTPS-only cookies in production. QUESTBOARD_INSECURE_COOKIES is for the e2e servers only (production builds
+ * on http://localhost, where WebKit — unlike Chromium and Firefox — drops Secure cookies). Never set it live. */
+export const secureCookies = () => process.env.NODE_ENV === "production" && process.env.QUESTBOARD_INSECURE_COOKIES !== "true";
+
 export async function createSession(userId: number) {
   const token = newSessionToken();
   const expires = new Date(Date.now() + SESSION_DAYS * 86_400_000);
@@ -28,9 +32,7 @@ export async function createSession(userId: number) {
   (await cookies()).set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    // HTTPS-only in production. QUESTBOARD_INSECURE_COOKIES is for the e2e servers only (production builds
-    // on http://localhost, where WebKit — unlike Chromium and Firefox — drops Secure cookies). Never set it live.
-    secure: process.env.NODE_ENV === "production" && process.env.QUESTBOARD_INSECURE_COOKIES !== "true",
+    secure: secureCookies(),
     path: "/",
     expires,
   });

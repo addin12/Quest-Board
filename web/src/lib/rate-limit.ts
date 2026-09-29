@@ -27,6 +27,7 @@ export const LIMITS = {
   feedback: { limit: 5, windowMs: 60 * 60_000 }, // feedback messages per user (or IP when signed out)
   api: { limit: 120, windowMs: 60_000 },         // public JSON API requests per IP per minute
   upload: { limit: 30, windowMs: 60 * 60_000 },  // pictures per user (each one is decoded and re-encoded: CPU)
+  twoStep: { limit: 20, windowMs: 10 * 60_000 }, // two-step codes per IP (each login step also allows only 5)
 } as const;
 
 export type Bucket = keyof typeof LIMITS;

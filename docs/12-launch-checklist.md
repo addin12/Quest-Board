@@ -16,7 +16,7 @@ The code is launch-ready (see IMPROVEMENTS.md, "Launch ·" rows). What's left ne
 ## Launch day
 
 - [ ] Deploy with `QUESTBOARD_SEED=false`. **Never** set `QUESTBOARD_DEV_OUTBOX`, `QUESTBOARD_ALLOW_RESET`, `QUESTBOARD_INSECURE_COOKIES` or `QUESTBOARD_RATE_LIMIT=off` in production.
-- [ ] Start the app once, then create your admin: `npm run admin -- create you@example.com "Your Name"`. Log in and change the one-time password.
+- [ ] Start the app once, then create your admin: `npm run admin -- create you@example.com "Your Name"`. Log in, change the one-time password, and turn on **two-step login** in Settings (keep your phone's authenticator app; a lost phone is reset with `npm run admin -- reset-2fa <email>`).
 - [ ] Set `QUESTBOARD_CRON_SECRET` and schedule `/api/cron/reminders` every 5 minutes.
 - [ ] Schedule `npm run db:backup` nightly and copy `data/backups` off the server (it includes `uploads/`, the pictures people uploaded). **Test one restore on a copy** (rehearsed on 2026-09-28: a v25 backup restored onto an empty "new server", pictures put back, and the app upgraded it to v26 on start with every user, game and booking intact).
 - [ ] Keep `data/` (the database **and** `data/uploads`, or `QUESTBOARD_UPLOAD_DIR`) on the persistent disk.

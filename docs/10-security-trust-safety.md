@@ -4,13 +4,13 @@
 
 | Asset | Threat | Control (MVP) | Next |
 |---|---|---|---|
-| Accounts | Credential stuffing, weak passwords | scrypt (N=16384, 64-byte key, 16-byte salt); ≥ 8-character passwords; generic login error; **rate limit of 10 logins per 10 min per IP+email, and 10 sign-ups per hour per IP** | Email verification, 2FA for GMs |
+| Accounts | Credential stuffing, weak passwords | scrypt (N=16384, 64-byte key, 16-byte salt); ≥ 8-character passwords; generic login error; **rate limit of 10 logins per 10 min per IP+email, and 10 sign-ups per hour per IP**; **two-step login (TOTP) for admins**, each code once, 5 tries per login, reset only from the server (`npm run admin -- reset-2fa`) | Two-step login for GMs |
 | Sessions | Theft / fixation | 256-bit token, **only the SHA-256 hash is stored**; httpOnly, SameSite=Lax, Secure in production; 30-day expiry; revoked on logout; **rotated when a player becomes a GM; expired rows purged; "Log out on all devices"** | – |
 | Server actions | Direct POST bypassing the UI | Every action re-checks the session and ownership or membership | Audit log |
 | CSRF | Cross-site posts | Next.js server-action Origin check + SameSite cookies | – |
 | Privilege escalation | Sign up as admin | Role allow-list, unit tested | – |
 | SQL injection | Crafted input | Parameterised queries only; fixed `ORDER BY` map | – |
-| XSS / clickjacking | Script in user content, framing | React escapes all output; no `dangerouslySetInnerHTML`; **CSP (`default-src 'self'`, `frame-ancestors 'none'`), X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy** | Nonce-based CSP to drop `'unsafe-inline'` |
+| XSS / clickjacking | Script in user content, framing | React escapes all output; no `dangerouslySetInnerHTML`; **CSP with a per-request script nonce and `'strict-dynamic'` (no `'unsafe-inline'` for scripts; `default-src 'self'`, `frame-ancestors 'none'`), X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy** | Drop `'unsafe-inline'` for styles |
 | Open redirect | `?next=//evil` | `safeNext()` allows only relative paths | – |
 | Overbooking | Race conditions | `BEGIN IMMEDIATE` + partial unique index | – |
 | **GM payment details** | Harvesting of bank or e-wallet numbers | Shown only to game members; excluded from profiles, search and the API (e2e tested); ≤ 500 characters | Rate-limit account creation; flag profiles whose payment text changes often |

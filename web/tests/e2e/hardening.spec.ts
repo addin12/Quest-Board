@@ -23,6 +23,28 @@ test("P1-11 security headers are sent", async ({ request }) => {
   expect(h["x-powered-by"]).toBeUndefined();
 });
 
+test("pages allow only their own nonce'd scripts, and nothing trips the policy", async ({ page, request }) => {
+  const a = (await request.get("/")).headers()["content-security-policy"];
+  const b = (await request.get("/id/games")).headers()["content-security-policy"];
+  const scripts = (csp: string) => csp.split("; ").find((d) => d.startsWith("script-src "))!;
+  expect(scripts(a)).toMatch(/'nonce-[A-Za-z0-9+/=]{20,}' 'strict-dynamic'/);
+  expect(scripts(a)).not.toContain("'unsafe-inline'");
+  expect(scripts(a)).not.toBe(scripts(b)); // a fresh nonce per request
+  expect(scripts((await request.get("/api/health")).headers()["content-security-policy"])).toBe("script-src 'self'");
+
+  await page.addInitScript(() => {
+    (window as unknown as { cspViolations: string[] }).cspViolations = [];
+    document.addEventListener("securitypolicyviolation", (e) => (window as unknown as { cspViolations: string[] }).cspViolations.push(`${e.violatedDirective} ${e.blockedURI}`));
+  });
+  await login(page, "player@questboard.test"); // a client-side redirect after a server action: the app hydrated
+  // (Not /id/...: signed in, that would switch this player's language for later tests.)
+  for (const path of ["/dashboard", "/", "/games", "/board"]) {
+    if (path !== "/dashboard") await page.goto(path);
+    await page.waitForLoadState("networkidle");
+    expect(await page.evaluate(() => (window as unknown as { cspViolations: string[] }).cspViolations), path).toEqual([]);
+  }
+});
+
 test("P1-6 search treats % and _ literally", async ({ page }) => {
   await page.goto("/games?q=%25");
   await expect(page.getByText("No games match those filters")).toBeVisible();
@@ -40,11 +62,14 @@ test("P1-9 repeated failed logins are rate limited", async ({ page }) => {
   await page.goto("/login");
   await page.waitForLoadState("networkidle"); // type only once the form has hydrated
   for (let i = 0; i < E2E_LOGIN_LIMIT; i++) {
+    // The previous attempt has fully finished first: React resets the form when it does, which
+    // could otherwise wipe what we type next (then the browser won't submit the empty field).
+    const button = page.getByRole("button", { name: "Log in" });
+    await expect(button).toBeEnabled();
     await page.getByLabel("Email").fill("brute@force.test");
     await page.getByLabel("Password").fill(`wrong-${i}`);
+    await expect(page.getByLabel("Password")).toHaveValue(`wrong-${i}`);
     // Wait for this attempt's response: the error text is already on screen from the last one.
-    const button = page.getByRole("button", { name: "Log in" });
-    await expect(button).toBeEnabled(); // the previous attempt has fully finished
     await Promise.all([
       page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/login"), { timeout: 15_000 }),
       button.click(),

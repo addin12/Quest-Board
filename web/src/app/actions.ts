@@ -31,6 +31,7 @@ import { askQuestion, getQuestionThread, replyQuestion } from "@/lib/questions";
 import { getI18n } from "@/lib/i18n/server";
 import { siteOrigin } from "@/lib/site";
 import { saveUpload, ownsUpload, discardUpload } from "@/lib/uploads";
+import * as twoStep from "@/lib/two-step";
 
 /**
  * Errors are translation keys; client forms render them with t().
@@ -142,8 +143,91 @@ async function loginActionImpl(_: FormState, form: FormData): Promise<FormState>
   if (user.suspended_at) return { error: "err.suspended" };
   purgeExpiredSessions();
   purgeOldWindows();
+  if (twoStep.twoStepEnabled(user.id)) {
+    // The password was right; the session starts only after the code (lib/two-step.ts).
+    await twoStep.startChallenge(user.id, String(form.get("next") ?? ""));
+    redirect("/login/code");
+  }
   await createSession(user.id);
   redirect(safeNext(form.get("next")));
+}
+
+async function loginCodeActionImpl(_: FormState, form: FormData): Promise<FormState> {
+  const c = await twoStep.currentChallenge();
+  // The step is gone either way, so this page can't stay: say why on the login page.
+  if (!c) redirect("/login?step=expired");
+  if (!hit("twoStep", await clientIp())) return { error: "err.rateLimited" };
+  const result = await twoStep.answerChallenge(c, String(form.get("code") ?? ""));
+  if (result === "locked") redirect("/login?step=locked");
+  if (result === "wrong") return { fieldErrors: { code: "v.totpCode" } };
+  const suspended = db().prepare("SELECT 1 FROM users WHERE id = ? AND (suspended_at IS NOT NULL OR deleted_at IS NOT NULL)").get(c.user_id);
+  await twoStep.endChallenge(c);
+  if (suspended) return { error: "err.suspended" };
+  await createSession(c.user_id);
+  redirect(safeNext(c.next_path));
+}
+
+export async function loginCodeAction(prev: FormState, form: FormData): Promise<FormState> {
+  return withEcho(form, () => loginCodeActionImpl(prev, form));
+}
+
+/** "Use a different account": drop the pending login step. */
+export async function cancelLoginCodeAction() {
+  await twoStep.endChallenge(await twoStep.currentChallenge());
+  redirect("/login");
+}
+
+// ─── Two-step login settings (admins) ───────────────────────────────────
+
+export async function beginTwoStepAction() {
+  const user = await requireUser("/settings");
+  if (user.role !== "admin") return;
+  twoStep.beginSetup(user.id);
+  revalidatePath("/settings");
+}
+
+export async function cancelTwoStepAction() {
+  const user = await requireUser("/settings");
+  twoStep.cancelSetup(user.id);
+  revalidatePath("/settings");
+}
+
+async function confirmTwoStepActionImpl(_: FormState, form: FormData): Promise<FormState> {
+  const user = await requireUser("/settings");
+  if (!hit("password", String(user.id))) return { error: "err.rateLimited" };
+  if (!twoStep.confirmSetup(user.id, String(form.get("code") ?? ""))) return { fieldErrors: { code: "v.totpCode" } };
+  await destroyAllSessions(user.id); // other devices only passed the password: they log in again…
+  await createSession(user.id);      // …this one just proved the code
+  await sendTwoStepEmail(user.email, user.name, "on");
+  await toast("toast.twoStepOn");
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
+export async function confirmTwoStepAction(prev: FormState, form: FormData): Promise<FormState> {
+  return withEcho(form, () => confirmTwoStepActionImpl(prev, form));
+}
+
+async function disableTwoStepActionImpl(_: FormState, form: FormData): Promise<FormState> {
+  const user = await requireUser("/settings");
+  if (!hit("password", String(user.id))) return { error: "err.rateLimited" };
+  if (!twoStep.disable(user.id, String(form.get("code") ?? ""))) return { fieldErrors: { code: "v.totpCode" } };
+  await sendTwoStepEmail(user.email, user.name, "off");
+  await toast("toast.twoStepOff");
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
+export async function disableTwoStepAction(prev: FormState, form: FormData): Promise<FormState> {
+  return withEcho(form, () => disableTwoStepActionImpl(prev, form));
+}
+
+/** "Two-step login was turned on/off — if this wasn't you…" */
+async function sendTwoStepEmail(email: string, name: string, state: "on" | "off") {
+  const { t, lang } = await getI18n();
+  const link = `${await siteOrigin()}/forgot-password`;
+  const [subject, body] = state === "on" ? (["mail.twoStepOnSubject", "mail.twoStepOnBody"] as const) : (["mail.twoStepOffSubject", "mail.twoStepOffBody"] as const);
+  await sendEmail({ to: email, subject: t(subject), text: t(body, { name, when: nowWib(lang), link }) });
 }
 
 export async function logoutAction() {
@@ -786,7 +870,8 @@ export async function confirmEmailAction(form: FormData) {
   if (!u || u.deleted_at) redirect("/verify-email?invalid=1");
   db().prepare("UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?").run(new Date().toISOString(), userId);
   const current = await getCurrentUser();
-  if (!u.email_verified_at && !u.suspended_at && current?.id !== userId) await createSession(userId);
+  // (Never for two-step accounts: the link proves the inbox, not the phone.)
+  if (!u.email_verified_at && !u.suspended_at && current?.id !== userId && !twoStep.twoStepEnabled(userId)) await createSession(userId);
   await toast("toast.emailVerified");
   redirect(safeNext(form.get("next")));
 }
@@ -845,9 +930,14 @@ async function resetPasswordActionImpl(_: FormState, form: FormData): Promise<Fo
   if (!userId) return { error: "err.tokenInvalid" };
   db().prepare("UPDATE users SET password_hash = ?, email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?").run(hashPassword(next), new Date().toISOString(), userId);
   await destroyAllSessions(userId); // anyone holding an old session is signed out
-  await createSession(userId);
   const who = db().prepare("SELECT email, name FROM users WHERE id = ?").get(userId) as { email: string; name: string };
   await sendPasswordChangedEmail(who.email, who.name);
+  if (twoStep.twoStepEnabled(userId)) {
+    // The emailed link proves the inbox, not the phone: two-step accounts still need their code.
+    await twoStep.startChallenge(userId, "/dashboard?reset=1");
+    redirect("/login/code");
+  }
+  await createSession(userId);
   redirect("/dashboard?reset=1");
 }
 

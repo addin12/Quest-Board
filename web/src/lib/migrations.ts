@@ -380,6 +380,25 @@ export const MIGRATIONS: Record<number, string> = {
     );
     CREATE INDEX IF NOT EXISTS idx_uploads_user ON uploads(user_id);
   `,
+  27: `
+    CREATE TABLE IF NOT EXISTS app_state (
+      key        TEXT PRIMARY KEY,
+      value      TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );
+  `,
+  28: `
+    ALTER TABLE users ADD COLUMN totp_secret TEXT;
+    ALTER TABLE users ADD COLUMN totp_enabled_at TEXT;
+    ALTER TABLE users ADD COLUMN totp_last_step INTEGER NOT NULL DEFAULT -1;
+    CREATE TABLE IF NOT EXISTS login_challenges (
+      token_hash TEXT PRIMARY KEY,               -- sha256 of the qb_2fa cookie
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      next_path  TEXT NOT NULL DEFAULT '',       -- where to go after the code
+      attempts   INTEGER NOT NULL DEFAULT 0,     -- wrong codes so far (5 ends the step)
+      expires_at TEXT NOT NULL
+    );
+  `,
 };
 
 export type UpgradePlan =

@@ -67,6 +67,7 @@ CMD ["npm", "start"]
 |---|---|
 | **First admin (launch day)** | Start the app once (it creates the database), then `npm run admin -- create you@example.com "Your Name"`. It prints a one-time password: log in and change it in Settings. Production has **no** demo admin |
 | More admins | `npm run admin -- promote <email>` (an existing account) · `npm run admin -- demote <email>` · `npm run admin -- list`. The last admin can't be demoted |
+| Two-step login | Every admin turns it on in Settings (the admin home reminds them). Lost phone: `npm run admin -- reset-2fa <email>` turns it off and logs them out everywhere; they set it up again |
 | Backup | `npm run db:backup` — a checked copy (`VACUUM INTO` + integrity check) that is safe while the app runs, rotated to the newest 14. Schedule it nightly, e.g. `15 2 * * * cd /app && npm run db:backup`, and copy `data/backups` off the server (object storage, another machine) |
 | Restore | Stop the app → `npm run db:restore -- data/backups/questboard-<time>.db --yes` (the current database is kept as `*.before-restore-<time>.db`) → start. Test a restore on a copy before you need one |
 | Verify a GM | Admin console → GMs (`/admin/gms`) |
@@ -74,7 +75,7 @@ CMD ["npm", "start"]
 | Hide a listing | `UPDATE games SET status = 'archived' WHERE slug = ?;` |
 | Expire sessions | `DELETE FROM auth_sessions WHERE expires_at < strftime('%Y-%m-%dT%H:%M:%fZ','now');` |
 | Health check | `GET /api/health` returns `{"ok":true,"schema":N}` with 200 when the database answers at the expected schema version, and 503 otherwise. Point your uptime monitor and the container health check at it (Docker: `HEALTHCHECK CMD curl -fsS http://localhost:3000/api/health || exit 1`) |
-| Server errors | Admin console → **Server errors** (`/admin/errors`): errors captured by `src/instrumentation.ts`, grouped, last 30 days (no cookies, headers or query strings are stored). The cron route prunes older rows. The admin home also shows this week's count |
+| Server errors | Admin console → **Server errors** (`/admin/errors`): errors captured by `src/instrumentation.ts`, grouped, last 30 days (no cookies, headers or query strings are stored). The cron route prunes older rows. The admin home also shows this week's count. Admins also get a **daily email digest** (at most every 20 hours, only when there were errors) from the cron route |
 
 ## 4. Scaling path
 1. **Postgres** (Singapore or Jakarta region):

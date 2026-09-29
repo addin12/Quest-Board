@@ -298,3 +298,19 @@ uploads(id, user_id → users (CASCADE), kind 'cover' | 'portrait', file UNIQUE,
 - Files get random names (`<32 hex>.webp`) in `QUESTBOARD_UPLOAD_DIR` (default `data/uploads`) and are served only by `GET /uploads/{name}` (`image/webp`, immutable cache, `nosniff`).
 - `games.cover_image` / `users.avatar_image` hold `/uploads/<name>`; the allow-list accepts it only if the uploader is the one saving (`ownsUpload`). A replaced picture is deleted (`discardUpload`); deleting an account deletes its uploads; admins can reset a portrait ("Reset picture", logged as `reset_portrait`). Uploads are in "Download my data".
 - `npm run db:backup` also mirrors the upload folder into `<backup dir>/uploads`; `db:restore` puts missing pictures back.
+
+## v27: app state
+```sql
+app_state(key PRIMARY KEY, value, updated_at)
+```
+- Small named values the app keeps between runs. Today only `error_digest_at`: when admins were last emailed the server-error digest (`src/lib/error-digest.ts`, sent by the cron at most every 20 hours, and only when there were new errors).
+
+## v28: two-step login
+```sql
+users.totp_secret      -- base32 secret, set when setup starts
+users.totp_enabled_at  -- NULL = off; set by the first correct code
+users.totp_last_step   -- the last accepted code's 30-second step: each code works once
+login_challenges(token_hash PRIMARY KEY, user_id → users (CASCADE), next_path, attempts, expires_at)
+```
+- Offered to admins in Settings. With it on, the right password creates a **login challenge** (10 minutes, the `qb_2fa` cookie; only its SHA-256 is stored) instead of a session; `/login/code` takes the 6-digit code (RFC 6238, one step of clock drift either way). Five wrong codes delete the challenge. A password reset also ends at the code step, and confirming an email never signs a two-step account in: an emailed link proves the inbox, not the phone.
+- Not in "Download my data" (the secret is a credential; challenges last minutes). `npm run admin -- reset-2fa <email>` clears the three columns and the account's sessions and challenges.

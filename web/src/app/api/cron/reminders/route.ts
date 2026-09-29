@@ -10,6 +10,7 @@ import { deliverNotificationEmails } from "@/lib/notification-mail";
 import { siteOrigin } from "@/lib/site";
 import { remindExpiringNotices } from "@/lib/community";
 import { pruneOrphanUploads } from "@/lib/uploads";
+import { sendErrorDigest } from "@/lib/error-digest";
 import { timingSafeEqual } from "node:crypto";
 
 // Scheduler endpoint: session reminders, expired waitlist offers passed on to the next person,
@@ -37,10 +38,11 @@ async function run(request: Request) {
   const noticeReminders = remindExpiringNotices();
   const notificationEmails = await deliverNotificationEmails(origin, 500);
   const retried = await retryFailedEmails();
+  const errorDigest = await sendErrorDigest(origin); // at most daily, only when there were errors
   purgeExpiredSessions();
   purgeOldWindows();
   const pruned = { notifications: pruneNotifications(), outbox: pruneOutbox(), errors: pruneErrorLog(), uploads: pruneOrphanUploads() };
-  return Response.json({ ok: true, emailed, notificationEmails, retried, reviewPrompts, noticeReminders, waitlists, pruned });
+  return Response.json({ ok: true, emailed, notificationEmails, retried, reviewPrompts, noticeReminders, errorDigest, waitlists, pruned });
 }
 
 export const GET = run;

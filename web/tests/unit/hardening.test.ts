@@ -56,7 +56,10 @@ test("a v4 database migrates to the current schema without losing data", () => {
   db.exec(SCHEMA_SQL);
   // Simulate a v4 database by undoing everything added since v4.
   // (When adding migration N, add its inverse here.)
-  db.exec(`DROP TABLE uploads;
+  db.exec(`DROP TABLE login_challenges;
+    ALTER TABLE users DROP COLUMN totp_secret; ALTER TABLE users DROP COLUMN totp_enabled_at; ALTER TABLE users DROP COLUMN totp_last_step;
+    DROP TABLE app_state;
+    DROP TABLE uploads;
     ALTER TABLE lfg_posts DROP COLUMN expiry_notified_at;
     ALTER TABLE reviews DROP COLUMN edited_at;
     ALTER TABLE reviews DROP COLUMN gm_reply; ALTER TABLE reviews DROP COLUMN gm_replied_at;

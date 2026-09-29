@@ -29,7 +29,9 @@
 // v24: reports accept review_reply (a GM's reply to a review) + reviews.edited_at.
 // v25: lfg_posts.expiry_notified_at (the author was told the notice comes down soon).
 // v26: uploads (pictures people uploaded for covers and portraits).
-export const SCHEMA_VERSION = 26;
+// v27: app_state (named values kept between runs, e.g. the last error digest).
+// v28: two-step login (users.totp_*, login_challenges).
+export const SCHEMA_VERSION = 28;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -52,7 +54,10 @@ CREATE TABLE IF NOT EXISTS users (
   calendar_token TEXT,                       -- v15: secret for /api/calendar/<token>.ics; NULL until created
   terms_accepted_at TEXT,                    -- v18: when they agreed to the Terms & Privacy Policy at sign-up
   terms_version  TEXT NOT NULL DEFAULT '',   -- v18: which version of those texts (LEGAL_VERSION)
-  email_notifications INTEGER NOT NULL DEFAULT 1 -- v19: email me about bookings, questions and offers
+  email_notifications INTEGER NOT NULL DEFAULT 1, -- v19: email me about bookings, questions and offers
+  totp_secret     TEXT,                       -- v28: two-step login secret (base32); set during setup
+  totp_enabled_at TEXT,                       -- v28: when two-step login was turned on (NULL = off)
+  totp_last_step  INTEGER NOT NULL DEFAULT -1 -- v28: last code's 30-second step (each code works once)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_users_calendar_token ON users(calendar_token);
 
@@ -69,6 +74,15 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
 CREATE TABLE IF NOT EXISTS auth_sessions (
   token_hash TEXT PRIMARY KEY,
   user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at TEXT NOT NULL
+);
+
+-- v28: a password checked, waiting for the two-step code (10 minutes).
+CREATE TABLE IF NOT EXISTS login_challenges (
+  token_hash TEXT PRIMARY KEY,               -- sha256 of the qb_2fa cookie
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  next_path  TEXT NOT NULL DEFAULT '',       -- where to go after the code
+  attempts   INTEGER NOT NULL DEFAULT 0,     -- wrong codes so far (5 ends the step)
   expires_at TEXT NOT NULL
 );
 
@@ -398,4 +412,11 @@ CREATE TABLE IF NOT EXISTS uploads (
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_uploads_user ON uploads(user_id);
+
+-- v27: small named values the app keeps between runs (e.g. when the last error digest was sent).
+CREATE TABLE IF NOT EXISTS app_state (
+  key        TEXT PRIMARY KEY,
+  value      TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
 `;

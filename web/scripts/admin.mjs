@@ -4,6 +4,7 @@
 //   npm run admin -- create <email> "<Name>"   new admin with a one-time password (printed once)
 //   npm run admin -- promote <email>           make an existing account an admin
 //   npm run admin -- demote <email>            back to GM (if they have a GM profile) or player
+//   npm run admin -- reset-2fa <email>         turn off two-step login (lost phone); they can set it up again
 //
 // Uses QUESTBOARD_DB (default data/questboard.db). The app must have started once so the
 // database exists at the current schema version; this tool never creates or migrates it.
@@ -56,11 +57,22 @@ export function demote(db, email) {
   return true;
 }
 
+/** Lost phone: turn two-step login off and end their sessions, so the next login is password-only. */
+export function resetTwoStep(db, email) {
+  const u = db.prepare("SELECT id, totp_enabled_at FROM users WHERE email = ? AND deleted_at IS NULL").get(String(email ?? "").trim().toLowerCase());
+  if (!u) throw new Error(`No account for ${email}.`);
+  if (!u.totp_enabled_at) return false;
+  db.prepare("UPDATE users SET totp_secret = NULL, totp_enabled_at = NULL, totp_last_step = -1 WHERE id = ?").run(u.id);
+  db.prepare("DELETE FROM login_challenges WHERE user_id = ?").run(u.id);
+  db.prepare("DELETE FROM auth_sessions WHERE user_id = ?").run(u.id);
+  return true;
+}
+
 function main(argv) {
   const [cmd, a, b] = argv;
   const file = process.env.QUESTBOARD_DB ?? "data/questboard.db";
-  if (!["list", "create", "promote", "demote"].includes(cmd)) {
-    console.log('Usage: npm run admin -- list | create <email> "<Name>" | promote <email> | demote <email>');
+  if (!["list", "create", "promote", "demote", "reset-2fa"].includes(cmd)) {
+    console.log('Usage: npm run admin -- list | create <email> "<Name>" | promote <email> | demote <email> | reset-2fa <email>');
     return 1;
   }
   if (!existsSync(file)) {
@@ -84,6 +96,8 @@ function main(argv) {
       console.log(`Admin ${a} created. One-time password (shown once, change it in Settings after logging in):\n\n  ${password}\n`);
     } else if (cmd === "promote") {
       console.log(promote(db, a) ? `${a} is now an admin.` : `${a} was already an admin.`);
+    } else if (cmd === "reset-2fa") {
+      console.log(resetTwoStep(db, a) ? `Two-step login is off for ${a}, and they were logged out everywhere. Ask them to set it up again in Settings.` : `${a} didn't have two-step login on.`);
     } else {
       console.log(demote(db, a) ? `${a} is no longer an admin.` : `${a} was not an admin.`);
     }

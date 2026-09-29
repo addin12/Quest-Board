@@ -16,6 +16,7 @@ const { exportAccount } = await import("../../src/lib/account.ts");
  */
 const COVERAGE: Record<string, string> = {
   users: "account",
+  login_challenges: "excluded: a 10-minute login step, deleted when used",
   gm_profiles: "gm_profile",
   games: "games_run",
   bookings: "bookings",

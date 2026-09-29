@@ -88,7 +88,7 @@ Run these in `web/`:
 | `npm run test:e2e` | Production build plus the Playwright suite: user journeys, accessibility (axe), broken links, and a second server on an empty database |
 | `npm run typecheck` | TypeScript, which also fails if any Indonesian or English string is missing |
 | `npm run lint` | ESLint, which also fails on hard-coded, untranslated text |
-| `npm run admin -- create <email> "<Name>"` | Create an admin (production has no demo admin). Also `list`, `promote` and `demote` |
+| `npm run admin -- create <email> "<Name>"` | Create an admin (production has no demo admin). Also `list`, `promote`, `demote` and `reset-2fa` (turn off two-step login after a lost phone) |
 | `npm run db:backup` / `npm run db:restore -- <file> --yes` | A consistent backup while the app runs, and a restore that keeps the current database |
 | `npm run db:reset` | Delete the local database so it's recreated with demo data |
 | `npm run icons` · `npm run placeholders` · `npm run tavern-art` · `npm run app-icons` | Regenerate the icon subset, demo art, tavern illustrations and app icons |
