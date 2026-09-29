@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test("browse by mechanic: hub section, mechanic page, filters and the game page chip", async ({ page, request }) => {
+  test.setTimeout(120_000); // many pages in one test; a busy CI runner once needed more than 60 s
   await page.goto("/browse");
   const mechanics = page.locator("#mechanics");
   await expect(mechanics.getByRole("heading", { name: "Mechanics" })).toBeVisible();
