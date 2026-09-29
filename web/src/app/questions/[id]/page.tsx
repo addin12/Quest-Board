@@ -27,7 +27,7 @@ export default async function QuestionPage(props: PageProps<"/questions/[id]">) 
   const user = await requireUser(`/questions/${id}`);
   const { t } = await getI18n();
   const thread = getQuestionThread(Number(id));
-  if (!thread || (user.id !== thread.player_id && user.id !== thread.gm_id && user.role !== "admin")) notFound();
+  if (!thread || (user.id !== thread.player_id && user.id !== thread.gm_id && !user.admin)) notFound();
   markQuestionRead(user.id, thread.id);
   const isPlayer = user.id === thread.player_id;
   const other = isPlayer

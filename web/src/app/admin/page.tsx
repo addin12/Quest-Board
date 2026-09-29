@@ -8,7 +8,6 @@ import { shownName } from "@/lib/i18n/dict";
 import { countRecentErrors } from "@/lib/error-log";
 import { Icon } from "@/components/icon";
 import { AdminNav } from "./admin-nav";
-import { twoStepEnabled } from "@/lib/two-step";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -16,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AdminHomePage() {
-  const admin = await requireAdmin();
+  await requireAdmin();
   const { t } = await getI18n();
   const s = adminStats();
   const m = launchMetrics(7);
@@ -41,12 +40,6 @@ export default async function AdminHomePage() {
       <h1 className="text-3xl font-bold">{t("admin.title")}</h1>
       <p className="mt-1 mb-6 text-muted">{t("admin.lead")}</p>
       <AdminNav t={t} current="home" openReports={s.openReports} />
-      {!twoStepEnabled(admin.id) && (
-        <p className="card mb-6 flex flex-wrap items-center gap-2 border-accent/50! p-4 text-sm" role="note">
-          <Icon name="triangle-warning" className="text-accent" /> {t("admin.twoStepNudge")}{" "}
-          <Link href="/settings#two-step" className="font-semibold text-accent hover:underline">{t("admin.twoStepNudgeLink")}</Link>
-        </p>
-      )}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tiles.map((tile) => (
           <Link key={tile.label} href={tile.href} className={`card p-5 hover:border-accent ${tile.urgent ? "border-danger/50!" : ""}`}>

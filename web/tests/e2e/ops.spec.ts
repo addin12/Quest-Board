@@ -10,6 +10,26 @@ test("health check: 200 with the schema version, nothing private", async ({ requ
   expect(Object.keys(body).sort()).toEqual(["ok", "schema"]);
 });
 
+test("full health check for uptime monitors: 503 until the cron has run recently, then 200", async ({ request }) => {
+  const db = e2eDb();
+  db.prepare("DELETE FROM app_state WHERE key = 'cron_last_run'").run();
+  let res = await request.get("/api/health?full=1");
+  expect(res.status()).toBe(503); // the cron is configured on this server but hasn't run
+  expect((await res.json()).cron).toEqual({ ok: false, lastRun: null });
+  db.prepare("INSERT INTO app_state (key, value) VALUES ('cron_last_run', ?)").run(new Date(Date.now() - 45 * 60_000).toISOString());
+  expect((await request.get("/api/health?full=1")).status()).toBe(503); // 45 minutes ago: stale
+  db.close();
+  const cron = await request.get("/api/cron/reminders", { headers: { Authorization: "Bearer e2e-cron-secret" } });
+  expect(cron.status()).toBe(200);
+  res = await request.get("/api/health?full=1");
+  expect(res.status()).toBe(200);
+  const body = await res.json();
+  expect(body.ok).toBe(true);
+  expect(body.cron.ok).toBe(true);
+  expect(body.email).toBe("not configured"); // no email provider on the e2e servers
+  expect((await request.get("/api/health")).status()).toBe(200); // liveness doesn't depend on the cron
+});
+
 test("server errors are logged and shown to admins; the launch pulse is on the admin home", async ({ page, browser }) => {
   const db = e2eDb();
   const mark = (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM error_log").get() as { n: number }).n;

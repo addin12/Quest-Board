@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { confirmLink, e2eDb, signup } from "./helpers";
 import { totpCode, totpStep } from "../../src/lib/totp";
+import { LEGAL_VERSION } from "../../src/lib/legal";
 
 // Automated WCAG 2.1 A/AA checks (axe-core) on the main pages, in both languages
 // and both colour schemes. Axe catches roughly a third of real issues — keep
@@ -145,6 +146,50 @@ test("two-step, payment-change and automatic-flag screens have no axe violations
   }
   expect(found).toEqual([]);
 });
+
+// Signed-in pages with the newest states on screen (policy banner, payment-change note and report
+// link, badges, device list, automatic flags), in dark mode and at phone width.
+for (const [scheme, width] of [["dark", 1280], ["light", 360], ["dark", 360]] as const) {
+  test.describe(`signed in · ${scheme} · ${width}px`, () => {
+    test.use({ colorScheme: scheme, viewport: { width, height: width === 360 ? 780 : 900 } });
+
+    test("signed-in pages with the newest states have no axe violations", async ({ browser }) => {
+      const db = e2eDb();
+      db.prepare("INSERT INTO payment_changes (user_id) VALUES (1), (1)").run();
+      db.prepare("UPDATE users SET legal_seen_version = 'old' WHERE email IN ('player@questboard.test', 'gm@questboard.test', 'admin@questboard.test')").run();
+      db.prepare("INSERT INTO reports (reporter_id, target_type, target_id, target_owner_id, reason, details, snapshot, href) VALUES (NULL, 'message', 1, 1, 'scam', 'credentials,offPlatformPay', 'Table chat (axe themes)', '/games/mercusuar-di-pulau-kabut#chat-h')").run();
+      const found: string[] = [];
+      const tag = `[${scheme}/${width}]`;
+      try {
+        const opts = { colorScheme: scheme, viewport: { width, height: width === 360 ? 780 : 900 } } as const;
+        const player = await (await browser.newContext(opts)).newPage();
+        await login(player, "player@questboard.test");
+        for (const path of ["/dashboard", "/games", "/games/mercusuar-di-pulau-kabut", "/settings", "/notifications"]) {
+          await player.goto(path);
+          found.push(...(await violationsOf(player, `${path} (player) ${tag}`)));
+        }
+        const gm = await (await browser.newContext(opts)).newPage();
+        await login(gm, "gm@questboard.test");
+        for (const path of ["/gm", "/settings", "/gms/1"]) {
+          await gm.goto(path);
+          found.push(...(await violationsOf(gm, `${path} (GM) ${tag}`)));
+        }
+        const admin = await (await browser.newContext(opts)).newPage();
+        await login(admin, "admin@questboard.test");
+        for (const path of ["/admin", "/admin/reports", "/admin/gms"]) {
+          await admin.goto(path);
+          found.push(...(await violationsOf(admin, `${path} (admin) ${tag}`)));
+        }
+      } finally {
+        db.prepare("DELETE FROM payment_changes WHERE user_id = 1").run();
+        db.prepare("UPDATE users SET legal_seen_version = ? WHERE email IN ('player@questboard.test', 'gm@questboard.test', 'admin@questboard.test')").run(LEGAL_VERSION);
+        db.prepare("DELETE FROM reports WHERE reporter_id IS NULL AND snapshot = 'Table chat (axe themes)'").run();
+        db.close();
+      }
+      expect(found).toEqual([]);
+    });
+  });
+}
 
 test.describe("phone width", () => {
   // Narrow screens hide labels and show other controls (tab bar, filter sheet, booking bar).

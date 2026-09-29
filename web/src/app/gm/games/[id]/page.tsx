@@ -23,7 +23,7 @@ export default async function ManageGamePage(props: PageProps<"/gm/games/[id]">)
   const { t } = await getI18n();
   const { id } = await props.params;
   const game = getGameById(Number(id));
-  if (!game || (game.gm_id !== gm.id && gm.role !== "admin") || game.status === "archived") notFound();
+  if (!game || (game.gm_id !== gm.id && !gm.admin) || game.status === "archived") notFound();
   const sessions = listSessions(game.id);
   const now = new Date();
   const upcoming = sessions.filter((s) => s.status === "scheduled" && new Date(s.starts_at) > now);

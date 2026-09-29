@@ -42,16 +42,15 @@ test("admins can turn on two-step login, then need a code from their app to log 
   await anon.goto("/login/code");
   await expect(anon).toHaveURL(/\/login$/);
 
-  // The console reminds admins until it's on.
+  // (These e2e servers don't require it for the console — QUESTBOARD_ADMIN_TWO_STEP=optional;
+  // empty-launch.spec checks the real rule.)
   const page = await (await browser.newContext()).newPage();
   await page.goto("/login");
   await page.getByLabel("Email").fill(EMAIL);
   await page.getByLabel("Password", { exact: true }).fill("password123");
   await page.getByRole("button", { name: "Log in" }).click();
   await page.waitForURL("**/dashboard");
-  await page.goto("/admin");
-  await page.getByRole("link", { name: "Set it up" }).click();
-  await expect(page).toHaveURL(/\/settings#two-step$/);
+  await page.goto("/settings#two-step");
 
   // Setup: QR code and key, a wrong code, then the right one.
   await page.getByRole("button", { name: "Set up two-step login" }).click();

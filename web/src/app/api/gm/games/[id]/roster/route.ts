@@ -7,7 +7,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/gm/games/[id]/r
   const { id } = await ctx.params;
   const user = await getCurrentUser();
   const game = getGameById(Number(id));
-  if (!user || !game || (game.gm_id !== user.id && user.role !== "admin")) return new Response("Not found", { status: 404 });
+  if (!user || !game || (game.gm_id !== user.id && !user.admin)) return new Response("Not found", { status: 404 });
   return new Response(rosterCsv(gameRosterRows(game.id)), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",

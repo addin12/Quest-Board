@@ -94,11 +94,11 @@ test("P1-1 a GM cannot lower seats below what an upcoming session already holds"
   await expect(page).toHaveURL(/\/edit$/);
 });
 
-test("P1-3 table chat shows the newest messages when there are more than 200", async ({ page }) => {
+test("P1-3 table chat shows the newest 50 messages, and up to 200 with “Show earlier messages”", async ({ page }) => {
   const db = e2eDb();
   const game = db.prepare("SELECT id, gm_id FROM games WHERE slug = ?").get("mercusuar-di-pulau-kabut") as { id: number; gm_id: number };
   const ins = db.prepare("INSERT INTO messages (game_id, user_id, body, created_at) VALUES (?, ?, ?, ?)");
-  const base = Date.now() - 300_000;
+  const base = Date.now(); // newer than anything other tests posted, so "the newest 50" is exactly #156–#205
   db.exec("BEGIN");
   for (let i = 1; i <= 205; i++) ins.run(game.id, game.gm_id, `Bulk message #${i}`, new Date(base + i * 1000).toISOString());
   db.exec("COMMIT");
@@ -107,7 +107,13 @@ test("P1-3 table chat shows the newest messages when there are more than 200", a
   await login(page, "gm@questboard.test");
   await page.goto("/games/mercusuar-di-pulau-kabut");
   await expect(page.getByText("Bulk message #205", { exact: true })).toBeVisible();
-  await expect(page.getByText("Bulk message #1", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Bulk message #156", { exact: true })).toBeAttached(); // the newest 50
+  await expect(page.getByText("Bulk message #155", { exact: true })).toHaveCount(0);
+  await page.getByRole("link", { name: "Show earlier messages" }).click();
+  await expect(page).toHaveURL(/chat=all/);
+  await expect(page.getByText("Bulk message #6", { exact: true })).toBeAttached(); // the newest 200
+  await expect(page.getByText("Bulk message #5", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Show earlier messages" })).toHaveCount(0);
 });
 
 test("P1-2 archiving a game cancels its upcoming sessions and frees players' seats", async ({ browser }) => {

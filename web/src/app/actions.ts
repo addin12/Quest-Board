@@ -333,7 +333,7 @@ async function saveGameActionImpl(_: FormState, form: FormData): Promise<FormSta
   // A picture uploaded with the form replaces the choice above (checked and re-encoded first).
   const coverFile = form.get("coverUpload");
   if (coverFile instanceof File && coverFile.size > 0) {
-    if (idRaw && (!existing || (existing.gm_id !== gm.id && gm.role !== "admin") || existing.status === "archived")) return { error: "err.notFound" };
+    if (idRaw && (!existing || (existing.gm_id !== gm.id && !gm.admin) || existing.status === "archived")) return { error: "err.notFound" };
     if (!hit("upload", String(gm.id))) return { fieldErrors: { coverImage: "err.rateLimited" }, error: "err.fixFields" };
     const up = await saveUpload(gm.id, "cover", coverFile);
     if (!up.ok) return { fieldErrors: { coverImage: up.error }, error: "err.fixFields" };
@@ -343,7 +343,7 @@ async function saveGameActionImpl(_: FormState, form: FormData): Promise<FormSta
   let gameId: number;
   if (idRaw) {
     // Archived games stay archived: otherwise a game moderators removed could simply be re-published.
-    if (!existing || (existing.gm_id !== gm.id && gm.role !== "admin") || existing.status === "archived") return { error: "err.notFound" };
+    if (!existing || (existing.gm_id !== gm.id && !gm.admin) || existing.status === "archived") return { error: "err.notFound" };
     // Never let an edit overbook: seats can't drop below what an upcoming session already holds.
     const seatsTaken = maxSeatsTakenUpcoming(idRaw);
     if (g.seatsTotal < seatsTaken) {
@@ -404,7 +404,7 @@ async function saveGameActionImpl(_: FormState, form: FormData): Promise<FormSta
 export async function archiveGameAction(form: FormData) {
   const gm = await requireGm();
   const game = getGameById(Number(form.get("gameId")));
-  if (!game || (game.gm_id !== gm.id && gm.role !== "admin")) throw new Error("Not found");
+  if (!game || (game.gm_id !== gm.id && !gm.admin)) throw new Error("Not found");
   // Archiving hides the game page from players, so release every future seat
   // instead of leaving players holding seats they can no longer see.
   tx((c) => archiveGame(c, game.id, gm.id));
@@ -417,7 +417,7 @@ export async function archiveGameAction(form: FormData) {
 async function ownedGameOrThrow(gameId: number) {
   const gm = await requireGm();
   const game = getGameById(gameId);
-  if (!game || (game.gm_id !== gm.id && gm.role !== "admin") || game.status === "archived") throw new Error("Not found");
+  if (!game || (game.gm_id !== gm.id && !gm.admin) || game.status === "archived") throw new Error("Not found");
   return { gm, game };
 }
 
@@ -1004,7 +1004,7 @@ export async function markPaidAction(form: FormData) {
   const b = db()
     .prepare("SELECT b.id, b.player_id, b.session_id, b.status, g.gm_id, g.price_idr FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id WHERE b.id = ?")
     .get(bookingId) as { id: number; player_id: number; session_id: number; status: string; gm_id: number; price_idr: number } | undefined;
-  if (!b || (b.gm_id !== user.id && user.role !== "admin") || b.status !== "confirmed") throw new Error("Not found");
+  if (!b || (b.gm_id !== user.id && !user.admin) || b.status !== "confirmed") throw new Error("Not found");
   const paid = form.get("paid") === "1";
   db().prepare("UPDATE bookings SET paid_marked_at = ? WHERE id = ?").run(paid ? new Date().toISOString() : null, b.id);
   if (paid) notify({ userId: b.player_id, kind: "payment_confirmed", actorId: user.id, sessionId: b.session_id });
@@ -1068,7 +1068,7 @@ export async function renewNoticeAction(form: FormData) {
 export async function closeNoticeAction(form: FormData) {
   const user = await requireUser();
   const post = getNotice(Number(form.get("postId")));
-  if (!post || (post.author_id !== user.id && user.role !== "admin")) throw new Error("Not found");
+  if (!post || (post.author_id !== user.id && !user.admin)) throw new Error("Not found");
   db().prepare("UPDATE lfg_posts SET status = 'closed' WHERE id = ?").run(post.id);
   await toast("toast.noticeClosed");
   revalidatePath("/", "layout");
@@ -1140,7 +1140,7 @@ async function sendFeedbackActionImpl(_: FormState, form: FormData): Promise<For
   if (body.length < 10 || body.length > 2000) fieldErrors.body = "v.feedbackBody";
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fieldErrors.email = "v.email";
   if (Object.keys(fieldErrors).length) return { fieldErrors, error: "err.fixFields" };
-  if (!hit("feedback", user ? String(user.id) : await clientIp())) return { error: "err.rateLimited" };
+  if (!(user ? hit("feedback", String(user.id)) : hit("feedbackIp", await clientIp()))) return { error: "err.rateLimited" };
   tx((c) => {
     c.prepare("INSERT INTO feedback (user_id, email, kind, body, page) VALUES (?, ?, ?, ?, ?)").run(user?.id ?? null, email, String(kind), body, isSafeNext(page) ? page : "");
     const admins = c.prepare("SELECT id FROM users WHERE role = 'admin' AND deleted_at IS NULL AND suspended_at IS NULL").all() as { id: number }[];

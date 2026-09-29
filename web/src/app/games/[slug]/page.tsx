@@ -11,6 +11,8 @@ import {
   isGameMember,
   listGameReviews,
   listMessages,
+  CHAT_MAX,
+  CHAT_PAGE,
   listSessions,
   playerBookedSessionIds,
   playerRemovedSessionIds,
@@ -50,10 +52,11 @@ export async function generateMetadata(props: PageProps<"/games/[slug]">): Promi
 
 export default async function GamePage(props: PageProps<"/games/[slug]">) {
   const { slug } = await props.params;
+  const allChat = (await props.searchParams).chat === "all";
   const { t } = await getI18n();
   const game = getGameBySlug(slug);
   const user = await getCurrentUser();
-  const isOwner = !!user && (user.id === game?.gm_id || user.role === "admin");
+  const isOwner = !!user && (user.id === game?.gm_id || user.admin);
   if (!game || (game.status !== "published" && !isOwner)) notFound();
 
   // Bring waitlists up to date (expired offers pass to the next person) before showing seats.
@@ -65,7 +68,10 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
   const removed = user ? playerRemovedSessionIds(game.id, user.id) : [];
   const member = user ? isGameMember(game.id, user.id) : false;
   const reviewable = user ? canReview(game.id, user.id) : false;
-  const messages = member ? listMessages(game.id) : [];
+  // The newest CHAT_PAGE messages (one more tells us there are earlier ones), or up to CHAT_MAX.
+  const fetched = member ? listMessages(game.id, allChat ? CHAT_MAX : CHAT_PAGE + 1) : [];
+  const moreChat = !allChat && fetched.length > CHAT_PAGE;
+  const messages = moreChat ? fetched.slice(1) : fetched;
   const now = new Date();
   const origin = await siteOrigin();
   const gameUrl = `${origin}/games/${game.slug}`;
@@ -103,7 +109,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                   {user && user.id !== game.gm_id && <SaveGameButton gameId={game.id} slug={game.slug} saved={isSaved(user.id, game.id)} t={t} />}
                 </div>
                 {user && user.id !== game.gm_id && <ReportButton targetType="game" targetId={game.id} />}
-                {user?.role === "admin" && game.status === "published" && <ModRemoveButton targetType="game" targetId={game.id} />}
+                {user?.admin && game.status === "published" && <ModRemoveButton targetType="game" targetId={game.id} />}
               </div>
             )}
 
@@ -147,6 +153,9 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                 <AutoRefresh />
                 <h2 id="chat-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="comments" className="text-accent" /> {t("chat.title")}</h2>
                 <p className="text-sm text-muted">{t("chat.visibility")}</p>
+                {moreChat && (
+                  <p className="mt-3 text-sm"><Link href={`/games/${game.slug}?chat=all#chat-h`} scroll={false} className="font-semibold text-accent hover:underline">{t("chat.showEarlier")}</Link></p>
+                )}
                 <ul className="mt-4 space-y-3">
                   {messages.map((m) => (
                     <li key={m.id} className="flex gap-3">
@@ -159,7 +168,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                         </p>
                         <p className="whitespace-pre-line text-sm">{m.body}</p>
                         {user && m.user_id !== user.id && <ReportButton targetType="message" targetId={m.id} className="mt-1" />}
-                        {user?.role === "admin" && <ModRemoveButton targetType="message" targetId={m.id} className="mt-1" />}
+                        {user?.admin && <ModRemoveButton targetType="message" targetId={m.id} className="mt-1" />}
                       </div>
                     </li>
                   ))}
@@ -193,7 +202,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                             <p className="text-xs font-semibold">{t("reviews.gmReply", { name: shownName(game.gm_name, t) })}</p>
                             <p className="mt-0.5 whitespace-pre-line">{r.gm_reply}</p>
                             {user && user.id !== game.gm_id && <ReportButton targetType="review_reply" targetId={r.id} className="mt-1" />}
-                            {user?.role === "admin" && <ModRemoveButton targetType="review_reply" targetId={r.id} className="mt-1" />}
+                            {user?.admin && <ModRemoveButton targetType="review_reply" targetId={r.id} className="mt-1" />}
                           </div>
                         )}
                         {user?.id === r.player_id && (
@@ -208,7 +217,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                         )}
                         {user?.id === game.gm_id && <ReviewReplyForm reviewId={r.id} current={r.gm_reply} />}
                         {user && r.player_id !== user.id && <ReportButton targetType="review" targetId={r.id} className="mt-1" />}
-                        {user?.role === "admin" && <ModRemoveButton targetType="review" targetId={r.id} className="mt-1" />}
+                        {user?.admin && <ModRemoveButton targetType="review" targetId={r.id} className="mt-1" />}
                       </div>
                     </li>
                   ))}

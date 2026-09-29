@@ -21,7 +21,16 @@ export type CurrentUser = {
   email_verified: boolean;
   /** The Terms/Privacy version whose update banner they've seen (lib/legal.ts). */
   legal_seen_version: string;
+  /** Admin powers: an admin WITH two-step login (see adminPowers). Use this, not role, for anything only admins may do. */
+  admin: boolean;
 };
+
+/**
+ * Admin powers need two-step login: a leaked admin password alone must not open the console or act
+ * on other people's games. QUESTBOARD_ADMIN_TWO_STEP=optional is for the e2e servers only (their demo
+ * admin logs in with a password) — never set it in production.
+ */
+export const adminPowers = (role: string, twoStepOn: boolean) => role === "admin" && (twoStepOn || process.env.QUESTBOARD_ADMIN_TWO_STEP === "optional");
 
 /** HTTPS-only cookies in production. QUESTBOARD_INSECURE_COOKIES is for the e2e servers only (production builds
  * on http://localhost, where WebKit — unlike Chromium and Firefox — drops Secure cookies). Never set it live. */
@@ -75,11 +84,11 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   if (!token) return null;
   const row = db()
     .prepare(
-      `SELECT u.id, u.email, u.name, u.role, u.avatar_hue, u.avatar_image, u.email_verified_at, u.locale, u.legal_seen_version, s.expires_at, s.last_seen_at
+      `SELECT u.id, u.email, u.name, u.role, u.avatar_hue, u.avatar_image, u.email_verified_at, u.locale, u.legal_seen_version, u.totp_enabled_at, s.expires_at, s.last_seen_at
          FROM auth_sessions s JOIN users u ON u.id = s.user_id
         WHERE s.token_hash = ? AND u.deleted_at IS NULL AND u.suspended_at IS NULL`,
     )
-    .get(hashToken(token)) as (Omit<CurrentUser, "email_verified"> & { email_verified_at: string | null; locale: string; expires_at: string; last_seen_at: string | null }) | undefined;
+    .get(hashToken(token)) as (Omit<CurrentUser, "email_verified"> & { email_verified_at: string | null; locale: string; expires_at: string; last_seen_at: string | null; totp_enabled_at: string | null }) | undefined;
   if (!row || new Date(row.expires_at) < new Date()) return null;
   // "Last active" in Settings → Where you're logged in; at most one write per session per 10 minutes.
   if (!row.last_seen_at || Date.now() - Date.parse(row.last_seen_at) > 10 * 60_000) {
@@ -91,6 +100,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   return {
     id: row.id, email: row.email, name: row.name, role: row.role, avatar_hue: row.avatar_hue, avatar_image: row.avatar_image,
     email_verified: !!row.email_verified_at, legal_seen_version: row.legal_seen_version,
+    admin: adminPowers(row.role, !!row.totp_enabled_at),
   };
 });
 
@@ -100,10 +110,14 @@ export async function requireUser(next?: string): Promise<CurrentUser> {
   return user;
 }
 
-/** Admin console guard: anyone else gets a plain 404 (the console's existence isn't advertised). */
+/**
+ * Admin console guard: anyone else gets a plain 404 (the console's existence isn't advertised). An
+ * admin without two-step login is sent to set it up first (adminPowers).
+ */
 export async function requireAdmin(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user || user.role !== "admin") notFound();
+  if (!user.admin) redirect("/settings?twoStep=required#two-step");
   return user;
 }
 

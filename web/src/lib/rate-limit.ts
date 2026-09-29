@@ -3,35 +3,9 @@ import { headers } from "next/headers";
 import { db } from "./db";
 import { clientIpFrom, fixedWindow } from "./policy";
 
-// Fixed-window limits per action. Identity is the client IP (for anonymous
-// actions) or the user id. Kept generous so real people never notice them.
-export const LIMITS = {
-  login: { limit: 10, windowMs: 10 * 60_000 },   // per IP + email
-  loginIp: { limit: 60, windowMs: 10 * 60_000 }, // per IP, any email (credential stuffing)
-  signup: { limit: 10, windowMs: 60 * 60_000 },  // per IP
-  signupNotice: { limit: 2, windowMs: 60 * 60_000 }, // "someone tried to sign up with your email", per address
-  chat: { limit: 30, windowMs: 10 * 60_000 },    // per user
-  reserve: { limit: 30, windowMs: 10 * 60_000 }, // per user
-  review: { limit: 10, windowMs: 60 * 60_000 },  // per user
-  request: { limit: 5, windowMs: 60 * 60_000 },  // GM requests per user
-  offer: { limit: 30, windowMs: 60 * 60_000 },   // offers per GM
-  password: { limit: 5, windowMs: 15 * 60_000 }, // password changes per user
-  reset: { limit: 5, windowMs: 60 * 60_000 },    // "forgot password" emails per IP + email
-  resetIp: { limit: 20, windowMs: 60 * 60_000 }, // per IP, any email (no mass reset emails)
-  verify: { limit: 5, windowMs: 60 * 60_000 },   // verification emails per user
-  deleteAccount: { limit: 5, windowMs: 60 * 60_000 }, // deletion attempts per user
-  report: { limit: 10, windowMs: 60 * 60_000 },  // reports per user
-  notice: { limit: 5, windowMs: 24 * 60 * 60_000 }, // notice-board posts per user per day
-  noticeReply: { limit: 30, windowMs: 60 * 60_000 }, // notice-board replies per user
-  question: { limit: 20, windowMs: 60 * 60_000 }, // new questions to GMs per user
-  feedback: { limit: 5, windowMs: 60 * 60_000 }, // feedback messages per user (or IP when signed out)
-  api: { limit: 120, windowMs: 60_000 },         // public JSON API requests per IP per minute
-  upload: { limit: 30, windowMs: 60 * 60_000 },  // pictures per user (each one is decoded and re-encoded: CPU)
-  twoStep: { limit: 20, windowMs: 10 * 60_000 }, // two-step codes per IP (each login step also allows only 5)
-  newDevice: { limit: 10, windowMs: 60 * 60_000 }, // "new device logged in" emails per user
-} as const;
-
-export type Bucket = keyof typeof LIMITS;
+// The limits live in ./limits (pure); re-exported so callers keep importing them from here.
+import { LIMITS, type Bucket } from "./limits";
+export { LIMITS, type Bucket };
 
 /**
  * Client IP for rate limits. X-Forwarded-For is "client, proxy1, proxy2…" and anyone can put

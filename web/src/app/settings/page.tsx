@@ -15,6 +15,7 @@ import { listLogins } from "@/lib/login-devices";
 import { logoutDeviceAction } from "../actions";
 import { TwoStepConfirmForm, TwoStepDisableForm } from "@/components/two-step-forms";
 import { beginTwoStepAction, cancelTwoStepAction } from "../actions";
+import { Notice } from "@/components/ui";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -95,6 +96,9 @@ export default async function SettingsPage() {
 
       {(user.role !== "player" || twoStep.state === "on") && (
         <section className="card mt-6 p-6" aria-labelledby="two-step-h" id="two-step">
+          {user.role === "admin" && !user.admin && (
+            <div className="mb-4"><Notice tone="danger">{t("twoStep.adminRequired")}</Notice></div>
+          )}
           <h2 id="two-step-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="fingerprint" className="text-muted" /> {t("twoStep.title")}</h2>
           {twoStep.state === "off" && (
             <>

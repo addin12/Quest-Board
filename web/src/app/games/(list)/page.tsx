@@ -37,7 +37,8 @@ export default async function BrowsePage(props: PageProps<"/games">) {
     style: isStyle(one(sp.style)) ? one(sp.style) : undefined,
     maxPrice: maxPriceRaw ? (parseIdr(maxPriceRaw) ?? undefined) : undefined,
     free: one(sp.free) === "1",
-    sort: (["soonest", "price_asc", "price_desc", "rating", "newest"] as const).find((s) => s === one(sp.sort)) ?? "soonest",
+    // Searching: best match unless another order was picked.
+    sort: (["relevance", "soonest", "price_asc", "price_desc", "rating", "newest"] as const).find((s) => s === one(sp.sort)) ?? (one(sp.q) ? "relevance" : "soonest"),
   };
   const page = Math.min(MAX_PAGE, Math.max(1, Math.floor(Number(one(sp.page))) || 1));
   const total = countGames(filters);
@@ -153,6 +154,7 @@ export default async function BrowsePage(props: PageProps<"/games">) {
           <div>
             <label htmlFor="sort" className="label flex items-center gap-1.5"><Icon name="sort-alt" className="text-muted" /> {t("browse.sort")}</label>
             <select id="sort" name="sort" defaultValue={filters.sort} className="input">
+              {filters.q && <option value="relevance">{t("sort.relevance")}</option>}
               <option value="soonest">{t("sort.soonest")}</option>
               <option value="rating">{t("sort.rating")}</option>
               <option value="price_asc">{t("sort.priceAsc")}</option>

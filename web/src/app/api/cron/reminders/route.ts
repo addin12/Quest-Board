@@ -13,6 +13,7 @@ import { pruneOrphanUploads } from "@/lib/uploads";
 import { pruneSecurityRecords } from "@/lib/retention";
 import { sendErrorDigest } from "@/lib/error-digest";
 import { timingSafeEqual } from "node:crypto";
+import { db } from "@/lib/db";
 
 // Scheduler endpoint: session reminders, expired waitlist offers passed on to the next person,
 // notification emails (and retries of failed ones), review prompts, "your notice comes down soon", and housekeeping (old read
@@ -43,6 +44,9 @@ async function run(request: Request) {
   purgeExpiredSessions();
   purgeOldWindows();
   const pruned = { notifications: pruneNotifications(), outbox: pruneOutbox(), errors: pruneErrorLog(), uploads: pruneOrphanUploads(), ...pruneSecurityRecords() };
+  // For /api/health?full=1: an uptime monitor notices when the cron stops.
+  const now = new Date().toISOString();
+  db().prepare("INSERT INTO app_state (key, value, updated_at) VALUES ('cron_last_run', ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at").run(now, now);
   return Response.json({ ok: true, emailed, notificationEmails, retried, reviewPrompts, noticeReminders, errorDigest, waitlists, pruned });
 }
 

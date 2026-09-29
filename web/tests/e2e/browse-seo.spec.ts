@@ -97,3 +97,15 @@ test("search matches each word on its own, and Indonesian category and level wor
   expect(await titles("mercusuar cthulhu")).toEqual(["Mercusuar di Pulau Kabut"]);
   expect(await titles("cthulhu mercusuar")).toEqual(["Mercusuar di Pulau Kabut"]);
 });
+
+test("searching orders by best match: a word in the title comes first", async ({ page }) => {
+  // "malam" is in one title and in two other games' descriptions (which start sooner).
+  await page.goto("/games?q=malam");
+  const first = page.getByRole("region", { name: "Results" }).getByRole("heading", { level: 3 }).first();
+  await expect(first).toHaveText(/Neon Run: Satu Malam di Neo-Surabaya/);
+  await expect(page.getByLabel("Sort by")).toHaveValue("relevance");
+  await page.goto("/games?q=malam&sort=soonest");
+  await expect(first).not.toHaveText(/Neon Run/);
+  await page.goto("/games");
+  await expect(page.getByLabel("Sort by").locator('option[value="relevance"]')).toHaveCount(0); // only when searching
+});

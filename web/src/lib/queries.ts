@@ -85,7 +85,8 @@ export type GameFilters = {
   mechanic?: string;
   maxPrice?: number;
   free?: boolean;
-  sort?: "soonest" | "price_asc" | "price_desc" | "rating" | "newest";
+  /** "relevance" (only with q): title matches first, then system/tags, then the rest (soonest first). */
+  sort?: "relevance" | "soonest" | "price_asc" | "price_desc" | "rating" | "newest";
 };
 
 /** WHERE clauses and their args for a set of browse filters (shared by search and count). */
@@ -136,7 +137,18 @@ function gameFilterSql(f: GameFilters): { where: string[]; args: (string | numbe
 
 export function searchGames(f: GameFilters, limit = 60, offset = 0): GameCard[] {
   const { where, args } = gameFilterSql(f);
+  // Best match: 3 points per word found in the title, 2 in the system or tags.
+  const terms = f.sort === "relevance" && f.q ? parseSearch(f.q) : [];
+  const scoreArgs: string[] = [];
+  const score = terms.length
+    ? terms.map((t) => {
+        const like = `%${escapeLike(t.text)}%`;
+        scoreArgs.push(like, like, like);
+        return "(CASE WHEN g.title LIKE ? ESCAPE '\\' THEN 3 WHEN g.system LIKE ? ESCAPE '\\' OR g.tags LIKE ? ESCAPE '\\' THEN 2 ELSE 0 END)";
+      }).join(" + ")
+    : "";
   const order = {
+    relevance: score ? `(${score}) DESC, next_session_at IS NULL, next_session_at ASC` : "next_session_at IS NULL, next_session_at ASC",
     soonest: "next_session_at IS NULL, next_session_at ASC",
     price_asc: "g.price_idr ASC",
     price_desc: "g.price_idr DESC",
@@ -147,7 +159,7 @@ export function searchGames(f: GameFilters, limit = 60, offset = 0): GameCard[] 
   // g.id breaks ties so pages never repeat or skip a game.
   return db()
     .prepare(`${CARD_SELECT} WHERE ${where.join(" AND ")} ORDER BY ${order}, g.id LIMIT ? OFFSET ?`)
-    .all(new Date().toISOString(), ...args, limit, offset) as GameCard[];
+    .all(new Date().toISOString(), ...args, ...scoreArgs, limit, offset) as GameCard[];
 }
 
 /** How many published games match the filters (for "N games" and "Load more"). */
@@ -451,7 +463,11 @@ export function canReview(gameId: number, userId: number): boolean {
 export type MessageRow = { id: number; body: string; created_at: string; user_id: number; name: string; avatar_hue: number; avatar_image: string; is_gm: number };
 
 /** The newest 200 messages, returned oldest-first for display. */
-export function listMessages(gameId: number, limit = 200): MessageRow[] {
+/** How many chat messages a game page shows at first, and at most ("Show earlier messages"). */
+export const CHAT_PAGE = 50;
+export const CHAT_MAX = 200;
+
+export function listMessages(gameId: number, limit = CHAT_MAX): MessageRow[] {
   const newest = db()
     .prepare(
       `SELECT m.id, m.body, m.created_at, u.id AS user_id, u.name, u.avatar_hue, u.avatar_image, (g.gm_id = u.id) AS is_gm

@@ -19,7 +19,7 @@ export default async function EditGamePage(props: PageProps<"/gm/games/[id]/edit
   const { t } = await getI18n();
   const { id } = await props.params;
   const g = getGameById(Number(id));
-  if (!g || (g.gm_id !== gm.id && gm.role !== "admin") || g.status === "archived") notFound();
+  if (!g || (g.gm_id !== gm.id && !gm.admin) || g.status === "archived") notFound();
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
