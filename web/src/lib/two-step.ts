@@ -6,7 +6,7 @@ import { hashToken, newSessionToken } from "./password";
 import { secureCookies } from "./auth";
 import { newTotpSecret, otpauthUri, verifyTotp } from "./totp";
 
-// Two-step login (TOTP), offered to admins. After the right password, an account with it on gets
+// Two-step login (TOTP), offered to GMs and admins. After the right password, an account with it on gets
 // a short-lived login step (login_challenges + the qb_2fa cookie) instead of a session; the
 // session starts only after a code from the authenticator app. A lost phone is reset from the
 // server: `npm run admin -- reset-2fa <email>`.

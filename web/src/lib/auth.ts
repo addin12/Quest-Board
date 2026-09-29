@@ -1,10 +1,12 @@
 import "server-only";
 import { cache } from "react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { db } from "./db";
 import { hashToken, newSessionToken } from "./password";
 import { getLang } from "./i18n/server";
+import { deviceLabel } from "./device";
+import { noteDevice, sendNewDeviceEmail } from "./login-devices";
 
 export const SESSION_COOKIE = "qb_session";
 const SESSION_DAYS = 30;
@@ -26,9 +28,11 @@ export const secureCookies = () => process.env.NODE_ENV === "production" && proc
 export async function createSession(userId: number) {
   const token = newSessionToken();
   const expires = new Date(Date.now() + SESSION_DAYS * 86_400_000);
+  const now = new Date().toISOString();
+  const device = deviceLabel((await headers()).get("user-agent"));
   db()
-    .prepare("INSERT INTO auth_sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)")
-    .run(hashToken(token), userId, expires.toISOString());
+    .prepare("INSERT INTO auth_sessions (token_hash, user_id, expires_at, created_at, last_seen_at, device) VALUES (?, ?, ?, ?, ?, ?)")
+    .run(hashToken(token), userId, expires.toISOString(), now, now, device);
   (await cookies()).set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
@@ -36,6 +40,8 @@ export async function createSession(userId: number) {
     path: "/",
     expires,
   });
+  // "Was this you?" — for a browser this account hasn't used before (not its very first one).
+  if (await noteDevice(userId, device)) await sendNewDeviceEmail(userId, device);
 }
 
 export async function destroySession() {
@@ -67,12 +73,16 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   if (!token) return null;
   const row = db()
     .prepare(
-      `SELECT u.id, u.email, u.name, u.role, u.avatar_hue, u.avatar_image, u.email_verified_at, u.locale, s.expires_at
+      `SELECT u.id, u.email, u.name, u.role, u.avatar_hue, u.avatar_image, u.email_verified_at, u.locale, s.expires_at, s.last_seen_at
          FROM auth_sessions s JOIN users u ON u.id = s.user_id
         WHERE s.token_hash = ? AND u.deleted_at IS NULL AND u.suspended_at IS NULL`,
     )
-    .get(hashToken(token)) as (Omit<CurrentUser, "email_verified"> & { email_verified_at: string | null; locale: string; expires_at: string }) | undefined;
+    .get(hashToken(token)) as (Omit<CurrentUser, "email_verified"> & { email_verified_at: string | null; locale: string; expires_at: string; last_seen_at: string | null }) | undefined;
   if (!row || new Date(row.expires_at) < new Date()) return null;
+  // "Last active" in Settings → Where you're logged in; at most one write per session per 10 minutes.
+  if (!row.last_seen_at || Date.now() - Date.parse(row.last_seen_at) > 10 * 60_000) {
+    db().prepare("UPDATE auth_sessions SET last_seen_at = ? WHERE token_hash = ?").run(new Date().toISOString(), hashToken(token));
+  }
   // Emails and reminders go out in the language the person last used the site in.
   const lang = await getLang();
   if (row.locale !== lang) db().prepare("UPDATE users SET locale = ? WHERE id = ?").run(lang, row.id);

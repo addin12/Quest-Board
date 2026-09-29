@@ -20,7 +20,7 @@ import { movedEmail, seatRemovedEmail } from "@/lib/session-mail";
 import { deliverNotificationEmails } from "@/lib/notification-mail";
 import { consumeToken, issueToken, peekToken } from "@/lib/tokens";
 import { archiveGame, deleteAccount } from "@/lib/account";
-import { createReport, decideReport, setGmVerified, suspendUser, unsuspendUser, logAdminAction, removeDirectly } from "@/lib/moderation";
+import { autoFlag, createReport, decideReport, setGmVerified, suspendUser, unsuspendUser, logAdminAction, removeDirectly } from "@/lib/moderation";
 import { isReportDecision, parseReport, isReportTarget } from "@/lib/reports";
 import { heldSeats, joinWaitlist, leaveWaitlist, processWaitlist } from "@/lib/waitlist";
 import { addReply, announceGameIfNew, createNotice, getNotice, renewNotice, setFollowing, setSaved, updateNotice } from "@/lib/community";
@@ -32,6 +32,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { siteOrigin } from "@/lib/site";
 import { saveUpload, ownsUpload, discardUpload } from "@/lib/uploads";
 import * as twoStep from "@/lib/two-step";
+import { endLogin } from "@/lib/login-devices";
 
 /**
  * Errors are translation keys; client forms render them with t().
@@ -181,7 +182,7 @@ export async function cancelLoginCodeAction() {
 
 export async function beginTwoStepAction() {
   const user = await requireUser("/settings");
-  if (user.role !== "admin") return;
+  if (user.role === "player") return; // offered to GMs and admins (they hold payment details / the console)
   twoStep.beginSetup(user.id);
   revalidatePath("/settings");
 }
@@ -235,6 +236,13 @@ export async function logoutAction() {
   redirect("/");
 }
 
+/** Log out one of my other devices (Settings → Where you're logged in). */
+export async function logoutDeviceAction(form: FormData) {
+  const user = await requireUser("/settings");
+  if (await endLogin(user.id, Number(form.get("id")))) await toast("toast.deviceLoggedOut");
+  revalidatePath("/settings");
+}
+
 /** Revoke every session of the current user (e.g. after using a shared computer). */
 export async function logoutEverywhereAction() {
   const user = await requireUser();
@@ -278,7 +286,11 @@ async function becomeGmActionImpl(_: FormState, form: FormData): Promise<FormSta
   if (currentAvatar !== avatarImage) discardUpload(currentAvatar);
   if (user.role === "player") await rotateSession(user.id); // role changed: issue a fresh session token
   // Players pay the GM directly, so new payment details are what a hijacked account would change: tell the owner.
-  if (before?.payment_info && before.payment_info !== paymentInfo) await sendPaymentDetailsChangedEmail(user.email, user.name, paymentInfo);
+  if (before?.payment_info && before.payment_info !== paymentInfo) {
+    // Players see "changed recently" for a while (PaymentChangedNote); admins see frequent changers.
+    db().prepare("INSERT INTO payment_changes (user_id) VALUES (?)").run(user.id);
+    await sendPaymentDetailsChangedEmail(user.email, user.name, paymentInfo);
+  }
   revalidatePath("/", "layout");
   redirect("/gm");
 }
@@ -377,6 +389,7 @@ async function saveGameActionImpl(_: FormState, form: FormData): Promise<FormSta
     );
   }
   announceGameIfNew(gameId); // first publish → tell the GM's followers
+  autoFlag("game", gameId, [g.title, g.summary, g.description, g.platform].join("\n")); // scam wording → the moderators' queue
   revalidatePath("/", "layout");
   redirect(`/gm/games/${gameId}`);
 }
@@ -610,7 +623,8 @@ async function postMessageActionImpl(_: FormState, form: FormData): Promise<Form
   if (body.length > 1000) return { error: "err.longMessage" };
   if (!isGameMember(gameId, user.id)) return { error: "err.membersOnly" };
   if (!hit("chat", String(user.id))) return { error: "err.rateLimited" };
-  db().prepare("INSERT INTO messages (game_id, user_id, body) VALUES (?, ?, ?)").run(gameId, user.id, body);
+  const messageId = Number(db().prepare("INSERT INTO messages (game_id, user_id, body) VALUES (?, ?, ?)").run(gameId, user.id, body).lastInsertRowid);
+  autoFlag("message", messageId, body); // scam wording → the moderators' queue (never blocks)
   revalidatePath("/games/[slug]", "page");
   return { ok: true };
 }
@@ -797,7 +811,8 @@ async function postRequestMessageActionImpl(_: FormState, form: FormData): Promi
   if (!body) return { error: "err.emptyMessage" };
   if (body.length > 1000) return { error: "err.longMessage" };
   if (!hit("chat", String(user.id))) return { error: "err.rateLimited" };
-  db().prepare("INSERT INTO gm_request_messages (request_id, user_id, body) VALUES (?, ?, ?)").run(request.id, user.id, body);
+  const messageId = Number(db().prepare("INSERT INTO gm_request_messages (request_id, user_id, body) VALUES (?, ?, ?)").run(request.id, user.id, body).lastInsertRowid);
+  autoFlag("request_message", messageId, body);
   const other = user.id === request.requester_id ? request.matched_gm_id : request.requester_id;
   if (other) notify({ userId: other, kind: "request_message", actorId: user.id, requestId: request.id });
   revalidatePath("/", "layout");
@@ -999,6 +1014,7 @@ async function createNoticeActionImpl(_: FormState, form: FormData): Promise<For
   if (!parsed.ok) return { fieldErrors: parsed.errors, error: "err.fixFields" };
   if (!hit("notice", String(user.id))) return { error: "err.rateLimited" };
   const id = createNotice(user.id, parsed.value);
+  autoFlag("lfg_post", id, Object.values(parsed.value).filter((v) => typeof v === "string").join("\n"));
   revalidatePath("/board");
   redirect(`/board/${id}?posted=1`);
 }
@@ -1012,6 +1028,8 @@ async function replyNoticeActionImpl(_: FormState, form: FormData): Promise<Form
   if (!parsed.ok) return { fieldErrors: { body: parsed.error } };
   if (!hit("noticeReply", String(user.id))) return { error: "err.rateLimited" };
   addReply(post.id, user.id, parsed.value);
+  const replyId = (db().prepare("SELECT MAX(id) AS id FROM lfg_replies WHERE post_id = ? AND author_id = ?").get(post.id, user.id) as { id: number }).id;
+  autoFlag("lfg_reply", replyId, parsed.value);
   revalidatePath(`/board/${post.id}`);
   return { ok: true };
 }

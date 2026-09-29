@@ -1,5 +1,5 @@
 import { test, expect, type Browser, type Page } from "@playwright/test";
-import { e2eDb } from "./helpers";
+import { e2eDb, login } from "./helpers";
 import { totpCode, totpStep } from "../../src/lib/totp";
 
 // Two-step login for admins: set up in Settings, a code after the password, each code once,
@@ -17,6 +17,18 @@ async function passwordStep(browser: Browser): Promise<Page> {
   await page.waitForURL("**/login/code");
   return page;
 }
+
+test("GMs are offered two-step login too; players aren't", async ({ browser }) => {
+  const gm = await (await browser.newContext()).newPage();
+  await login(gm, "gm@questboard.test");
+  await gm.goto("/settings");
+  await expect(gm.getByRole("button", { name: "Set up two-step login" })).toBeVisible();
+  await expect(gm.getByText(/Recommended for GMs/)).toBeVisible();
+  const player = await (await browser.newContext()).newPage();
+  await login(player, "player@questboard.test");
+  await player.goto("/settings");
+  await expect(player.getByRole("heading", { name: "Two-step login" })).toHaveCount(0);
+});
 
 test("admins can turn on two-step login, then need a code from their app to log in", async ({ browser }) => {
   const db = e2eDb();

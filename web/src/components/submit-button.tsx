@@ -8,16 +8,19 @@ export function SubmitButton({
   pendingText,
   className = "btn-primary",
   ariaPressed,
+  ariaLabel,
 }: {
   children: React.ReactNode;
   pendingText?: string;
   className?: string;
   ariaPressed?: boolean;
+  /** When the visible text alone is ambiguous (e.g. "Log out" on a list of devices). */
+  ariaLabel?: string;
 }) {
   const { pending } = useFormStatus();
   const { t } = useI18n();
   return (
-    <button type="submit" disabled={pending} className={className} aria-busy={pending} aria-pressed={ariaPressed}>
+    <button type="submit" disabled={pending} className={className} aria-busy={pending} aria-pressed={ariaPressed} aria-label={ariaLabel}>
       {pending ? (pendingText ?? t("common.working")) : children}
     </button>
   );

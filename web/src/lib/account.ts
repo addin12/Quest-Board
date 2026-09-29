@@ -83,6 +83,8 @@ export function exportAccount(userId: number) {
   const one = (sql: string, ...args: (string | number)[]) => db().prepare(sql).get(...args);
   return {
     feedback: q("SELECT kind, body, page, created_at FROM feedback WHERE user_id = ? ORDER BY created_at", userId),
+    payment_detail_changes: q("SELECT changed_at FROM payment_changes WHERE user_id = ? ORDER BY changed_at", userId),
+    login_devices: q("SELECT device, first_seen_at, last_seen_at FROM login_devices WHERE user_id = ? ORDER BY first_seen_at", userId),
     questions: q(
       `SELECT g.title AS game, m.body, m.created_at FROM game_question_messages m JOIN game_questions gq ON gq.id = m.question_id
          JOIN games g ON g.id = gq.game_id WHERE m.user_id = ? ORDER BY m.created_at`, userId),

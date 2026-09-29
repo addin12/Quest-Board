@@ -47,3 +47,46 @@ test("notification popover, toasts and the phone layout", async ({ browser }) =>
   await expect(phone.getByRole("link", { name: "See dates" })).toBeVisible();
   expect(await phone.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
 });
+
+// The per-request script nonce (lib/csp.ts) in every engine: no page trips the policy, signed out
+// or in, and client-side navigation still loads its scripts ('strict-dynamic').
+test("no page trips the Content Security Policy", async ({ browser }) => {
+  const watch = async (page: import("@playwright/test").Page) => {
+    await page.addInitScript(() => {
+      const w = window as unknown as { cspViolations: string[] };
+      w.cspViolations = [];
+      document.addEventListener("securitypolicyviolation", (e) => w.cspViolations.push(`${e.violatedDirective} ${e.blockedURI}`));
+    });
+    return page;
+  };
+  const violations = (page: import("@playwright/test").Page) => page.evaluate(() => (window as unknown as { cspViolations: string[] }).cspViolations);
+  const visit = async (page: import("@playwright/test").Page, paths: string[]) => {
+    for (const path of paths) {
+      await page.goto(path);
+      await page.waitForLoadState("networkidle");
+      expect(await violations(page), path).toEqual([]);
+    }
+  };
+
+  const anon = await watch(await newPage(browser));
+  await visit(anon, ["/", "/games", "/games/mercusuar-di-pulau-kabut", "/browse", "/browse/genre/horror", "/hire-a-gm", "/gms/1", "/board", "/quiz", "/how-it-works", "/privacy", "/signup", "/forgot-password", "/feedback"]);
+  // A client-side navigation fetches new scripts after the first page.
+  await anon.goto("/");
+  await anon.getByRole("link", { name: "Browse all games" }).first().click();
+  await anon.waitForURL("**/games");
+  await anon.waitForLoadState("networkidle");
+  expect(await violations(anon), "client-side navigation").toEqual([]);
+
+  for (const [email, paths] of [
+    ["player@questboard.test", ["/dashboard", "/settings", "/notifications", "/hire-a-gm/request"]],
+    ["gm@questboard.test", ["/gm", "/gm/games/new"]],
+    ["admin@questboard.test", ["/admin", "/admin/reports", "/admin/users", "/admin/errors"]],
+  ] as const) {
+    const page = await watch(await newPage(browser));
+    await login(page, email);
+    expect(await violations(page), `${email} login`).toEqual([]);
+    await visit(page, [...paths]);
+  }
+  // Indonesian pages too (a separate context: /id/... switches the language for the visit).
+  await visit(await watch(await newPage(browser)), ["/id", "/id/games", "/id/board"]);
+});

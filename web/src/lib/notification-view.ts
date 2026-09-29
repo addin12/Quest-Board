@@ -68,7 +68,7 @@ export function describeNotification(n: NotificationSource, t: T): NotificationV
     case "session_cancelled": return { ...base, href: gameHref, icon: "calendar", text: n.cancel_reason ? t("notif.sessionCancelledReason", { title: game, reason: n.cancel_reason }) : t("notif.sessionCancelled", { title: game }) };
     case "session_moved": return { ...base, href: gameHref, icon: "calendar-clock", text: t("notif.sessionMoved", { title: game }) };
     case "game_place_changed": return { ...base, href: gameHref, icon: "marker", text: t("notif.gamePlaceChanged", { title: game }) };
-    case "report_new": return { ...base, href: "/admin/reports", icon: "flag", text: t("notif.reportNew", { name: who }) };
+    case "report_new": return { ...base, href: "/admin/reports", icon: "flag", text: n.actor_name ? t("notif.reportNew", { name: who }) : t("notif.reportAuto") };
     case "waitlist_offer": return { ...base, href: gameHref, icon: "ticket", text: t("notif.waitlistOffer", { title: game }) };
     case "payment_confirmed": return { ...base, href: "/dashboard", icon: "wallet", text: t("notif.paymentConfirmed", { name: who, title: game }) };
     case "lfg_reply": return { ...base, href: postHref, icon: "thumbtack", text: t("notif.lfgReply", { name: who, title: n.post_title ?? "" }) };

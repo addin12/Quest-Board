@@ -13,8 +13,11 @@ const { SCHEMA_VERSION } = await import("../../src/lib/schema.ts");
 
 // Undo of the NEWEST migration only. When adding migration N, replace this with N's inverse
 // (as in hardening.test.ts) and update the check below.
-const UNDO_LATEST = "DROP TABLE login_challenges; ALTER TABLE users DROP COLUMN totp_secret; ALTER TABLE users DROP COLUMN totp_enabled_at; ALTER TABLE users DROP COLUMN totp_last_step;";
-const latestIsBack = (conn: ReturnType<typeof db>) => conn.prepare("SELECT totp_last_step FROM users LIMIT 1").all();
+const UNDO_LATEST = "CREATE TABLE reports_v31 (   id              INTEGER PRIMARY KEY AUTOINCREMENT,   reporter_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,   target_type     TEXT NOT NULL CHECK (target_type IN ('game','review','review_reply','message','request_message','user','lfg_post','lfg_reply')),   target_id       INTEGER NOT NULL,   target_owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,   reason          TEXT NOT NULL CHECK (reason IN ('scam','harassment','inappropriate','spam','misleading','other')),   details         TEXT NOT NULL DEFAULT '',   snapshot        TEXT NOT NULL,   href            TEXT NOT NULL,   status          TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','resolved','dismissed')),   decision        TEXT CHECK (decision IN ('remove','suspend','dismiss')),   note            TEXT NOT NULL DEFAULT '',   resolved_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,   created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),   resolved_at     TEXT ); INSERT INTO reports_v31 (id, reporter_id, target_type, target_id, target_owner_id, reason, details, snapshot, href, status, decision, note, resolved_by, created_at, resolved_at) SELECT id, reporter_id, target_type, target_id, target_owner_id, reason, details, snapshot, href, status, decision, note, resolved_by, created_at, resolved_at FROM reports; DROP TABLE reports; ALTER TABLE reports_v31 RENAME TO reports; CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, created_at); CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_type, target_id);";
+const latestIsBack = (conn: ReturnType<typeof db>) => {
+  const col = conn.prepare("SELECT \"notnull\" AS nn FROM pragma_table_info('reports') WHERE name = 'reporter_id'").get() as { nn: number };
+  if (col.nn) throw new Error("reports.reporter_id is still NOT NULL");
+};
 
 test("an open connection prepared for an older schema is migrated on the next db() call", () => {
   const conn = db();

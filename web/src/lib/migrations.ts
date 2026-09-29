@@ -399,6 +399,52 @@ export const MIGRATIONS: Record<number, string> = {
       expires_at TEXT NOT NULL
     );
   `,
+  29: `
+    CREATE TABLE IF NOT EXISTS payment_changes (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      changed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_payment_changes_user ON payment_changes(user_id, changed_at);
+  `,
+  30: `
+    ALTER TABLE auth_sessions ADD COLUMN created_at TEXT;
+    ALTER TABLE auth_sessions ADD COLUMN last_seen_at TEXT;
+    ALTER TABLE auth_sessions ADD COLUMN device TEXT NOT NULL DEFAULT '';
+    CREATE TABLE IF NOT EXISTS login_devices (
+      user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      device_hash   TEXT NOT NULL,                -- sha256 of the qb_device cookie
+      device        TEXT NOT NULL DEFAULT '',     -- "Chrome · Android" (lib/device.ts)
+      first_seen_at TEXT NOT NULL,
+      last_seen_at  TEXT NOT NULL,
+      PRIMARY KEY (user_id, device_hash)
+    );
+  `,
+  31: `
+    -- A NOT NULL can't be dropped in SQLite: rebuild reports so automatic flags need no reporter.
+    CREATE TABLE reports_v31 (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      reporter_id     INTEGER REFERENCES users(id) ON DELETE CASCADE, -- NULL = an automatic flag (v31)
+      target_type     TEXT NOT NULL CHECK (target_type IN ('game','review','review_reply','message','request_message','user','lfg_post','lfg_reply')),
+      target_id       INTEGER NOT NULL,
+      target_owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      reason          TEXT NOT NULL CHECK (reason IN ('scam','harassment','inappropriate','spam','misleading','other')),
+      details         TEXT NOT NULL DEFAULT '',
+      snapshot        TEXT NOT NULL,
+      href            TEXT NOT NULL,
+      status          TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','resolved','dismissed')),
+      decision        TEXT CHECK (decision IN ('remove','suspend','dismiss')),
+      note            TEXT NOT NULL DEFAULT '',
+      resolved_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+      resolved_at     TEXT
+    );
+    INSERT INTO reports_v31 (id, reporter_id, target_type, target_id, target_owner_id, reason, details, snapshot, href, status, decision, note, resolved_by, created_at, resolved_at) SELECT id, reporter_id, target_type, target_id, target_owner_id, reason, details, snapshot, href, status, decision, note, resolved_by, created_at, resolved_at FROM reports;
+    DROP TABLE reports;
+    ALTER TABLE reports_v31 RENAME TO reports;
+    CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, created_at);
+    CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_type, target_id);
+  `,
 };
 
 export type UpgradePlan =

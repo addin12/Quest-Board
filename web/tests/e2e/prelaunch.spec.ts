@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { login, newPage, signup, unique, e2eDb } from "./helpers";
+import { bookFirstOpenSeat, createGmWithGame, login, newPage, signup, unique, e2eDb } from "./helpers";
 
 test("new GMs get a getting-started checklist; set-up GMs don't", async ({ page, browser }) => {
   await signup(page, "Fresh Game Master", unique("fresh-gm"), true);
@@ -63,6 +63,45 @@ test("sign-up records Terms consent; a password change sends a security email", 
   expect(mail.subject).toBe("Your Quest Board password was changed");
   expect(mail.body_text).toContain("/forgot-password");
   db.close();
+});
+
+test("players are warned about recently changed payment details; admins see GMs who change them often", async ({ page, browser }) => {
+  const gmEmail = unique("paywarn");
+  const slug = await createGmWithGame(page, "Switchy GM", gmEmail, `Switchy Table ${Date.now() % 100000}`);
+  const player = await newPage(browser);
+  await signup(player, "Wary Player", unique("wary"));
+  await bookFirstOpenSeat(player, [slug]);
+  await player.goto(`/games/${slug}`);
+  await expect(player.getByText("How to pay the GM")).toBeVisible();
+  await expect(player.getByText(/These payment details were changed on/)).toHaveCount(0); // set once, never changed
+
+  const change = async (payment: string) => {
+    await page.goto("/gm");
+    await page.getByRole("link", { name: /Edit profile & payment details/ }).click();
+    await page.getByLabel(/How players pay you/).fill(payment);
+    await page.getByRole("button", { name: /Save & go to GM dashboard/ }).click();
+    await page.waitForURL("**/gm");
+  };
+  await change("DANA 0899-1111 a.n. Someone Else");
+  await player.reload();
+  await expect(player.getByText(/These payment details were changed on .+ confirm them with the GM in the chat before you pay/)).toBeVisible();
+
+  const admin = await newPage(browser);
+  await login(admin, "admin@questboard.test");
+  const row = () => admin.getByRole("row").filter({ hasText: gmEmail });
+  await admin.goto(`/admin/gms?q=${encodeURIComponent(gmEmail)}`);
+  await expect(row().getByText(/Payment details changed/)).toHaveCount(0); // once is normal
+  await change("OVO 0877-2222 a.n. Another Person");
+  await admin.reload();
+  await expect(row().getByText("Payment details changed 2 times in 30 days")).toBeVisible();
+
+  // After the warning window, the note goes away.
+  const db = e2eDb();
+  db.prepare("UPDATE payment_changes SET changed_at = '2020-01-01T00:00:00.000Z' WHERE user_id = (SELECT id FROM users WHERE email = ?)").run(gmEmail);
+  db.close();
+  await player.reload();
+  await expect(player.getByText("How to pay the GM")).toBeVisible();
+  await expect(player.getByText(/These payment details were changed on/)).toHaveCount(0);
 });
 
 test("changing a GM's payment details sends a security email showing the new details", async ({ page }) => {

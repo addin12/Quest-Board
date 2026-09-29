@@ -2,6 +2,7 @@ import "server-only";
 import type { RosterRow } from "./earnings";
 import { db } from "./db";
 import { escapeLike } from "./policy";
+import { parseSearch } from "./search-terms";
 import { getMechanic, isGenre, isMechanic, isStyle, mechanicsForSystem, systemSlug } from "./categories";
 import { SYSTEMS } from "./validation";
 
@@ -82,11 +83,23 @@ function gameFilterSql(f: GameFilters): { where: string[]; args: (string | numbe
   const args: (string | number)[] = [];
 
   if (f.q) {
-    // Escape % and _ so the keyword matches literally. The GM's own location counts too.
-    const cols = ["g.title", "g.summary", "g.tags", "g.system", "u.name", "g.city", "p.location"];
-    where.push(`(${cols.map((c) => `${c} LIKE ? ESCAPE '\\'`).join(" OR ")})`);
-    const like = `%${escapeLike(f.q)}%`;
-    args.push(...cols.map(() => like));
+    // Each word on its own, in any order (lib/search-terms.ts): it matches the text (the GM's own
+    // location counts too) or, for words like "horor" or "pemula", the game's genres, styles or level.
+    // Escape % and _ so words match literally.
+    const cols = ["g.title", "g.summary", "g.description", "g.tags", "g.system", "u.name", "g.city", "p.location"];
+    const text = (word: string) => {
+      args.push(...cols.map(() => `%${escapeLike(word)}%`));
+      return cols.map((c) => `${c} LIKE ? ESCAPE '\\'`);
+    };
+    const terms = parseSearch(f.q);
+    if (terms.length === 0) where.push(`(${text(f.q).join(" OR ")})`); // only symbols: match them literally
+    for (const term of terms) {
+      const any = text(term.text);
+      for (const g of term.genres) { any.push("(',' || g.genres || ',') LIKE ?"); args.push(`%,${g},%`); }
+      for (const s of term.styles) { any.push("(',' || g.styles || ',') LIKE ?"); args.push(`%,${s},%`); }
+      if (term.level) any.push(`g.experience_level = '${term.level}'`);
+      where.push(`(${any.join(" OR ")})`);
+    }
   }
   if (f.system) { where.push("g.system = ?"); args.push(f.system); }
   if (f.gm && Number.isInteger(f.gm)) { where.push("g.gm_id = ?"); args.push(f.gm); }
@@ -660,6 +673,16 @@ export function listRequestMessages(requestId: number): RequestMessageRow[] {
       )
       .all(requestId) as RequestMessageRow[]
   ).reverse();
+}
+
+/** Players are warned for this long after a GM changes their payment details. */
+export const PAYMENT_CHANGE_WARN_DAYS = 14;
+
+/** When this GM last changed their payment details, if that was within the warning window. */
+export function paymentChangedRecently(gmId: number, now = Date.now()): string | null {
+  const since = new Date(now - PAYMENT_CHANGE_WARN_DAYS * 86_400_000).toISOString();
+  const row = db().prepare("SELECT MAX(changed_at) AS at FROM payment_changes WHERE user_id = ? AND changed_at >= ?").get(gmId, since) as { at: string | null };
+  return row.at;
 }
 
 /** A GM's payment details — never for a suspended or deleted account (moderators may have stopped a scam). */

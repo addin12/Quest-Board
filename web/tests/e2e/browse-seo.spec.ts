@@ -83,3 +83,17 @@ test("P2-17 robots.txt, sitemap.xml, canonical URLs and Event data for search en
   // Only public details: never the GM's payment info.
   expect(raw).not.toMatch(/BCA|GoPay|OVO|DANA|rekening/i);
 });
+
+test("search matches each word on its own, and Indonesian category and level words match tags", async ({ page }) => {
+  const titles = async (q: string) => {
+    await page.goto(`/games?q=${encodeURIComponent(q)}`);
+    const results = page.getByRole("region", { name: "Results" }).getByRole("heading", { level: 3 });
+    return (await results.allInnerTexts()).map((s) => s.trim()).sort();
+  };
+  // No seed game says "horor" or "pemula" in its text: these come from the genre and level tags.
+  expect(await titles("pemula horor")).toEqual(["Signal from Tartarus Station"]);
+  expect(await titles("Horor VETERAN")).toEqual(["Abomination Vaults", "Darah di Balik Tirai Beludru"]);
+  // Words in any order, across fields (system + title word).
+  expect(await titles("mercusuar cthulhu")).toEqual(["Mercusuar di Pulau Kabut"]);
+  expect(await titles("cthulhu mercusuar")).toEqual(["Mercusuar di Pulau Kabut"]);
+});

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
 import { shownName } from "@/lib/i18n/dict";
+import { PaymentChangedNote } from "@/components/payment-changed-note";
 import {
   canReview,
   getGameBySlug,
@@ -285,6 +286,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
               <div className="card border-accent/40! p-5">
                 <h2 className="eyebrow flex items-center gap-1.5 text-accent!"><Icon name="wallet" /> {t("game.howToPay")}</h2>
                 <p className="mt-2 whitespace-pre-line text-sm">{game.gm_payment_info || t("game.howToPayEmpty")}</p>
+                {game.gm_payment_info && <PaymentChangedNote gmId={game.gm_id} />}
                 <p className="mt-3 flex items-start gap-1.5 border-t border-border pt-3 text-xs text-muted">
                   <Icon name="shield-check" className="mt-0.5 shrink-0 text-accent" /> {t("game.scamWarning")}
                 </p>

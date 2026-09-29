@@ -4,8 +4,8 @@
 
 | Asset | Threat | Control (MVP) | Next |
 |---|---|---|---|
-| Accounts | Credential stuffing, weak passwords | scrypt (N=16384, 64-byte key, 16-byte salt); ≥ 8-character passwords; generic login error; **rate limit of 10 logins per 10 min per IP+email, and 10 sign-ups per hour per IP**; **two-step login (TOTP) for admins**, each code once, 5 tries per login, reset only from the server (`npm run admin -- reset-2fa`) | Two-step login for GMs |
-| Sessions | Theft / fixation | 256-bit token, **only the SHA-256 hash is stored**; httpOnly, SameSite=Lax, Secure in production; 30-day expiry; revoked on logout; **rotated when a player becomes a GM; expired rows purged; "Log out on all devices"** | – |
+| Accounts | Credential stuffing, weak passwords | scrypt (N=16384, 64-byte key, 16-byte salt); ≥ 8-character passwords; generic login error; **rate limit of 10 logins per 10 min per IP+email, and 10 sign-ups per hour per IP**; **two-step login (TOTP) for admins**, each code once, 5 tries per login, reset only from the server (`npm run admin -- reset-2fa`); **optional for GMs**; **new-device login emails** (`qb_device`) | Require two-step login for verified GMs |
+| Sessions | Theft / fixation | 256-bit token, **only the SHA-256 hash is stored**; httpOnly, SameSite=Lax, Secure in production; 30-day expiry; revoked on logout; **rotated when a player becomes a GM; expired rows purged; "Log out on all devices"; Settings lists each device (browser · system, last active) with its own "Log out"** | – |
 | Server actions | Direct POST bypassing the UI | Every action re-checks the session and ownership or membership | Audit log |
 | CSRF | Cross-site posts | Next.js server-action Origin check + SameSite cookies | – |
 | Privilege escalation | Sign up as admin | Role allow-list, unit tested | – |
@@ -13,11 +13,11 @@
 | XSS / clickjacking | Script in user content, framing | React escapes all output; no `dangerouslySetInnerHTML`; **CSP with a per-request script nonce and `'strict-dynamic'` (no `'unsafe-inline'` for scripts; `default-src 'self'`, `frame-ancestors 'none'`), X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy** | Drop `'unsafe-inline'` for styles |
 | Open redirect | `?next=//evil` | `safeNext()` allows only relative paths | – |
 | Overbooking | Race conditions | `BEGIN IMMEDIATE` + partial unique index | – |
-| **GM payment details** | Harvesting of bank or e-wallet numbers | Shown only to game members; excluded from profiles, search and the API (e2e tested); ≤ 500 characters | Rate-limit account creation; flag profiles whose payment text changes often |
+| **GM payment details** | Harvesting of bank or e-wallet numbers | Shown only to game members; excluded from profiles, search and the API (e2e tested); ≤ 500 characters; **each change is emailed to the GM, players see “changed on …” for 14 days, admins see GMs with 2+ changes in 30 days** | Rate-limit account creation |
 | Language cookie | Tampering | Only `id` or `en` accepted; anything else falls back to `en` | – |
-| Spam / abuse | Chat, reservation or review flooding | **Rate limits: 30 chat posts / 30 reservations per 10 min, 10 reviews per hour, per user** | Keyword flagging |
+| Spam / abuse | Chat, reservation or review flooding | **Rate limits: 30 chat posts / 30 reservations per 10 min, 10 reviews per hour, per user**; **automatic scam flags** on chats, notices, replies and listings (`lib/scam-signals.ts` → admin reports) | Tune the word list from real reports |
 | Cover images & portraits | Pointing images at arbitrary or malicious URLs, or taking another GM's portrait | **Allow-lists: gradient or initials, built-in library art, or the current value** (`isAllowedCover`, `isAllowedPortrait`, unit tested) | Same principle for future uploads |
-| Search | Wildcard injection in LIKE | **`escapeLike()` + `ESCAPE '\'`** | Full-text search |
+| Search | Wildcard injection in LIKE | **`escapeLike()` + `ESCAPE '\'`**, per word (`lib/search-terms.ts`) | SQLite FTS5 if the catalogue outgrows LIKE |
 
 ## 2. No payments = smaller attack surface
 Quest Board stores **no card data, bank credentials, balances or transactions**. That means:

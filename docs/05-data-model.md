@@ -313,4 +313,22 @@ users.totp_last_step   -- the last accepted code's 30-second step: each code wor
 login_challenges(token_hash PRIMARY KEY, user_id → users (CASCADE), next_path, attempts, expires_at)
 ```
 - Offered to admins in Settings. With it on, the right password creates a **login challenge** (10 minutes, the `qb_2fa` cookie; only its SHA-256 is stored) instead of a session; `/login/code` takes the 6-digit code (RFC 6238, one step of clock drift either way). Five wrong codes delete the challenge. A password reset also ends at the code step, and confirming an email never signs a two-step account in: an emailed link proves the inbox, not the phone.
+- Offered to GMs as well since v29 (optional).
+
+## v29: payment detail changes
+```sql
+payment_changes(id, user_id → users (CASCADE), changed_at)
+```
+- A row each time a GM replaces non-empty payment details with different ones (the first time they're set isn't a change). For 14 days (`PAYMENT_CHANGE_WARN_DAYS`) players see a warning next to the details; the admin GM list flags 2+ changes in 30 days. In "Download my data" (`payment_detail_changes`).
+
+## v30: where you're logged in
+```sql
+auth_sessions.created_at, auth_sessions.last_seen_at, auth_sessions.device   -- "Chrome · Android" (lib/device.ts)
+login_devices(user_id → users (CASCADE), device_hash, device, first_seen_at, last_seen_at, PRIMARY KEY (user_id, device_hash))
+```
+- `last_seen_at` is written at most every 10 minutes per session. Settings lists live sessions (`rowid` identifies one to log out).
+- `qb_device` is a random, httpOnly, 2-year cookie; only its SHA-256 is stored. A login from an unknown one emails the account (not for its first device; `LIMITS.newDevice` 10/h). In "Download my data" (`login_devices`, without the hash).
+
+## v31: automatic flags
+- `reports` rebuilt so `reporter_id` may be NULL: an **automatic flag** (`autoFlag`, `lib/scam-signals.ts`) with `reason = 'scam'` and `details` = the matched signals (`credentials,newAccount,…`), shown in words in `/admin/reports`. One open automatic flag per piece of content.
 - Not in "Download my data" (the secret is a credential; challenges last minutes). `npm run admin -- reset-2fa <email>` clears the three columns and the account's sessions and challenges.

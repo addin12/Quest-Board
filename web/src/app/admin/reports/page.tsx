@@ -9,6 +9,7 @@ import { LocalTime } from "@/components/local-time";
 import { Icon } from "@/components/icon";
 import { decideReportAction } from "@/app/actions";
 import { AdminNav } from "../admin-nav";
+import { isScamSignal } from "@/lib/scam-signals";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -48,9 +49,11 @@ export default async function AdminReportsPage(props: PageProps<"/admin/reports"
                 {r.owner_suspended ? <span className="chip">{t("admin.suspendedChip")}</span> : null}
                 <span className="ml-auto text-xs text-muted"><LocalTime iso={r.created_at} /></span>
               </div>
-              <p className="mt-1 text-xs text-muted">{t("admin.reportedBy", { reporter: r.reporter_name, owner: r.owner_name })}</p>
+              <p className="mt-1 text-xs text-muted">{t("admin.reportedBy", { reporter: r.reporter_name ?? t("admin.autoFlag"), owner: r.owner_name })}</p>
               <pre className="mt-3 whitespace-pre-wrap rounded-md border border-border bg-surface-2 p-3 font-sans text-sm">{r.snapshot}</pre>
-              {r.details && <p className="mt-2 text-sm"><span className="font-semibold">{t("admin.reporterSays")}</span> {r.details}</p>}
+              {r.reporter_name === null ? (
+                <p className="mt-2 text-sm"><span className="font-semibold">{t("admin.autoFlagWhy")}</span> {r.details.split(",").filter(isScamSignal).map((s) => t(`scam.${s}`)).join(" · ")}</p>
+              ) : r.details && <p className="mt-2 text-sm"><span className="font-semibold">{t("admin.reporterSays")}</span> {r.details}</p>}
               <p className="mt-2 text-sm"><Link href={r.href} className="font-semibold text-accent underline">{t("admin.openTarget")}</Link></p>
               {r.status === "open" ? (
                 <form action={decideReportAction} className="mt-4 space-y-3 border-t border-border pt-4">

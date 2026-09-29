@@ -255,3 +255,36 @@ test("Terms and Privacy pages exist in both languages and are linked from sign-u
   await page.getByRole("button", { name: "id", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Ketentuan Layanan" })).toBeVisible();
 });
+
+test("Settings lists where you're logged in; a new device is emailed, a known one isn't; one device can be logged out", async ({ page, browser }) => {
+  const email = unique("devices");
+  await signup(page, "Device Owner", email); // the first device: no "new device" email
+  const db = e2eDb();
+  const newDeviceMails = () => (db.prepare("SELECT COUNT(*) AS n FROM email_outbox WHERE to_address = ? AND subject = 'New login to your Quest Board account'").get(email) as { n: number }).n;
+  expect(newDeviceMails()).toBe(0);
+
+  const otherContext = await browser.newContext();
+  const other = await otherContext.newPage();
+  await login(other, email);
+  await expect.poll(newDeviceMails).toBe(1);
+  const mail = db.prepare("SELECT body_text FROM email_outbox WHERE to_address = ? AND subject = 'New login to your Quest Board account'").get(email) as { body_text: string };
+  expect(mail.body_text).toMatch(/(Chrome|Edge) · (Windows|Linux|macOS)/);
+  expect(mail.body_text).toContain("/forgot-password");
+  // Logging in again on that browser (it keeps its device cookie) isn't news.
+  await other.getByRole("button", { name: "Log out", exact: true }).click();
+  await other.waitForURL((u) => u.pathname === "/");
+  await login(other, email);
+  expect(newDeviceMails()).toBe(1);
+
+  await page.goto("/settings");
+  const rows = page.getByTestId("login-row");
+  await expect(rows).toHaveCount(2); // this one, and the other browser's latest session
+  await expect(rows.first().getByText("This device")).toBeVisible();
+  await expect(rows.nth(1).getByText(/Logged in .+ · last active/)).toBeVisible();
+  await rows.nth(1).getByRole("button", { name: /^Log out / }).click();
+  await expect(page.getByText("That device was logged out.")).toBeVisible();
+  await expect(rows).toHaveCount(1);
+  await other.goto("/dashboard");
+  await expect(other).toHaveURL(/\/login\?next=/);
+  db.close();
+});

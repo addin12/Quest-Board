@@ -31,7 +31,10 @@
 // v26: uploads (pictures people uploaded for covers and portraits).
 // v27: app_state (named values kept between runs, e.g. the last error digest).
 // v28: two-step login (users.totp_*, login_challenges).
-export const SCHEMA_VERSION = 28;
+// v29: payment_changes (when a GM changed their payment details).
+// v30: where you're logged in (auth_sessions.device/created_at/last_seen_at, login_devices).
+// v31: automatic scam flags (reports.reporter_id may be NULL).
+export const SCHEMA_VERSION = 31;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -74,7 +77,20 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
 CREATE TABLE IF NOT EXISTS auth_sessions (
   token_hash TEXT PRIMARY KEY,
   user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  expires_at TEXT NOT NULL
+  expires_at TEXT NOT NULL,
+  created_at   TEXT,                        -- v30: when this login happened
+  last_seen_at TEXT,                        -- v30: last request (updated at most every 10 minutes)
+  device       TEXT NOT NULL DEFAULT ''     -- v30: "Chrome · Android"
+);
+
+-- v30: browsers this account has logged in with (for "new device" emails).
+CREATE TABLE IF NOT EXISTS login_devices (
+  user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  device_hash   TEXT NOT NULL,                -- sha256 of the qb_device cookie
+  device        TEXT NOT NULL DEFAULT '',     -- "Chrome · Android" (lib/device.ts)
+  first_seen_at TEXT NOT NULL,
+  last_seen_at  TEXT NOT NULL,
+  PRIMARY KEY (user_id, device_hash)
 );
 
 -- v28: a password checked, waiting for the two-step code (10 minutes).
@@ -322,7 +338,7 @@ CREATE TABLE IF NOT EXISTS email_outbox (
 
 CREATE TABLE IF NOT EXISTS reports (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
-  reporter_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reporter_id     INTEGER REFERENCES users(id) ON DELETE CASCADE, -- NULL = an automatic flag (v31, lib/scam-signals.ts)
   target_type     TEXT NOT NULL CHECK (target_type IN ('game','review','review_reply','message','request_message','user','lfg_post','lfg_reply')),
   target_id       INTEGER NOT NULL,
   target_owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -419,4 +435,12 @@ CREATE TABLE IF NOT EXISTS app_state (
   value      TEXT NOT NULL,
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
+
+-- v29: each change of a GM's payment details (players are warned for 14 days).
+CREATE TABLE IF NOT EXISTS payment_changes (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  changed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_payment_changes_user ON payment_changes(user_id, changed_at);
 `;

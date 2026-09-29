@@ -67,7 +67,7 @@ CMD ["npm", "start"]
 |---|---|
 | **First admin (launch day)** | Start the app once (it creates the database), then `npm run admin -- create you@example.com "Your Name"`. It prints a one-time password: log in and change it in Settings. Production has **no** demo admin |
 | More admins | `npm run admin -- promote <email>` (an existing account) · `npm run admin -- demote <email>` · `npm run admin -- list`. The last admin can't be demoted |
-| Two-step login | Every admin turns it on in Settings (the admin home reminds them). Lost phone: `npm run admin -- reset-2fa <email>` turns it off and logs them out everywhere; they set it up again |
+| Two-step login | Every admin turns it on in Settings (the admin home reminds them); GMs may too. Lost phone: `npm run admin -- reset-2fa <email>` turns it off and logs them out everywhere; they set it up again |
 | Backup | `npm run db:backup` — a checked copy (`VACUUM INTO` + integrity check) that is safe while the app runs, rotated to the newest 14. Schedule it nightly, e.g. `15 2 * * * cd /app && npm run db:backup`, and copy `data/backups` off the server (object storage, another machine) |
 | Restore | Stop the app → `npm run db:restore -- data/backups/questboard-<time>.db --yes` (the current database is kept as `*.before-restore-<time>.db`) → start. Test a restore on a copy before you need one |
 | Verify a GM | Admin console → GMs (`/admin/gms`) |

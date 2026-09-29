@@ -44,6 +44,10 @@ export default async function AdminGmsPage(props: PageProps<"/admin/gms">) {
                 <td className="px-4 py-3">
                   <Link href={`/gms/${r.id}`} className="font-semibold hover:text-accent">{r.name}</Link> {r.verified ? <VerifiedBadge label={t("common.verifiedGm")} /> : null}
                   <span className="block text-xs text-muted">{r.email} · {r.headline}</span>
+                  {/* Changing payment details often is a scam pattern (or a hijacked account). */}
+                  {r.payment_changes >= 2 && (
+                    <span className="mt-1 flex items-center gap-1 text-xs font-semibold text-danger"><Icon name="triangle-warning" /> {t("admin.paymentChanges", { n: r.payment_changes })}</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 max-sm:hidden">{r.games}</td>
                 <td className="px-4 py-3 max-sm:hidden">{r.open_reports > 0 ? <span className="font-bold text-danger">{r.open_reports}</span> : 0}</td>

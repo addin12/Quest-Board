@@ -11,6 +11,8 @@ import { CalendarFeedLinks } from "@/components/calendar-feed";
 import { ConfirmButton, SubmitButton } from "@/components/submit-button";
 import { siteOrigin } from "@/lib/site";
 import { twoStepState } from "@/lib/two-step";
+import { listLogins } from "@/lib/login-devices";
+import { logoutDeviceAction } from "../actions";
 import { TwoStepConfirmForm, TwoStepDisableForm } from "@/components/two-step-forms";
 import { beginTwoStepAction, cancelTwoStepAction } from "../actions";
 
@@ -24,6 +26,8 @@ export default async function SettingsPage() {
   const user = await requireUser("/settings");
   const { t, lang } = await getI18n();
   const twoStep = await twoStepState(user.id, user.email);
+  const logins = await listLogins(user.id);
+  const when = (iso: string | null) => iso ? new Date(iso).toLocaleString(lang === "id" ? "id-ID" : "en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }) + " WIB" : "–";
   const me = getUserSettings(user.id)!;
   const origin = await siteOrigin();
   const isGm = user.role === "gm" || user.role === "admin";
@@ -89,12 +93,13 @@ export default async function SettingsPage() {
         <PasswordForm />
       </section>
 
-      {(user.role === "admin" || twoStep.state === "on") && (
+      {(user.role !== "player" || twoStep.state === "on") && (
         <section className="card mt-6 p-6" aria-labelledby="two-step-h" id="two-step">
           <h2 id="two-step-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="fingerprint" className="text-muted" /> {t("twoStep.title")}</h2>
           {twoStep.state === "off" && (
             <>
               <p className="mt-2 max-w-prose text-sm text-muted">{t("twoStep.lead")}</p>
+              {user.role === "gm" && <p className="mt-2 max-w-prose text-sm text-muted">{t("twoStep.gmLead")}</p>}
               <form action={beginTwoStepAction} className="mt-4"><SubmitButton className="btn-primary"><Icon name="shield-check" /> {t("twoStep.setUp")}</SubmitButton></form>
             </>
           )}
@@ -127,6 +132,26 @@ export default async function SettingsPage() {
       <section className="card mt-6 p-6" aria-labelledby="sec-h">
         <h2 id="sec-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="shield-check" className="text-muted" /> {t("dash.securityTitle")}</h2>
         <p className="mt-1 mb-4 text-sm text-muted">{t("settings.securityLead")}</p>
+        <h3 id="devices" className="font-semibold">{t("devices.title")}</h3>
+        <ul className="mt-2 mb-5 divide-y divide-border rounded-lg border border-border" aria-labelledby="devices">
+          {logins.map((l) => (
+            <li key={l.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3" data-testid="login-row">
+              <span className="min-w-0">
+                <span className="flex flex-wrap items-center gap-2 font-semibold">
+                  <Icon name="laptop" className="text-muted" /> {l.device || t("devices.unknown")}
+                  {l.current && <span className="badge">{t("devices.thisDevice")}</span>}
+                </span>
+                <span className="block text-xs text-muted">{t("devices.meta", { since: when(l.created_at), seen: when(l.last_seen_at) })}</span>
+              </span>
+              {!l.current && (
+                <form action={logoutDeviceAction}>
+                  <input type="hidden" name="id" value={l.id} />
+                  <SubmitButton className="btn-ghost px-3! py-1! text-xs!" ariaLabel={t("devices.logOutNamed", { device: l.device || t("devices.unknown") })}>{t("devices.logOut")}</SubmitButton>
+                </form>
+              )}
+            </li>
+          ))}
+        </ul>
         <form action={logoutEverywhereAction}>
           <ConfirmButton className="btn-secondary" message={t("dash.logoutEverywhereConfirm")}>
             <Icon name="sign-out-alt" /> {t("dash.logoutEverywhere")}

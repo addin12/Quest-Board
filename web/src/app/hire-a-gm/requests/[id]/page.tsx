@@ -15,6 +15,7 @@ import { Icon } from "@/components/icon";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { ReportButton } from "@/components/report-button";
 import { chooseOfferAction, closeRequestAction } from "@/app/actions";
+import { PaymentChangedNote } from "@/components/payment-changed-note";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -82,6 +83,7 @@ export default async function RequestPage(props: PageProps<"/hire-a-gm/requests/
             <div className="card mt-4 border-accent/40! p-4">
               <p className="eyebrow flex items-center gap-1.5 text-accent!"><Icon name="wallet" /> {t("game.howToPay")}</p>
               <p className="mt-2 whitespace-pre-line text-sm">{getPaymentInfo(matchedOffer.gm_id) || t("game.howToPayEmpty")}</p>
+              {getPaymentInfo(matchedOffer.gm_id) && <PaymentChangedNote gmId={matchedOffer.gm_id} />}
               <p className="mt-2 text-xs text-muted">{t("game.scamWarning")}</p>
             </div>
           )}

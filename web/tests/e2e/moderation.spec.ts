@@ -188,3 +188,34 @@ test("admins can remove content directly, without a report; others don't see the
     db.close();
   }
 });
+
+test("scam wording is flagged for moderators automatically; ordinary chat isn't, and the post stays up", async ({ page, browser }) => {
+  const slug = await createGmWithGame(page, "Flag GM", unique("flag-gm"), `Flag Table ${Date.now() % 100000}`);
+  const player = await newPage(browser);
+  await signup(player, "Chatty Player", unique("chatty"));
+  const title = await bookFirstOpenSeat(player, [slug]);
+  await player.getByRole("link", { name: title }).first().click();
+  const post = async (text: string) => {
+    await player.getByLabel("Message").fill(text);
+    await player.getByRole("button", { name: "Send" }).click();
+    await expect(player.getByText(text)).toBeVisible();
+  };
+  const db = e2eDb();
+  const flags = () => (db.prepare("SELECT COUNT(*) AS n FROM reports r JOIN messages m ON m.id = r.target_id WHERE r.target_type = 'message' AND r.reporter_id IS NULL AND m.game_id = (SELECT id FROM games WHERE slug = ?)").get(slug) as { n: number }).n;
+  await post("Sampai jumpa Sabtu! Grup WA: chat.whatsapp.com/AbCdEf");
+  expect(flags()).toBe(0);
+  const scam = "Kak, rekening lama diblokir. Transfer ke rekening baru ya, lalu kirim kode OTP yang masuk.";
+  await post(scam); // still posted: a flag never blocks
+  expect(flags()).toBe(1);
+  db.close();
+
+  const admin = await newPage(browser);
+  await login(admin, "admin@questboard.test");
+  await admin.goto("/admin/reports");
+  const report = admin.getByRole("listitem").filter({ hasText: scam });
+  await expect(report.getByText(/Reported by Automatic flag/)).toBeVisible();
+  await expect(report.getByText("Flagged because it mentions:")).toBeVisible();
+  await expect(report.getByText(/a code, PIN or password · paying to a new or different account/)).toBeVisible();
+  await admin.getByRole("button", { name: /^Notifications/ }).click();
+  await expect(admin.getByText("A post was flagged automatically for scam wording").first()).toBeVisible();
+});

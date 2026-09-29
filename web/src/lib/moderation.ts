@@ -6,6 +6,7 @@ import { dropFromWaitlists } from "./waitlist";
 import { notify } from "./notifications";
 import { isGameMember } from "./queries";
 import type { ReportDecision, ReportReason, ReportTarget } from "./reports";
+import { scamSignals } from "./scam-signals";
 
 // Reports & moderation. A report stores a snapshot of what was reported, so the evidence
 // survives if the content is later edited or removed.
@@ -97,10 +98,33 @@ export function createReport(reporterId: number, type: ReportTarget, id: number,
   return "ok";
 }
 
+/**
+ * An automatic report (no reporter) when new content shows scam wording (lib/scam-signals.ts).
+ * Never blocks the post; one open automatic flag per piece of content.
+ */
+export function autoFlag(type: ReportTarget, id: number, text: string): boolean {
+  const signals = scamSignals(text);
+  if (signals.length === 0) return false;
+  const target = resolveTarget(type, id);
+  if (!target) return false;
+  if (db().prepare("SELECT 1 FROM reports WHERE reporter_id IS NULL AND target_type = ? AND target_id = ? AND status = 'open'").get(type, id)) return false;
+  tx((c) => {
+    const reportId = Number(
+      c.prepare(
+        `INSERT INTO reports (reporter_id, target_type, target_id, target_owner_id, reason, details, snapshot, href)
+         VALUES (NULL, ?, ?, ?, 'scam', ?, ?, ?)`,
+      ).run(type, id, target.ownerId, signals.join(","), target.snapshot, target.href).lastInsertRowid,
+    );
+    const admins = c.prepare("SELECT id FROM users WHERE role = 'admin' AND deleted_at IS NULL").all() as { id: number }[];
+    for (const a of admins) notify({ userId: a.id, kind: "report_new", actorId: null, reportId }, c);
+  });
+  return true;
+}
+
 export type ReportRow = {
   id: number; target_type: ReportTarget; target_id: number; target_owner_id: number; reason: ReportReason; details: string;
   snapshot: string; href: string; status: "open" | "resolved" | "dismissed"; decision: ReportDecision | null; note: string;
-  created_at: string; resolved_at: string | null; reporter_name: string; owner_name: string; owner_suspended: number; resolver_name: string | null;
+  created_at: string; resolved_at: string | null; reporter_name: string | null; /* null: automatic flag */ owner_name: string; owner_suspended: number; resolver_name: string | null;
   same_target_open: number;
 };
 
@@ -109,7 +133,7 @@ export function listReports(status: "open" | "resolved" | "dismissed", limit = 1
     .prepare(
       `SELECT r.*, rp.name AS reporter_name, o.name AS owner_name, (o.suspended_at IS NOT NULL) AS owner_suspended, a.name AS resolver_name,
               (SELECT COUNT(*) FROM reports x WHERE x.target_type = r.target_type AND x.target_id = r.target_id AND x.status = 'open') AS same_target_open
-         FROM reports r JOIN users rp ON rp.id = r.reporter_id JOIN users o ON o.id = r.target_owner_id LEFT JOIN users a ON a.id = r.resolved_by
+         FROM reports r LEFT JOIN users rp ON rp.id = r.reporter_id JOIN users o ON o.id = r.target_owner_id LEFT JOIN users a ON a.id = r.resolved_by
         WHERE r.status = ? ORDER BY ${status === "open" ? "r.created_at ASC" : "r.resolved_at DESC"} LIMIT ?`,
     )
     .all(status, limit) as ReportRow[];
@@ -246,7 +270,7 @@ export function launchMetrics(days = 7) {
   };
 }
 
-export type AdminGmRow = { id: number; name: string; email: string; headline: string; verified: number; games: number; open_reports: number; suspended: number; created_at: string };
+export type AdminGmRow = { id: number; name: string; email: string; headline: string; verified: number; games: number; open_reports: number; suspended: number; created_at: string; payment_changes: number };
 
 export function listGmsForAdmin(q: string): AdminGmRow[] {
   const like = `%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`;
@@ -254,12 +278,13 @@ export function listGmsForAdmin(q: string): AdminGmRow[] {
     .prepare(
       `SELECT u.id, u.name, u.email, p.headline, p.verified, u.created_at, (u.suspended_at IS NOT NULL) AS suspended,
               (SELECT COUNT(*) FROM games g WHERE g.gm_id = u.id AND g.status = 'published') AS games,
-              (SELECT COUNT(*) FROM reports r WHERE r.target_owner_id = u.id AND r.status = 'open') AS open_reports
+              (SELECT COUNT(*) FROM reports r WHERE r.target_owner_id = u.id AND r.status = 'open') AS open_reports,
+              (SELECT COUNT(*) FROM payment_changes c WHERE c.user_id = u.id AND c.changed_at >= ?) AS payment_changes
          FROM users u JOIN gm_profiles p ON p.user_id = u.id
         WHERE u.deleted_at IS NULL AND p.headline <> '' AND (u.name LIKE ? ESCAPE '\\' OR u.email LIKE ? ESCAPE '\\')
         ORDER BY p.verified ASC, u.created_at DESC LIMIT 100`,
     )
-    .all(like, like) as AdminGmRow[];
+    .all(new Date(Date.now() - 30 * 86_400_000).toISOString(), like, like) as AdminGmRow[];
 }
 
 export type AdminUserRow = { id: number; name: string; email: string; role: string; suspended_at: string | null; created_at: string; open_reports: number; has_gm_profile: number; avatar_image: string };
