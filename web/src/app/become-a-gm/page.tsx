@@ -6,6 +6,8 @@ import { getI18n } from "@/lib/i18n/server";
 import { getGmSettings } from "@/lib/queries";
 import { BecomeGmForm } from "@/components/become-gm-form";
 import { Icon } from "@/components/icon";
+import { Notice } from "@/components/ui";
+import { verifiedGmNeedsTwoStep } from "@/lib/two-step";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -16,6 +18,7 @@ export default async function BecomeGmPage() {
   const user = await getCurrentUser();
   const { t } = await getI18n();
   const profile = user ? getGmSettings(user.id) : undefined;
+  const needsTwoStep = !!user && verifiedGmNeedsTwoStep(user.id);
 
   return (
     <>
@@ -49,6 +52,9 @@ export default async function BecomeGmPage() {
           <>
             <h2 className="text-xl font-bold">{user.role === "gm" ? t("becomeGm.editTitle") : t("becomeGm.createTitle")}</h2>
             <p className="mb-5 text-sm text-muted">{t("becomeGm.formLead")}</p>
+            {needsTwoStep && (
+              <div className="mb-5"><Notice tone="danger">{t("gm.twoStepRequired")} <Link href="/settings#two-step" className="font-semibold underline">{t("gm.twoStepRequiredLink")}</Link></Notice></div>
+            )}
             <BecomeGmForm
               defaults={{
                 headline: profile?.headline ?? "",

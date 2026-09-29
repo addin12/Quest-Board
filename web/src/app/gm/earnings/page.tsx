@@ -16,6 +16,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("earnings.title") };
 }
 
+/** The oldest unpaid seats shown here; a busy GM gets the full list in the CSV. */
+const UNPAID_SHOWN = 50;
+
 export default async function EarningsPage() {
   const gm = await requireGm();
   const { t, lang } = await getI18n();
@@ -48,7 +51,7 @@ export default async function EarningsPage() {
               <p className="mt-3 flex items-center gap-2 text-sm text-success"><Icon name="check-circle" /> {t("earnings.none")}</p>
             ) : (
               <ul className="card mt-3 divide-y divide-border">
-                {e.unpaid.map((r) => (
+                {e.unpaid.slice(0, UNPAID_SHOWN).map((r) => (
                   <li key={r.booking_id} className="flex flex-wrap items-center gap-x-4 gap-y-1 p-3 text-sm">
                     <span className="min-w-40 font-semibold">{shownName(r.player_name, t)}</span>
                     <span className="flex-1 text-muted">{r.title} · <LocalTime iso={r.starts_at} /></span>
@@ -57,6 +60,12 @@ export default async function EarningsPage() {
                   </li>
                 ))}
               </ul>
+            )}
+            {e.unpaid.length > UNPAID_SHOWN && (
+              <p className="mt-2 text-sm text-muted">
+                {t("earnings.moreToChase", { n: e.unpaid.length - UNPAID_SHOWN })}{" "}
+                <a href="/api/gm/earnings" download className="font-semibold text-accent hover:underline">{t("earnings.download")}</a>
+              </p>
             )}
           </section>
 

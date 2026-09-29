@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { becomeGmAction, type FormState } from "@/app/actions";
 import { SubmitButton } from "./submit-button";
-import { FieldError, errAttrs } from "./ui";
+import { FieldError, Notice, errAttrs } from "./ui";
 import { useI18n } from "./i18n-provider";
 import { Icon } from "./icon";
 import { PortraitPicker } from "./portrait-picker";
@@ -69,6 +69,7 @@ export function BecomeGmForm({ defaults }: { defaults: Defaults }) {
         <textarea id="paymentInfo" name="paymentInfo" rows={3} maxLength={500} defaultValue={val("paymentInfo", defaults.paymentInfo)} className="input" placeholder={t("becomeGm.paymentPh")} />
         <p className="mt-1 text-xs text-muted">{t("becomeGm.paymentHint")}</p>
       </div>
+      {state?.error && <Notice tone="danger">{t(state.error)}</Notice>}
       <SubmitButton className="btn-primary w-full" pendingText={t("common.saving")}>{t("becomeGm.save")}</SubmitButton>
     </form>
   );

@@ -2,24 +2,37 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import type { WatchKind } from "@/lib/changes";
 
 /**
- * Re-fetches the current page's server data every `seconds` while the tab is
- * visible (live-ish chat without websockets). Client state — e.g. a half-typed
- * message — survives a refresh. Also refreshes when the tab becomes visible again.
+ * Keeps a live thread up to date without websockets: every `seconds` while the tab is visible (and
+ * when it becomes visible again) it asks /api/changes for the thread's change token, and re-fetches
+ * the page's server data only when the token differs from the one this page was rendered with —
+ * an open page with no news costs a tiny JSON request instead of a full re-render. Client state
+ * (e.g. a half-typed message) survives a refresh.
  */
-export function AutoRefresh({ seconds = 20 }: { seconds?: number }) {
+export function AutoRefresh({ watch, id, version, seconds = 15 }: { watch: WatchKind; id: number; version: string | null; seconds?: number }) {
   const router = useRouter();
   useEffect(() => {
-    const tick = () => {
-      if (document.visibilityState === "visible") router.refresh();
+    let busy = false;
+    const tick = async () => {
+      if (document.visibilityState !== "visible" || busy) return;
+      busy = true;
+      try {
+        const res = await fetch(`/api/changes?kind=${watch}&id=${id}`, { cache: "no-store" });
+        if (res.ok && (await res.json()).v !== version) router.refresh();
+      } catch {
+        // Offline for a moment: try again next time.
+      } finally {
+        busy = false;
+      }
     };
-    const id = window.setInterval(tick, seconds * 1000);
+    const timer = window.setInterval(tick, seconds * 1000);
     document.addEventListener("visibilitychange", tick);
     return () => {
-      window.clearInterval(id);
+      window.clearInterval(timer);
       document.removeEventListener("visibilitychange", tick);
     };
-  }, [router, seconds]);
+  }, [router, watch, id, version, seconds]);
   return null;
 }

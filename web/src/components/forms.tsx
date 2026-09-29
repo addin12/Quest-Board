@@ -92,6 +92,16 @@ export function MessageForm({ gameId }: { gameId: number }) {
 
 const noop = () => () => {};
 
+/** The browser's IANA time zone after hydration ("" on the server). */
+export function useBrowserTimeZone(): string {
+  return useSyncExternalStore(noop, () => Intl.DateTimeFormat().resolvedOptions().timeZone ?? "", () => "");
+}
+
+/** Hidden "tz" field: sign-up stores it as the account's zone for emails (lib/time-zones.ts). */
+export function BrowserTimeZoneInput() {
+  return <input type="hidden" name="tz" value={useBrowserTimeZone()} />;
+}
+
 /** An ISO time as a `datetime-local` value in the browser's timezone. */
 function localInputValue(iso: string): string {
   const d = new Date(iso);

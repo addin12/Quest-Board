@@ -33,6 +33,7 @@ import { siteOrigin } from "@/lib/site";
 import { saveUpload, ownsUpload, discardUpload } from "@/lib/uploads";
 import * as twoStep from "@/lib/two-step";
 import { endLogin } from "@/lib/login-devices";
+import { formatMoment, isValidTimeZone, timeZoneOr } from "@/lib/time-zones";
 
 /**
  * Errors are translation keys; client forms render them with t().
@@ -115,8 +116,8 @@ async function signupActionImpl(_: FormState, form: FormData): Promise<FormState
     userId = tx((c) => {
       const id = Number(
         c
-          .prepare("INSERT INTO users (email, password_hash, name, role, avatar_hue, terms_accepted_at, terms_version, legal_seen_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-          .run(email, hashPassword(password), name, role, Math.floor(Math.random() * 360), new Date().toISOString(), LEGAL_VERSION, LEGAL_VERSION).lastInsertRowid,
+          .prepare("INSERT INTO users (email, password_hash, name, role, avatar_hue, terms_accepted_at, terms_version, legal_seen_version, time_zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+          .run(email, hashPassword(password), name, role, Math.floor(Math.random() * 360), new Date().toISOString(), LEGAL_VERSION, LEGAL_VERSION, timeZoneOr(form.get("tz"))).lastInsertRowid,
       );
       if (role === "gm") c.prepare("INSERT INTO gm_profiles (user_id) VALUES (?)").run(id);
       return id;
@@ -228,7 +229,7 @@ async function sendTwoStepEmail(email: string, name: string, state: "on" | "off"
   const { t, lang } = await getI18n();
   const link = `${await siteOrigin()}/forgot-password`;
   const [subject, body] = state === "on" ? (["mail.twoStepOnSubject", "mail.twoStepOnBody"] as const) : (["mail.twoStepOffSubject", "mail.twoStepOffBody"] as const);
-  await sendEmail({ to: email, subject: t(subject), text: t(body, { name, when: nowWib(lang), link }) });
+  await sendEmail({ to: email, subject: t(subject), text: t(body, { name, when: nowFor(lang, email), link }) });
 }
 
 export async function logoutAction() {
@@ -259,6 +260,7 @@ export async function logoutEverywhereAction() {
 
 async function becomeGmActionImpl(_: FormState, form: FormData): Promise<FormState> {
   const user = await requireUser("/become-a-gm");
+  if (twoStep.verifiedGmNeedsTwoStep(user.id)) return { error: "err.verifiedGmTwoStep" };
   const headline = String(form.get("headline") ?? "").trim().slice(0, 100);
   const systems = String(form.get("systems") ?? "").trim().slice(0, 300);
   const years = Math.max(0, Math.min(60, Number(form.get("years") ?? 0) || 0));
@@ -486,8 +488,8 @@ async function rescheduleSessionActionImpl(_: FormState, form: FormData): Promis
     const origin = await siteOrigin();
     const ids = booked.map((b) => b.player_id);
     const people = db()
-      .prepare(`SELECT email, name, locale FROM users WHERE id IN (${ids.map(() => "?").join(",")}) AND email_verified_at IS NOT NULL AND deleted_at IS NULL`)
-      .all(...ids) as { email: string; name: string; locale: "en" | "id" }[];
+      .prepare(`SELECT email, name, locale, time_zone FROM users WHERE id IN (${ids.map(() => "?").join(",")}) AND email_verified_at IS NOT NULL AND deleted_at IS NULL`)
+      .all(...ids) as { email: string; name: string; locale: "en" | "id"; time_zone: string }[];
     await Promise.allSettled(people.map((p) => sendEmail(movedEmail(p, s, s, { starts_at: startsAt, duration_minutes: duration }, origin))));
   }
   await toast(booked.length > 0 ? "toast.sessionMoved" : "toast.sessionMovedNoPlayers");
@@ -514,8 +516,8 @@ export async function removePlayerAction(form: FormData) {
     processWaitlist(c, b.session_id); // the freed seat goes to the next person waiting
   });
   const s = getSessionWithGame(b.session_id);
-  const p = db().prepare("SELECT email, name, locale FROM users WHERE id = ? AND email_verified_at IS NOT NULL AND deleted_at IS NULL").get(b.player_id) as
-    | { email: string; name: string; locale: "en" | "id" } | undefined;
+  const p = db().prepare("SELECT email, name, locale, time_zone FROM users WHERE id = ? AND email_verified_at IS NOT NULL AND deleted_at IS NULL").get(b.player_id) as
+    | { email: string; name: string; locale: "en" | "id"; time_zone: string } | undefined;
   if (s && p) await sendEmail(seatRemovedEmail(p, s, reason, await siteOrigin()));
   await toast("toast.playerRemoved");
   revalidatePath("/", "layout");
@@ -720,6 +722,8 @@ async function updateProfileActionImpl(_: FormState, form: FormData): Promise<Fo
   }
   db().prepare("UPDATE users SET name = ?, bio = ?, avatar_image = ?, email_reminders = ?, email_notifications = ? WHERE id = ?")
     .run(parsed.value.name, parsed.value.bio, avatarImage, form.get("emailReminders") === "1" ? 1 : 0, form.get("emailNotifications") === "1" ? 1 : 0, user.id);
+  const tz = form.get("timeZone");
+  if (isValidTimeZone(tz)) db().prepare("UPDATE users SET time_zone = ? WHERE id = ?").run(tz, user.id);
   if (user.avatar_image !== avatarImage) discardUpload(user.avatar_image);
   const lang = form.get("language");
   if (lang === "id" || lang === "en") (await cookies()).set(LANG_COOKIE, lang, { path: "/", sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
@@ -876,7 +880,7 @@ async function sendSignupAttemptEmail(email: string, name: string) {
   await sendEmail({
     to: email,
     subject: t("mail.signupAttemptSubject"),
-    text: t("mail.signupAttemptBody", { name, when: nowWib(lang), login: `${origin}/login`, reset: `${origin}/forgot-password` }),
+    text: t("mail.signupAttemptBody", { name, when: nowFor(lang, email), login: `${origin}/login`, reset: `${origin}/forgot-password` }),
   });
 }
 
@@ -898,14 +902,17 @@ export async function confirmEmailAction(form: FormData) {
   redirect(safeNext(form.get("next")));
 }
 
-const nowWib = (lang: string) =>
-  new Date().toLocaleString(lang === "id" ? "id-ID" : "en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }) + " WIB";
+/** "Now", for security emails: in the recipient's time zone (lib/time-zones.ts). */
+const nowFor = (lang: string, email: string) => {
+  const row = db().prepare("SELECT time_zone FROM users WHERE email = ?").get(email) as { time_zone: string } | undefined;
+  return formatMoment(new Date(), lang === "id" ? "id" : "en", row?.time_zone);
+};
 
 /** "Your password was changed — if this wasn't you…" (after a change or a reset). */
 async function sendPasswordChangedEmail(email: string, name: string) {
   const { t, lang } = await getI18n();
   const link = `${await siteOrigin()}/forgot-password`;
-  await sendEmail({ to: email, subject: t("mail.passwordChangedSubject"), text: t("mail.passwordChangedBody", { name, when: nowWib(lang), link }) });
+  await sendEmail({ to: email, subject: t("mail.passwordChangedSubject"), text: t("mail.passwordChangedBody", { name, when: nowFor(lang, email), link }) });
 }
 
 /** "Your payment details were changed" — shows what players now see, and what to do if it wasn't the GM. */
@@ -915,7 +922,7 @@ async function sendPaymentDetailsChangedEmail(email: string, name: string, detai
   await sendEmail({
     to: email,
     subject: t("mail.paymentChangedSubject"),
-    text: t("mail.paymentChangedBody", { name, when: nowWib(lang), details: details || t("mail.paymentRemoved"), link }),
+    text: t("mail.paymentChangedBody", { name, when: nowFor(lang, email), details: details || t("mail.paymentRemoved"), link }),
   });
 }
 

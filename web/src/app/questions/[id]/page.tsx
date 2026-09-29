@@ -10,6 +10,7 @@ import { Avatar, Notice } from "@/components/ui";
 import { LocalTime } from "@/components/local-time";
 import { Icon } from "@/components/icon";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { changeVersion } from "@/lib/changes";
 import { ReportButton } from "@/components/report-button";
 import { QuestionReplyForm } from "@/components/question-forms";
 
@@ -36,7 +37,7 @@ export default async function QuestionPage(props: PageProps<"/questions/[id]">) 
   const messages = listQuestionMessages(thread.id);
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
-      <AutoRefresh />
+      <AutoRefresh watch="question" id={thread.id} version={changeVersion("question", thread.id, user.id, user.admin)} />
       <Link href={isPlayer ? "/dashboard" : "/gm/questions"} className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-text"><Icon name="arrow-left" /> {t(isPlayer ? "dash.questions" : "gmQuestions.title")}</Link>
       <h1 className="mt-3 text-2xl font-bold">{t("questions.title", { title: thread.game_title })}</h1>
       <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted">

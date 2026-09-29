@@ -6,9 +6,11 @@ import { SubmitButton } from "./submit-button";
 import { FieldError, Notice, errAttrs } from "./ui";
 import { useI18n } from "./i18n-provider";
 import { PortraitPicker } from "./portrait-picker";
+import { useBrowserTimeZone } from "./forms";
+import { INDONESIAN_ZONES } from "@/lib/time-zones";
 import { Icon } from "./icon";
 
-type ProfileDefaults = { name: string; email: string; bio: string; hue: number; avatarImage: string; emailReminders: boolean; emailNotifications: boolean };
+type ProfileDefaults = { name: string; email: string; bio: string; hue: number; avatarImage: string; emailReminders: boolean; emailNotifications: boolean; timeZone: string };
 
 /** Display name, profile picture, bio and UI language — for players and GMs. */
 export function ProfileSettingsForm({ defaults }: { defaults: ProfileDefaults }) {
@@ -18,6 +20,7 @@ export function ProfileSettingsForm({ defaults }: { defaults: ProfileDefaults })
   const fe = state?.fieldErrors ?? {};
   const [portrait, setPortrait] = useState(v?.avatarImage ?? defaults.avatarImage);
   const [name, setName] = useState(v?.name ?? defaults.name);
+  const browserZone = useBrowserTimeZone();
   return (
     <form action={action} className="space-y-5">
       <PortraitPicker
@@ -51,6 +54,16 @@ export function ProfileSettingsForm({ defaults }: { defaults: ProfileDefaults })
           <option value="en">English</option>
           <option value="id">Bahasa Indonesia</option>
         </select>
+      </div>
+      <div>
+        <label htmlFor="timeZone" className="label">{t("settings.timeZone")}</label>
+        <select id="timeZone" name="timeZone" defaultValue={v?.timeZone ?? defaults.timeZone} className="input max-w-full sm:max-w-md" aria-describedby="timeZone-hint">
+          {INDONESIAN_ZONES.map((z) => <option key={z.tz} value={z.tz}>{t(`tz.${z.label.toLowerCase() as "wib" | "wita" | "wit"}`)}</option>)}
+          {[defaults.timeZone, browserZone].filter((z, i, all) => z && !INDONESIAN_ZONES.some((x) => x.tz === z) && all.indexOf(z) === i).map((z) => (
+            <option key={z} value={z}>{z === browserZone ? t("tz.device", { zone: z }) : z}</option>
+          ))}
+        </select>
+        <p id="timeZone-hint" className="mt-1 text-xs text-muted">{t("settings.timeZoneHint")}</p>
       </div>
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" name="emailReminders" value="1" defaultChecked={v ? v.emailReminders === "1" : defaults.emailReminders} className="mt-1 accent-[var(--accent)]" />

@@ -3,13 +3,14 @@ import { db, tx } from "./db";
 import { notify } from "./notifications";
 import { sendEmail, type Email } from "./mailer";
 import { makeT, type Lang } from "./i18n/dict";
-import { formatWib, planReminders, type ReminderCandidate } from "./reminder-plan";
+import { planReminders, type ReminderCandidate } from "./reminder-plan";
+import { formatWhen } from "./time-zones";
 
 // Session reminders (P2-12): an in-app notification plus an email in the person's language,
 // 24 hours and 1 hour before each session. Triggered by /api/cron/reminders (production
 // scheduler) and, as a fallback, at most once a minute while people use the site.
 
-type Recipient = { name: string; email: string; locale: Lang; email_reminders: number; email_verified_at: string | null };
+type Recipient = { name: string; email: string; locale: Lang; time_zone: string; email_reminders: number; email_verified_at: string | null };
 type SessionInfo = { title: string; slug: string; location_type: "online" | "in_person"; city: string; starts_at: string; booked: number };
 
 /** Send every reminder that is due. Returns how many went out. Safe to call concurrently. */
@@ -38,7 +39,7 @@ export async function processReminders(origin: string, now = new Date()): Promis
   const emails: Email[] = [];
   tx((c) => {
     const claim = c.prepare("INSERT OR IGNORE INTO session_reminders (session_id, user_id, kind) VALUES (?, ?, ?)");
-    const who = c.prepare("SELECT name, email, locale, email_reminders, email_verified_at FROM users WHERE id = ?");
+    const who = c.prepare("SELECT name, email, locale, time_zone, email_reminders, email_verified_at FROM users WHERE id = ?");
     const session = c.prepare(
       `SELECT g.title, g.slug, g.location_type, g.city, s.starts_at,
               (SELECT COUNT(*) FROM bookings b WHERE b.session_id = s.id AND b.status = 'confirmed') AS booked
@@ -60,7 +61,7 @@ export async function processReminders(origin: string, now = new Date()): Promis
 
 function reminderEmail(u: Recipient, s: SessionInfo, kind: "24h" | "1h", isGm: boolean, origin: string): Email {
   const t = makeT(u.locale);
-  const when = formatWib(s.starts_at, u.locale);
+  const when = formatWhen(s.starts_at, u.locale, u.time_zone);
   const where = s.location_type === "online" ? t("mail.reminderOnline") : t("mail.reminderInPerson", { city: s.city });
   const vars = { name: u.name, title: s.title, when, where, link: `${origin}/games/${s.slug}`, n: s.booked };
   return {

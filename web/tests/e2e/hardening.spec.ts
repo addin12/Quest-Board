@@ -104,16 +104,23 @@ test("P1-3 table chat shows the newest 50 messages, and up to 200 with “Show e
   db.exec("COMMIT");
   db.close();
 
-  await login(page, "gm@questboard.test");
-  await page.goto("/games/mercusuar-di-pulau-kabut");
-  await expect(page.getByText("Bulk message #205", { exact: true })).toBeVisible();
-  await expect(page.getByText("Bulk message #156", { exact: true })).toBeAttached(); // the newest 50
-  await expect(page.getByText("Bulk message #155", { exact: true })).toHaveCount(0);
-  await page.getByRole("link", { name: "Show earlier messages" }).click();
-  await expect(page).toHaveURL(/chat=all/);
-  await expect(page.getByText("Bulk message #6", { exact: true })).toBeAttached(); // the newest 200
-  await expect(page.getByText("Bulk message #5", { exact: true })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Show earlier messages" })).toHaveCount(0);
+  try {
+    await login(page, "gm@questboard.test");
+    await page.goto("/games/mercusuar-di-pulau-kabut");
+    await expect(page.getByText("Bulk message #205", { exact: true })).toBeVisible();
+    await expect(page.getByText("Bulk message #156", { exact: true })).toBeAttached(); // the newest 50
+    await expect(page.getByText("Bulk message #155", { exact: true })).toHaveCount(0);
+    await page.getByRole("link", { name: "Show earlier messages" }).click();
+    await expect(page).toHaveURL(/chat=all/);
+    await expect(page.getByText("Bulk message #6", { exact: true })).toBeAttached(); // the newest 200
+    await expect(page.getByText("Bulk message #5", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Show earlier messages" })).toHaveCount(0);
+  } finally {
+    // They're dated slightly in the future: remove them, or later chat tests' messages would sort below them.
+    const cleanup = e2eDb();
+    cleanup.prepare("DELETE FROM messages WHERE game_id = ? AND body LIKE 'Bulk message #%'").run(game.id);
+    cleanup.close();
+  }
 });
 
 test("P1-2 archiving a game cancels its upcoming sessions and frees players' seats", async ({ browser }) => {
@@ -187,4 +194,36 @@ test("login never redirects off-site, even with a backslash trick", async ({ pag
   await page.getByLabel("Password").fill("password123");
   await page.getByRole("button", { name: /log in/i }).click();
   await expect(page).toHaveURL(/localhost:\d+\/dashboard$/);
+});
+
+test("live threads poll a tiny change token and re-render only when something changed", async ({ browser, request }) => {
+  const gm = await (await browser.newContext()).newPage();
+  await login(gm, "gm@questboard.test");
+  await gm.goto("/games/mercusuar-di-pulau-kabut");
+  await gm.waitForLoadState("networkidle");
+  // With nothing new, the open page only asks for the token (no full re-render of the page).
+  const rerenders: string[] = [];
+  gm.on("request", (r) => { if (r.headers()["rsc"] === "1") rerenders.push(r.url()); });
+  const polled = gm.waitForResponse((r) => r.url().includes("/api/changes?kind=chat"), { timeout: 30_000 });
+  expect((await polled).status()).toBe(200);
+  expect(rerenders).toEqual([]);
+
+  // A player posts from another browser: the GM's open page shows it without reloading.
+  const player = await (await browser.newContext()).newPage();
+  await login(player, "player@questboard.test");
+  await player.goto("/games/mercusuar-di-pulau-kabut");
+  const text = `Live update check ${Date.now()}`;
+  await player.getByLabel("Message").fill(text);
+  await player.getByRole("button", { name: "Send" }).click();
+  await expect(player.getByText(text)).toBeVisible();
+  await expect(gm.getByText(text)).toBeVisible({ timeout: 40_000 });
+  // Leave the demo chat as it was (another spec checks the GM's own game page has nothing of theirs to report).
+  const db = e2eDb();
+  db.prepare("DELETE FROM messages WHERE body = ?").run(text);
+  db.close();
+
+  // The token follows the page's access rule: table chat is for members only; notices are public.
+  expect((await request.get("/api/changes?kind=chat&id=1")).status()).toBe(404);
+  expect((await request.get("/api/changes?kind=question&id=1")).status()).toBe(404);
+  expect((await request.get("/api/changes?kind=nope&id=1")).status()).toBe(404);
 });

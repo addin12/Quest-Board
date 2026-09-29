@@ -9,7 +9,7 @@ import { sendEmail } from "./mailer";
 // Emails for important notifications. notify() queues them inside the same transaction;
 // this sends them afterwards: from the cron route, and at most every 10 s while people browse.
 
-type Recipient = { email: string; name: string; locale: Lang; email_notifications: number; email_verified_at: string | null; deleted_at: string | null; suspended_at: string | null };
+type Recipient = { email: string; name: string; locale: Lang; time_zone: string; email_notifications: number; email_verified_at: string | null; deleted_at: string | null; suspended_at: string | null };
 
 /** Send queued notification emails (oldest first). Returns how many went out. */
 export async function deliverNotificationEmails(origin: string, limit = 50): Promise<number> {
@@ -20,7 +20,7 @@ export async function deliverNotificationEmails(origin: string, limit = 50): Pro
     if (Number(db().prepare("DELETE FROM email_queue WHERE id = ?").run(item.id).changes) === 0) continue;
     const n = getNotificationRow(item.notification_id);
     if (!n || n.read_at) continue; // already seen in the app: no need to email
-    const u = db().prepare("SELECT email, name, locale, email_notifications, email_verified_at, deleted_at, suspended_at FROM users WHERE id = ?").get(n.user_id) as Recipient | undefined;
+    const u = db().prepare("SELECT email, name, locale, time_zone, email_notifications, email_verified_at, deleted_at, suspended_at FROM users WHERE id = ?").get(n.user_id) as Recipient | undefined;
     if (!u || !u.email_verified_at || u.deleted_at || u.suspended_at) continue;
     if (!u.email_notifications && !ALWAYS_EMAIL.has(n.kind)) continue;
     if (n.kind === "session_cancelled" && n.game_title && n.game_slug && n.starts_at) {

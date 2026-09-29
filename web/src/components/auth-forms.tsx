@@ -1,5 +1,6 @@
 "use client";
 
+import { BrowserTimeZoneInput } from "./forms";
 import Link from "next/link";
 import { useActionState } from "react";
 import { loginAction, signupAction, type FormState } from "@/app/actions";
@@ -40,6 +41,7 @@ export function SignupForm({ next, defaultRole }: { next?: string; defaultRole?:
   return (
     <form action={action} className="space-y-4" noValidate>
       <input type="hidden" name="next" value={next ?? ""} />
+      <BrowserTimeZoneInput />
       <fieldset>
         <legend className="label">{t("auth.iWantTo")}</legend>
         <div className="grid grid-cols-2 gap-2">

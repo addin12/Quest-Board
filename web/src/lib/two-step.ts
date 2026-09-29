@@ -34,6 +34,16 @@ export async function twoStepState(userId: number, email: string): Promise<TwoSt
 
 export const twoStepEnabled = (userId: number) => !!row(userId)?.totp_enabled_at;
 
+/**
+ * A verified GM — the accounts players trust most with money — needs two-step login before changing
+ * their GM profile or payment details (their games keep running meanwhile).
+ */
+export function verifiedGmNeedsTwoStep(userId: number): boolean {
+  const r = db().prepare("SELECT COALESCE(p.verified, 0) AS verified, u.totp_enabled_at FROM users u LEFT JOIN gm_profiles p ON p.user_id = u.id WHERE u.id = ?")
+    .get(userId) as { verified: number; totp_enabled_at: string | null } | undefined;
+  return !!r?.verified && !r.totp_enabled_at;
+}
+
 /** Start (or restart) setup: a new secret, not yet required at login. */
 export function beginSetup(userId: number) {
   db().prepare("UPDATE users SET totp_secret = ?, totp_enabled_at = NULL, totp_last_step = -1 WHERE id = ? AND totp_enabled_at IS NULL")

@@ -33,13 +33,18 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const user = await requireUser("/dashboard");
   const questions = listPlayerQuestions(user.id);
   const { t } = await getI18n();
-  const { booked, reset, view } = await props.searchParams;
+  const { booked, reset, view, history } = await props.searchParams;
+  const allHistory = history === "all";
   const calendarView = view === "calendar";
   const all = listPlayerBookings(user.id);
   const now = new Date();
   const upcoming = all.filter((b) => b.status === "confirmed" && b.session_status === "scheduled" && new Date(b.starts_at) > now);
-  const past = all.filter((b) => b.status === "confirmed" && !upcoming.includes(b) && b.session_status !== "cancelled");
-  const cancelled = all.filter((b) => b.status !== "confirmed" || b.session_status === "cancelled");
+  // History, most recent first; a busy player sees the latest HISTORY_SHOWN until they ask for all.
+  const past = all.filter((b) => b.status === "confirmed" && !upcoming.includes(b) && b.session_status !== "cancelled").reverse();
+  const cancelled = all.filter((b) => b.status !== "confirmed" || b.session_status === "cancelled").reverse();
+  const HISTORY_SHOWN = 10;
+  const shownPast = allHistory ? past : past.slice(0, HISTORY_SHOWN);
+  const shownCancelled = allHistory ? cancelled : cancelled.slice(0, HISTORY_SHOWN);
   const requests = listMyGmRequests(user.id);
   refreshWaitlists(myWaitlistDetailed(user.id).map((w) => w.session_id));
   const waitlist = myWaitlistDetailed(user.id);
@@ -158,9 +163,10 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
         </Section>
       )}
 
+      {past.length > 0 && <span id="played" />}
       {past.length > 0 && (
         <Section icon="dragon" title={t("dash.played")}>
-          {past.map((b) => (
+          {shownPast.map((b) => (
             <BookingRow key={b.booking_id} b={b} t={t}>
               {b.has_review ? (
                 <span className="inline-flex items-center gap-1 text-xs text-success"><Icon name="check-circle" /> {t("dash.reviewed")}</span>
@@ -169,6 +175,9 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
               )}
             </BookingRow>
           ))}
+          {past.length > shownPast.length && (
+            <p className="mt-2 text-sm"><Link href="/dashboard?history=all#played" className="font-semibold text-accent hover:underline">{t("dash.showAllHistory", { n: past.length })}</Link></p>
+          )}
         </Section>
       )}
 
@@ -201,7 +210,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
 
       {cancelled.length > 0 && (
         <Section icon="archive" title={t("dash.cancelled")}>
-          {cancelled.map((b) => (
+          {shownCancelled.map((b) => (
             <BookingRow key={b.booking_id} b={b} t={t}>
               <span className="text-xs text-muted">
                 {b.cancelled_by === "gm" || b.session_status === "cancelled" ? t("dash.cancelledByGm") : t("dash.cancelledByYou")}
@@ -209,6 +218,9 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
               </span>
             </BookingRow>
           ))}
+          {cancelled.length > shownCancelled.length && (
+            <p className="mt-2 text-sm"><Link href="/dashboard?history=all#played" className="font-semibold text-accent hover:underline">{t("dash.showAllHistory", { n: cancelled.length })}</Link></p>
+          )}
         </Section>
       )}
 

@@ -307,3 +307,38 @@ test("after a Privacy Policy update, signed-in people see what changed once; new
   expect((db.prepare("SELECT legal_seen_version FROM users WHERE email = ?").get(email) as { legal_seen_version: string }).legal_seen_version).not.toBe("2026-09-25-draft");
   db.close();
 });
+
+test("sessions slide: using the site renews the sign-in, in the database and the cookie", async ({ page, context }) => {
+  const email = unique("slide");
+  await signup(page, "Steady Visitor", email);
+  const db = e2eDb();
+  // As if they logged in 29 days ago and were last active 20 minutes ago.
+  const soon = new Date(Date.now() + 86_400_000).toISOString();
+  db.prepare("UPDATE auth_sessions SET expires_at = ?, last_seen_at = ? WHERE user_id = (SELECT id FROM users WHERE email = ?)").run(soon, new Date(Date.now() - 20 * 60_000).toISOString(), email);
+  await page.goto("/dashboard");
+  await expect(page).toHaveURL(/\/dashboard/);
+  const row = db.prepare("SELECT expires_at FROM auth_sessions WHERE user_id = (SELECT id FROM users WHERE email = ?)").get(email) as { expires_at: string };
+  expect(Date.parse(row.expires_at) - Date.now()).toBeGreaterThan(29 * 86_400_000);
+  const cookie = (await context.cookies()).find((c) => c.name === "qb_session")!;
+  expect(cookie.expires * 1000 - Date.now()).toBeGreaterThan(29 * 86_400_000);
+  expect(cookie.httpOnly).toBe(true);
+  db.close();
+});
+
+test("the time zone for emails comes from the browser at sign-up and can be changed in Settings", async ({ browser }) => {
+  const page = await (await browser.newContext({ timezoneId: "Asia/Makassar" })).newPage();
+  const email = unique("wita");
+  await signup(page, "Putu Makassar", email);
+  const db = e2eDb();
+  const tzOf = () => (db.prepare("SELECT time_zone FROM users WHERE email = ?").get(email) as { time_zone: string }).time_zone;
+  expect(tzOf()).toBe("Asia/Makassar");
+  await page.goto("/settings");
+  const select = page.getByLabel("Time zone for emails and reminders");
+  await expect(select).toHaveValue("Asia/Makassar");
+  await expect(select.locator("option:checked")).toHaveText(/^WITA — Central Indonesia/);
+  await select.selectOption("Asia/Jayapura");
+  await page.getByRole("button", { name: "Save profile" }).click();
+  await expect(page.getByText("Profile saved.")).toBeVisible();
+  expect(tzOf()).toBe("Asia/Jayapura");
+  db.close();
+});

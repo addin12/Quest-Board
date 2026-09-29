@@ -8,8 +8,8 @@ import { getLang } from "./i18n/server";
 import { deviceLabel } from "./device";
 import { noteDevice, sendNewDeviceEmail } from "./login-devices";
 
-export const SESSION_COOKIE = "qb_session";
-const SESSION_DAYS = 30;
+import { SESSION_COOKIE, SESSION_DAYS, secureCookies, sessionCookieOptions } from "./session-cookie";
+export { SESSION_COOKIE, secureCookies };
 
 export type CurrentUser = {
   id: number;
@@ -32,10 +32,6 @@ export type CurrentUser = {
  */
 export const adminPowers = (role: string, twoStepOn: boolean) => role === "admin" && (twoStepOn || process.env.QUESTBOARD_ADMIN_TWO_STEP === "optional");
 
-/** HTTPS-only cookies in production. QUESTBOARD_INSECURE_COOKIES is for the e2e servers only (production builds
- * on http://localhost, where WebKit — unlike Chromium and Firefox — drops Secure cookies). Never set it live. */
-export const secureCookies = () => process.env.NODE_ENV === "production" && process.env.QUESTBOARD_INSECURE_COOKIES !== "true";
-
 export async function createSession(userId: number) {
   const token = newSessionToken();
   const expires = new Date(Date.now() + SESSION_DAYS * 86_400_000);
@@ -44,13 +40,7 @@ export async function createSession(userId: number) {
   db()
     .prepare("INSERT INTO auth_sessions (token_hash, user_id, expires_at, created_at, last_seen_at, device) VALUES (?, ?, ?, ?, ?, ?)")
     .run(hashToken(token), userId, expires.toISOString(), now, now, device);
-  (await cookies()).set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: secureCookies(),
-    path: "/",
-    expires,
-  });
+  (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions(expires));
   // "Was this you?" — for a browser this account hasn't used before (not its very first one).
   if (await noteDevice(userId, device)) await sendNewDeviceEmail(userId, device);
 }
@@ -90,9 +80,11 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     )
     .get(hashToken(token)) as (Omit<CurrentUser, "email_verified"> & { email_verified_at: string | null; locale: string; expires_at: string; last_seen_at: string | null; totp_enabled_at: string | null }) | undefined;
   if (!row || new Date(row.expires_at) < new Date()) return null;
-  // "Last active" in Settings → Where you're logged in; at most one write per session per 10 minutes.
+  // "Last active" in Settings → Where you're logged in, and the sliding expiry: SESSION_DAYS after the
+  // last visit, not after the login (src/proxy.ts renews the cookie). At most one write per 10 minutes.
   if (!row.last_seen_at || Date.now() - Date.parse(row.last_seen_at) > 10 * 60_000) {
-    db().prepare("UPDATE auth_sessions SET last_seen_at = ? WHERE token_hash = ?").run(new Date().toISOString(), hashToken(token));
+    db().prepare("UPDATE auth_sessions SET last_seen_at = ?, expires_at = ? WHERE token_hash = ?")
+      .run(new Date().toISOString(), new Date(Date.now() + SESSION_DAYS * 86_400_000).toISOString(), hashToken(token));
   }
   // Emails and reminders go out in the language the person last used the site in.
   const lang = await getLang();

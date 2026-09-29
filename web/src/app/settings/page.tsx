@@ -10,7 +10,7 @@ import { logoutEverywhereAction, resetCalendarFeedAction } from "../actions";
 import { CalendarFeedLinks } from "@/components/calendar-feed";
 import { ConfirmButton, SubmitButton } from "@/components/submit-button";
 import { siteOrigin } from "@/lib/site";
-import { twoStepState } from "@/lib/two-step";
+import { twoStepState, verifiedGmNeedsTwoStep } from "@/lib/two-step";
 import { listLogins } from "@/lib/login-devices";
 import { logoutDeviceAction } from "../actions";
 import { TwoStepConfirmForm, TwoStepDisableForm } from "@/components/two-step-forms";
@@ -49,7 +49,7 @@ export default async function SettingsPage() {
 
       <section className="card mt-6 p-6" aria-labelledby="profile-h">
         <h2 id="profile-h" className="mb-5 flex items-center gap-2 text-xl font-bold"><Icon name="user-pen" className="text-muted" /> {t("settings.profile")}</h2>
-        <ProfileSettingsForm defaults={{ name: me.name, email: me.email, bio: me.bio, hue: me.avatar_hue, avatarImage: me.avatar_image, emailReminders: !!me.email_reminders, emailNotifications: !!me.email_notifications }} />
+        <ProfileSettingsForm defaults={{ name: me.name, email: me.email, bio: me.bio, hue: me.avatar_hue, avatarImage: me.avatar_image, emailReminders: !!me.email_reminders, emailNotifications: !!me.email_notifications, timeZone: me.time_zone }} />
       </section>
 
       <section className="card mt-6 p-6" aria-labelledby="cal-h">
@@ -103,7 +103,7 @@ export default async function SettingsPage() {
           {twoStep.state === "off" && (
             <>
               <p className="mt-2 max-w-prose text-sm text-muted">{t("twoStep.lead")}</p>
-              {user.role === "gm" && <p className="mt-2 max-w-prose text-sm text-muted">{t("twoStep.gmLead")}</p>}
+              {user.role === "gm" && <p className="mt-2 max-w-prose text-sm text-muted">{t(verifiedGmNeedsTwoStep(user.id) ? "twoStep.verifiedGmLead" : "twoStep.gmLead")}</p>}
               <form action={beginTwoStepAction} className="mt-4"><SubmitButton className="btn-primary"><Icon name="shield-check" /> {t("twoStep.setUp")}</SubmitButton></form>
             </>
           )}

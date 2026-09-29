@@ -31,6 +31,7 @@ import { ConfirmButton } from "@/components/submit-button";
 import { deleteReviewAction } from "@/app/actions";
 import { CalendarLinks } from "@/components/calendar-links";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { changeVersion } from "@/lib/changes";
 import { googleCalendarUrl, sessionEvent } from "@/lib/calendar";
 import { siteOrigin } from "@/lib/site";
 import { gameEventsJsonLd, jsonLdString } from "@/lib/seo";
@@ -150,7 +151,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
 
             {member && (
               <section className="mt-10" aria-labelledby="chat-h">
-                <AutoRefresh />
+                <AutoRefresh watch="chat" id={game.id} version={changeVersion("chat", game.id, user?.id ?? null)} />
                 <h2 id="chat-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="comments" className="text-accent" /> {t("chat.title")}</h2>
                 <p className="text-sm text-muted">{t("chat.visibility")}</p>
                 {moreChat && (

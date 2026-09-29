@@ -35,7 +35,8 @@
 // v30: where you're logged in (auth_sessions.device/created_at/last_seen_at, login_devices).
 // v31: automatic scam flags (reports.reporter_id may be NULL).
 // v32: users.legal_seen_version (the "we've updated our Privacy Policy" banner).
-export const SCHEMA_VERSION = 32;
+// v33: users.time_zone (emails show times in the reader's zone: WIB, WITA, WIT…).
+export const SCHEMA_VERSION = 33;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -62,7 +63,8 @@ CREATE TABLE IF NOT EXISTS users (
   totp_secret     TEXT,                       -- v28: two-step login secret (base32); set during setup
   totp_enabled_at TEXT,                       -- v28: when two-step login was turned on (NULL = off)
   totp_last_step  INTEGER NOT NULL DEFAULT -1, -- v28: last code's 30-second step (each code works once)
-  legal_seen_version TEXT NOT NULL DEFAULT '' -- v32: the Terms/Privacy version whose update banner they've seen
+  legal_seen_version TEXT NOT NULL DEFAULT '', -- v32: the Terms/Privacy version whose update banner they've seen
+  time_zone TEXT NOT NULL DEFAULT 'Asia/Jakarta' -- v33: IANA zone for times in emails (lib/time-zones.ts)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_users_calendar_token ON users(calendar_token);
 

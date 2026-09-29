@@ -1,5 +1,5 @@
 import { test, expect, type Browser, type Page } from "@playwright/test";
-import { e2eDb, login } from "./helpers";
+import { createGmWithGame, e2eDb, login } from "./helpers";
 import { totpCode, totpStep } from "../../src/lib/totp";
 
 // Two-step login for admins: set up in Settings, a code after the password, each code once,
@@ -23,11 +23,40 @@ test("GMs are offered two-step login too; players aren't", async ({ browser }) =
   await login(gm, "gm@questboard.test");
   await gm.goto("/settings");
   await expect(gm.getByRole("button", { name: "Set up two-step login" })).toBeVisible();
-  await expect(gm.getByText(/Recommended for GMs/)).toBeVisible();
+  await expect(gm.getByText(/Needed for verified GMs/)).toBeVisible(); // the demo GM is verified
   const player = await (await browser.newContext()).newPage();
   await login(player, "player@questboard.test");
   await player.goto("/settings");
   await expect(player.getByRole("heading", { name: "Two-step login" })).toHaveCount(0);
+});
+
+test("verified GMs need two-step login to change their profile or payment details", async ({ page }) => {
+  const email = `verified-gm-${Date.now()}@questboard.test`;
+  await createGmWithGame(page, "Vera Verified", email, `Vera's Table ${Date.now() % 100000}`);
+  const db = e2eDb();
+  db.prepare("UPDATE gm_profiles SET verified = 1 WHERE user_id = (SELECT id FROM users WHERE email = ?)").run(email);
+  await page.goto("/gm");
+  await expect(page.getByText(/You're a verified GM, so players trust your payment details/)).toBeVisible();
+  await page.goto("/become-a-gm");
+  await page.getByLabel(/How players pay you/).fill("BRI 111-222 a.n. Someone Else");
+  await page.getByRole("button", { name: /Save & go to GM dashboard/ }).click();
+  await expect(page.getByText("Verified GMs need two-step login to change their profile or payment details.")).toBeVisible();
+  expect((db.prepare("SELECT payment_info FROM gm_profiles WHERE user_id = (SELECT id FROM users WHERE email = ?)").get(email) as { payment_info: string }).payment_info).toBe("BCA 000-111-222"); // unchanged
+
+  // With two-step login on, saving works again.
+  await page.getByRole("link", { name: "Turn on two-step login" }).first().click();
+  await expect(page.getByText(/Needed for verified GMs/)).toBeVisible();
+  await page.getByRole("button", { name: "Set up two-step login" }).click();
+  const key = (await page.getByTestId("totp-key").innerText()).replace(/\s/g, "");
+  await page.getByLabel("6-digit code").fill(code(key, -1));
+  await page.getByRole("button", { name: "Turn on" }).click();
+  await expect(page.getByText(/Two-step login is on \(since/)).toBeVisible();
+  await page.goto("/become-a-gm");
+  await page.getByLabel(/How players pay you/).fill("BRI 111-222 a.n. Vera Verified");
+  await page.getByRole("button", { name: /Save & go to GM dashboard/ }).click();
+  await page.waitForURL("**/gm");
+  await expect(page.getByText(/You're a verified GM/)).toHaveCount(0);
+  db.close();
 });
 
 test("admins can turn on two-step login, then need a code from their app to log in", async ({ browser }) => {

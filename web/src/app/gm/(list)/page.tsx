@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireGm } from "@/lib/auth";
+import { verifiedGmNeedsTwoStep } from "@/lib/two-step";
 import { getI18n } from "@/lib/i18n/server";
 import { countOpenRequestsForGm, getGmSettings, gmDashboardStats, gmOnboarding, listGmGames } from "@/lib/queries";
 import { formatIdr } from "@/lib/policy";
 import { countAwaitingForGm } from "@/lib/questions";
-import { EmptyState, Stars, Thumb, priceLabel } from "@/components/ui";
+import { EmptyState, Stars, Thumb, priceLabel, Notice } from "@/components/ui";
 import { LocalTime } from "@/components/local-time";
 import { Icon } from "@/components/icon";
 import type { RegularIcon } from "@/lib/icons";
@@ -34,8 +35,12 @@ export default async function GmDashboardPage() {
   ];
   const doneCount = steps.filter((s) => s.done).length;
 
+  const needsTwoStep = verifiedGmNeedsTwoStep(gm.id);
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
+      {needsTwoStep && (
+        <div className="mb-5"><Notice tone="danger">{t("gm.twoStepRequired")} <Link href="/settings#two-step" className="font-semibold underline">{t("gm.twoStepRequiredLink")}</Link></Notice></div>
+      )}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-3xl font-bold"><Icon name="hat-wizard" className="text-accent" /> {t("nav.gmDashboard")}</h1>

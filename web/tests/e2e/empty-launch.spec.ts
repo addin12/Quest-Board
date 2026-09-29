@@ -90,3 +90,7 @@ test("the admin console needs two-step login: an admin without it is sent to set
   await expect(page).toHaveURL(/\/admin$/);
   await expect(page.getByRole("navigation", { name: /admin/i })).toBeVisible();
 });
+
+test("developer pages don't exist outside development", async ({ request }) => {
+  for (const path of ["/dev/outbox", "/dev/emails"]) expect((await request.get(path)).status(), path).toBe(404);
+});

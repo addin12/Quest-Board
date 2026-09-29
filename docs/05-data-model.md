@@ -336,6 +336,13 @@ users.legal_seen_version   -- the Terms/Privacy version whose "we've updated" ba
 ```
 - Set to `LEGAL_VERSION` at sign-up, for demo accounts and for `npm run admin -- create`; the migration copies `terms_version`. When `LEGAL_VERSION` changes and `LEGAL_CHANGES` has a summary for it, signed-in people see a banner until they press "Got it".
 
+## v33: time zone for emails
+```sql
+users.time_zone   -- IANA zone, default 'Asia/Jakarta'; emails show times in it (WIB / WITA / WIT, or Intl's name elsewhere)
+```
+- Set from the browser at sign-up (hidden `tz` field), changeable in Settings; invalid values fall back to Asia/Jakarta (`lib/time-zones.ts`). The website itself always shows the viewer's device time.
+- Sessions slide: `auth_sessions.expires_at` moves to 30 days after the latest visit (written with `last_seen_at`, at most every 10 minutes).
+
 ## Retention (cron)
 - `pruneSecurityRecords`: `login_devices` unused for a year, `payment_changes` older than a year, expired `login_challenges`.
 

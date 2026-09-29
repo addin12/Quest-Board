@@ -14,6 +14,7 @@ import { ModRemoveButton } from "@/components/mod-remove-button";
 import { ShareButtons } from "@/components/share-buttons";
 import { ConfirmButton } from "@/components/submit-button";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { changeVersion } from "@/lib/changes";
 import { closeNoticeAction, renewNoticeAction } from "@/app/actions";
 import { SubmitButton } from "@/components/submit-button";
 import { NOTICE_DAYS } from "@/lib/board";
@@ -45,7 +46,7 @@ export default async function NoticePage(props: PageProps<"/board/[id]">) {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
-      <AutoRefresh />
+      <AutoRefresh watch="notice" id={n.id} version={changeVersion("notice", n.id, user?.id ?? null)} />
       <Link href="/board" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-text"><Icon name="arrow-left" /> {t("board.pageTitle")}</Link>
       {posted && isAuthor && <div className="mt-4"><Notice tone="success">{t("board.posted")}</Notice></div>}
       {edited && isAuthor && <div className="mt-4"><Notice tone="success">{t("board.edited")}</Notice></div>}

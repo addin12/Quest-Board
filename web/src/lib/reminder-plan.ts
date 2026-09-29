@@ -1,3 +1,4 @@
+import { formatWhen } from "./time-zones.ts";
 // Which session reminders are due. Pure module (no server imports) so node --test can load it.
 //
 // Two reminders per person per session: "24h" (sent once the session is within a day) and
@@ -34,10 +35,7 @@ export function planReminders(rows: ReminderCandidate[], now: Date): { session_i
   return out;
 }
 
-/** "Sat, 27 Sept, 19.00 WIB": emails can't know the reader's zone, and Indonesia is mostly on WIB. */
+/** "Sat 27 Sept, 19.00 WIB". Emails use formatWhen with the reader's zone (lib/time-zones.ts). */
 export function formatWib(iso: string, lang: "en" | "id"): string {
-  const s = new Intl.DateTimeFormat(lang === "id" ? "id-ID" : "en-GB", {
-    weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Jakarta",
-  }).format(new Date(iso));
-  return `${s.replace(/(\d{2}):(\d{2})/, "$1.$2")} WIB`;
+  return formatWhen(iso, lang, "Asia/Jakarta");
 }

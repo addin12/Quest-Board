@@ -726,8 +726,8 @@ export function isSuspended(userId: number): boolean {
 
 export function getUserSettings(userId: number) {
   return db()
-    .prepare("SELECT id, name, email, bio, role, avatar_hue, avatar_image, email_reminders, email_notifications, calendar_token FROM users WHERE id = ?")
-    .get(userId) as { id: number; name: string; email: string; bio: string; role: string; avatar_hue: number; avatar_image: string; email_reminders: number; email_notifications: number; calendar_token: string | null } | undefined;
+    .prepare("SELECT id, name, email, bio, role, avatar_hue, avatar_image, email_reminders, email_notifications, calendar_token, time_zone FROM users WHERE id = ?")
+    .get(userId) as { id: number; name: string; email: string; bio: string; role: string; avatar_hue: number; avatar_image: string; email_reminders: number; email_notifications: number; calendar_token: string | null; time_zone: string } | undefined;
 }
 
 /** Public, indexable URLs' data for sitemap.xml: published games and listed GMs. */

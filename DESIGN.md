@@ -134,7 +134,7 @@ The full UX spec (flows, screens, sitemap) is in `docs/07-ux-ui-spec.md`. This f
 | genre & style *terms* | **English** for compound TTRPG terms: *High fantasy, Dark fantasy, Gothic horror, Space opera, Roleplay-heavy, Combat-light, West Marches* | Fantasi gelap, Banyak roleplay |
 | genre & style *plain words* | **Indonesian** for everyday words: *Fantasi, Horor, Komedi, Bajak laut, Romansa, Pedesaan* | — |
 | mechanic names | proper nouns, never translated (*d20 System, Powered by the Apocalypse*) | — |
-| beginner | **beginner** · *Beginner-friendly* | pemula |
+| beginner | **pemula** in plain Indonesian (*Saya pemula*, *Game ramah pemula*, *one-shot untuk pemula*, *Pemula & keluarga*, *4 pemula*); **beginner-friendly** only as the level label (*Beginner-friendly*, *Game beginner-friendly lainnya*) | beginner in a sentence |
 | Hire a GM (feature) | **Cari GM** · *Cari Game Master* | Sewa GM |
 | Game Master | **Game Master** / **GM** | — |
 | game, one-shot, roleplay | English as-is | permainan, sekali main |

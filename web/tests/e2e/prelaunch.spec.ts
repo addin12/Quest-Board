@@ -142,3 +142,16 @@ test("changing a GM's payment details sends a security email showing the new det
   expect(mail.body_text).toContain("/forgot-password");
   db.close();
 });
+
+test("the dev email gallery shows every email in both languages, with every placeholder filled", async ({ page }) => {
+  for (const lang of ["en", "id"] as const) {
+    await page.goto(`/dev/emails?lang=${lang}`);
+    const mails = page.getByTestId("gallery-mail");
+    await expect(mails).toHaveCount(16);
+    const texts = [...(await page.getByTestId("gallery-subject").allInnerTexts()), ...(await page.getByTestId("gallery-body").allInnerTexts())];
+    for (const text of texts) expect(text, `[${lang}] ${text.slice(0, 60)}`).not.toMatch(/\{\w+\}/);
+  }
+  await expect(page.locator("#verify").getByTestId("gallery-subject")).not.toHaveText(/confirm/i); // Indonesian now
+  await page.goto("/dev/emails?lang=id&tz=Asia/Makassar");
+  await expect(page.locator("#reminder-24h").getByTestId("gallery-body")).toContainText("20.00 WITA");
+});

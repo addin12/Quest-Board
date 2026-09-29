@@ -449,6 +449,9 @@ export const MIGRATIONS: Record<number, string> = {
     ALTER TABLE users ADD COLUMN legal_seen_version TEXT NOT NULL DEFAULT '';
     UPDATE users SET legal_seen_version = terms_version; -- they've seen what they agreed to
   `,
+  33: `
+    ALTER TABLE users ADD COLUMN time_zone TEXT NOT NULL DEFAULT 'Asia/Jakarta';
+  `,
 };
 
 export type UpgradePlan =
