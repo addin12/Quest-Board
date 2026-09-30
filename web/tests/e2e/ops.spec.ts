@@ -81,3 +81,18 @@ test("admins can read a question thread but don't get a reply box", async ({ pag
     db.close();
   }
 });
+
+test("the setup check names what isn't production-ready, and the admin home says so", async ({ page }) => {
+  await login(page, "admin@questboard.test");
+  await page.goto("/admin");
+  await expect(page.getByText(/setup problems? needs? fixing before real users arrive/)).toBeVisible();
+  await page.getByRole("link", { name: "See the setup check" }).click();
+  await expect(page).toHaveURL(/\/admin\/setup$/);
+  const check = (title: string) => page.getByTestId("setup-check").filter({ hasText: title });
+  // These e2e servers run with test-only switches, demo data and no email provider.
+  await expect(check("Test-only switches")).toHaveAttribute("data-level", "danger");
+  await expect(check("Test-only switches")).toContainText("QUESTBOARD_DEV_OUTBOX");
+  await expect(check("Demo data")).toHaveAttribute("data-level", "danger");
+  await expect(check("Email provider")).toHaveAttribute("data-level", "danger");
+  await expect(page.getByTestId("setup-check").first()).toHaveAttribute("data-level", "danger"); // problems first
+});

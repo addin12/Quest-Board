@@ -8,6 +8,7 @@ import { shownName } from "@/lib/i18n/dict";
 import { countRecentErrors } from "@/lib/error-log";
 import { Icon } from "@/components/icon";
 import { AdminNav } from "./admin-nav";
+import { currentSetupChecks } from "@/lib/setup-facts";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -20,6 +21,7 @@ export default async function AdminHomePage() {
   const s = adminStats();
   const m = launchMetrics(7);
   const errors = countRecentErrors(7);
+  const setupProblems = currentSetupChecks().filter((c) => c.level === "danger").length;
   const log = listAdminLog(15);
   const pulse = [
     ["users", m.signups, t("admin.pulseSignups")],
@@ -40,6 +42,12 @@ export default async function AdminHomePage() {
       <h1 className="text-3xl font-bold">{t("admin.title")}</h1>
       <p className="mt-1 mb-6 text-muted">{t("admin.lead")}</p>
       <AdminNav t={t} current="home" openReports={s.openReports} />
+      {setupProblems > 0 && (
+        <p className="card mb-6 flex flex-wrap items-center gap-2 border-danger/50! p-4 text-sm" role="note">
+          <Icon name="cross-circle" className="text-danger" /> {t("setup.bannerDanger", { n: setupProblems })}{" "}
+          <Link href="/admin/setup" className="font-semibold text-accent hover:underline">{t("setup.bannerLink")}</Link>
+        </p>
+      )}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tiles.map((tile) => (
           <Link key={tile.label} href={tile.href} className={`card p-5 hover:border-accent ${tile.urgent ? "border-danger/50!" : ""}`}>

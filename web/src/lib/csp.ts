@@ -25,6 +25,10 @@ export function contentSecurityPolicy(nonce?: string): string {
   ].join("; ");
 }
 
+/** HSTS behind TLS (QUESTBOARD_ENFORCE_HTTPS=true), read at request time — never at build time. */
+export const hstsHeader = (): string | null =>
+  process.env.QUESTBOARD_ENFORCE_HTTPS === "true" ? "max-age=31536000; includeSubDomains" : null;
+
 /** A fresh per-request nonce (128 random bits, base64). */
 export function newNonce(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(16));

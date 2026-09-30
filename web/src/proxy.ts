@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { contentSecurityPolicy, newNonce } from "./lib/csp";
+import { contentSecurityPolicy, hstsHeader, newNonce } from "./lib/csp";
 import { SESSION_COOKIE, SESSION_DAYS, sessionCookieOptions } from "./lib/session-cookie";
 
 // Language URLs (P3-3): /id/... and /en/... serve the same pages in that language, so each
@@ -36,6 +36,8 @@ export function proxy(request: NextRequest) {
 
 function withCsp(res: NextResponse, csp: string, request?: NextRequest) {
   res.headers.set("Content-Security-Policy", csp);
+  const hsts = hstsHeader(); // here, not in next.config: that one is fixed when the image is built
+  if (hsts) res.headers.set("Strict-Transport-Security", hsts);
   return request ? renewSession(res, request) : res;
 }
 

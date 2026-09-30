@@ -1,0 +1,52 @@
+# Quest Board on one server: see deploy/README.md.
+#   docker compose up -d --build      start (or update after git pull)
+#   docker compose logs -f app        watch the app (setup problems are logged at start)
+#   docker compose exec app npm run admin -- create you@example.com "Your Name"
+
+services:
+  app:
+    build: ../web
+    restart: unless-stopped
+    env_file: ${QUESTBOARD_ENV_FILE:-.env}
+    environment:
+      QUESTBOARD_PROXY_HOPS: "1" # Caddy is the one proxy in front
+    volumes:
+      - questboard-data:/data
+    expose:
+      - "3000"
+
+  # Every 5 minutes: reminders, emails, clean-up. Nightly: backup of the database and pictures.
+  scheduler:
+    build: ../web
+    restart: unless-stopped
+    env_file: ${QUESTBOARD_ENV_FILE:-.env}
+    environment:
+      QUESTBOARD_APP_URL: http://app:3000
+    command: ["node", "scripts/scheduler.mjs"]
+    healthcheck:
+      disable: true
+    volumes:
+      - questboard-data:/data
+    depends_on:
+      - app
+
+  # HTTPS: Caddy gets and renews the certificate for QUESTBOARD_DOMAIN by itself.
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    env_file: ${QUESTBOARD_ENV_FILE:-.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+volumes:
+  questboard-data: # the database, uploaded pictures and backups: keep this, and copy backups off the server
+  caddy-data:
+  caddy-config:

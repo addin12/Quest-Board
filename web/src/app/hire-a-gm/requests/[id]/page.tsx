@@ -13,6 +13,7 @@ import { OfferForm, RequestMessageForm } from "@/components/hire-forms";
 import { RequestFacts, RequestStatus } from "@/components/request-bits";
 import { Icon } from "@/components/icon";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { NewMessageAnnouncer } from "@/components/new-message-announcer";
 import { changeVersion } from "@/lib/changes";
 import { ReportButton } from "@/components/report-button";
 import { chooseOfferAction, closeRequestAction } from "@/app/actions";
@@ -75,6 +76,7 @@ export default async function RequestPage(props: PageProps<"/hire-a-gm/requests/
       {inThread && (
         <section className="mt-8" aria-labelledby="thread-h">
           <AutoRefresh watch="request" id={r.id} version={changeVersion("request", r.id, user.id)} />
+          <NewMessageAnnouncer lastId={messages.at(-1)?.id ?? 0} author={messages.length ? shownName(messages[messages.length - 1].name, t) : ""} fromMe={messages.at(-1)?.user_id === user.id} />
           <h2 id="thread-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="comment-dots" className="text-accent" /> {t("hire.threadTitle")}</h2>
           <p className="text-sm text-muted">{t("hire.threadLead")}</p>
           {isRequester && matchedOffer && isSuspended(matchedOffer.gm_id) && (

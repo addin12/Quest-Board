@@ -1,0 +1,19 @@
+# Caddy terminates HTTPS and passes requests to the app. It sets X-Forwarded-For itself, which the
+# app reads with QUESTBOARD_PROXY_HOPS=1 for rate limits.
+{
+	email {$QUESTBOARD_ACME_EMAIL}
+}
+
+{$QUESTBOARD_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:3000
+	# Uploads are limited by the app (5 MB per picture); allow a little room for the rest of the form.
+	request_body {
+		max_size 8MB
+	}
+}
+
+# www → the bare domain.
+www.{$QUESTBOARD_DOMAIN} {
+	redir https://{$QUESTBOARD_DOMAIN}{uri} permanent
+}

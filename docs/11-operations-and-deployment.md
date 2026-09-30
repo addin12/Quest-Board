@@ -74,6 +74,7 @@ CMD ["npm", "start"]
 | Remove abusive payment details | `UPDATE gm_profiles SET payment_info = '' WHERE user_id = ?;` |
 | Hide a listing | `UPDATE games SET status = 'archived' WHERE slug = ?;` |
 | Expire sessions | `DELETE FROM auth_sessions WHERE expires_at < strftime('%Y-%m-%dT%H:%M:%fZ','now');` |
+| Deployment kit | `deploy/` (Docker Compose: app, scheduler, Caddy) — see `deploy/README.md`; settings in `deploy/.env` from `deploy/.env.example`; **Admin → Setup** checks them. Rehearse locally with `npm run rehearsal` |
 | Health check | `GET /api/health` returns `{"ok":true,"schema":N}` with 200 when the database answers at the expected schema version, and 503 otherwise — use it for the container health check (Docker: `HEALTHCHECK CMD curl -fsS http://localhost:3000/api/health || exit 1`). **Uptime monitor:** `GET /api/health?full=1` adds `cron` (last run; 503 when it hasn't run for 30 minutes) and `email` (unsent for over 30 minutes while a provider is configured); each says `"not configured"` when that part isn't set up |
 | Server errors | Admin console → **Server errors** (`/admin/errors`): errors captured by `src/instrumentation.ts`, grouped, last 30 days (no cookies, headers or query strings are stored). The cron route prunes older rows. The admin home also shows this week's count. Admins also get a **daily email digest** (at most every 20 hours, only when there were errors) from the cron route |
 

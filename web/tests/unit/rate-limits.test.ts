@@ -6,7 +6,7 @@ import { LIMITS } from "../../src/lib/limits.ts";
 const perHour = (b: keyof typeof LIMITS) => LIMITS[b].limit * (3_600_000 / LIMITS[b].windowMs);
 
 test("buckets keyed by IP alone allow at least 100 an hour (many phones share one carrier IP)", () => {
-  for (const b of ["loginIp", "signup", "resetIp", "feedbackIp", "api", "twoStep"] as const) assert.ok(perHour(b) >= 100, `${b}: ${perHour(b)}/h`);
+  for (const b of ["loginIp", "signup", "resetIp", "feedbackIp", "api", "twoStep", "changes"] as const) assert.ok(perHour(b) >= 100, `${b}: ${perHour(b)}/h`);
 });
 
 test("per-account buckets stay strict enough to stop guessing", () => {

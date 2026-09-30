@@ -66,6 +66,7 @@ test("sign-up records Terms consent; a password change sends a security email", 
 });
 
 test("players are warned about recently changed payment details; admins see GMs who change them often", async ({ page, browser }) => {
+  test.setTimeout(120_000); // a GM, a player, a booking, two changes, an admin and a report in one journey
   const gmEmail = unique("paywarn");
   const slug = await createGmWithGame(page, "Switchy GM", gmEmail, `Switchy Table ${Date.now() % 100000}`);
   const player = await newPage(browser);

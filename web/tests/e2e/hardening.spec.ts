@@ -217,6 +217,7 @@ test("live threads poll a tiny change token and re-render only when something ch
   await player.getByRole("button", { name: "Send" }).click();
   await expect(player.getByText(text)).toBeVisible();
   await expect(gm.getByText(text)).toBeVisible({ timeout: 40_000 });
+  await expect(gm.getByRole("status").filter({ hasText: "New message from Andi Wijaya" })).toBeAttached(); // for screen readers
   // Leave the demo chat as it was (another spec checks the GM's own game page has nothing of theirs to report).
   const db = e2eDb();
   db.prepare("DELETE FROM messages WHERE body = ?").run(text);

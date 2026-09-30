@@ -1,0 +1,8 @@
+# The production rehearsal (npm run rehearsal in web/): the real kit, on this machine, on
+# https://localhost:8443 with Caddy's local certificate. Used with docker-compose.yml:
+#   QUESTBOARD_ENV_FILE=rehearsal/rehearsal.env docker compose -p qb-rehearsal -f docker-compose.yml -f rehearsal/docker-compose.rehearsal.yml up -d --build
+services:
+  caddy:
+    ports: !override
+      - "8080:80"
+      - "8443:443"
