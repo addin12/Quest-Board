@@ -36,13 +36,49 @@ and the backup lines turn OK after the scheduler's first run (5 minutes) and fir
 - **Every 5 minutes** the scheduler calls the app's job: session reminders, notification emails and
   retries, waitlist offers, the admin error digest, and clean-up.
 - **Every night** (03:00 WIB by default) it backs up the database and pictures into `backups/` on the
-  data volume and keeps the newest 14. **Copy them off the server too** — a backup on the same disk
-  doesn't survive losing the disk. For example, nightly from another machine:
-  ```sh
-  ssh you@server "docker run --rm -v deploy_questboard-data:/data alpine tar czf - -C /data backups" > questboard-backups.tgz
-  ```
+  data volume, keeps the newest 14, and — once you set it up — copies the backup and new pictures to
+  off-site storage (below). A backup on the same disk doesn't survive losing the disk.
 - Point a free uptime monitor (e.g. UptimeRobot) at `https://<your domain>/api/health?full=1` every
   5 minutes: it fails when the site is down, the database is wrong, the job stopped or emails are stuck.
+
+## Off-site backups
+
+Set these up before launch: they are what saves the site if the server's disk dies.
+
+1. Create a bucket at **Cloudflare R2** (the free tier covers a small site; no charge for downloads) or
+   **Backblaze B2**. Keep it private.
+2. Create an API key/token allowed to **write objects to that bucket only**.
+3. Add a **lifecycle rule** on the bucket to delete objects older than, say, 60 days (old copies aren't
+   deleted by Quest Board).
+4. Fill in `QUESTBOARD_OFFSITE_*` in `.env`, then `docker compose up -d` and make the first copy now:
+
+   ```sh
+   docker compose exec scheduler npm run db:backup
+   docker compose exec scheduler npm run db:offsite
+   ```
+
+**Admin → Setup** shows "Off-site copy of backups: OK" with the time of the last copy, and "Fix" if a
+night's copy fails. To restore from it: download `db/questboard-<time>.db.gz` from the bucket, unzip
+it, copy it into the data volume's `backups/` folder, and follow "Restoring a backup" below (pictures
+are under `uploads/` in the bucket).
+
+## Keeping the server safe
+
+Once, when you set the server up (Ubuntu/Debian commands):
+
+```sh
+# Firewall: only SSH and the web. The app itself (port 3000) is never reachable from outside.
+sudo ufw allow OpenSSH && sudo ufw allow 80,443/tcp && sudo ufw allow 443/udp && sudo ufw enable
+# Log in with an SSH key only: add your key to ~/.ssh/authorized_keys first, then set
+#   PasswordAuthentication no   and   PermitRootLogin no   in /etc/ssh/sshd_config
+sudo systemctl restart ssh
+# Security updates install themselves.
+sudo apt install unattended-upgrades && sudo dpkg-reconfigure -plow unattended-upgrades
+```
+
+The kit already does the rest: the app runs as an unprivileged user on a read-only file system with no
+extra Linux capabilities, logs rotate so they can't fill the disk, and only Caddy is exposed. Keep
+`deploy/.env` readable only by you (`chmod 600 .env`): it holds your email and cron secrets.
 
 ## Updating
 

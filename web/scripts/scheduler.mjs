@@ -2,7 +2,8 @@
 //   • every QUESTBOARD_CRON_MINUTES (default 5): POST the app's /api/cron/reminders with QUESTBOARD_CRON_SECRET
 //     (reminders, notification emails, retries, waitlists, digest, clean-up);
 //   • once a day at QUESTBOARD_BACKUP_HOUR_UTC (default 20, i.e. 03:00 WIB): npm run db:backup into
-//     QUESTBOARD_BACKUP_DIR on the shared data volume (the database and uploaded pictures).
+//     QUESTBOARD_BACKUP_DIR on the shared data volume (the database and uploaded pictures), then a copy
+//     to off-site storage when QUESTBOARD_OFFSITE_* is set (scripts/offsite.mjs).
 // Logs one line per run; a failure is logged and retried next time, never fatal.
 import { spawn } from "node:child_process";
 
@@ -32,7 +33,11 @@ function maybeBackup() {
   lastBackupDay = day;
   log("backup starting");
   const child = spawn(process.execPath, ["scripts/db-backup.mjs", "backup"], { stdio: "inherit", env: process.env });
-  child.on("exit", (code) => log(`backup ${code === 0 ? "done" : `failed (exit ${code})`}`));
+  child.on("exit", (code) => {
+    log(`backup ${code === 0 ? "done" : `failed (exit ${code})`}`);
+    // Then a copy off the server (scripts/offsite.mjs; does nothing unless QUESTBOARD_OFFSITE_* is set).
+    if (code === 0) spawn(process.execPath, ["scripts/offsite.mjs"], { stdio: "inherit", env: process.env }).on("exit", (c) => log(`off-site ${c === 0 ? "done" : `failed (exit ${c})`}`));
+  });
 }
 
 // Let the app start first; then run on the clock.

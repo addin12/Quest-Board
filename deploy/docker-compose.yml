@@ -3,8 +3,29 @@
 #   docker compose logs -f app        watch the app (setup problems are logged at start)
 #   docker compose exec app npm run admin -- create you@example.com "Your Name"
 
+# Logs rotate (10 MB × 5 per service) so they can't fill a small server's disk.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+# The app and the scheduler: no extra privileges, no Linux capabilities, and a read-only file system
+# except the data volume and small scratch areas (Next's image cache, npm's cache, /tmp).
+x-hardened: &hardened
+  read_only: true
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  tmpfs:
+    - /tmp
+    - /app/.next/cache:uid=1000,gid=1000
+    - /home/node/.npm:uid=1000,gid=1000
+
 services:
   app:
+    <<: *hardened
     build: ../web
     restart: unless-stopped
     env_file: ${QUESTBOARD_ENV_FILE:-.env}
@@ -14,9 +35,12 @@ services:
       - questboard-data:/data
     expose:
       - "3000"
+    logging: *logging
 
-  # Every 5 minutes: reminders, emails, clean-up. Nightly: backup of the database and pictures.
+  # Every 5 minutes: reminders, emails, clean-up. Nightly: backup of the database and pictures
+  # (and a copy to off-site storage when QUESTBOARD_OFFSITE_* is set).
   scheduler:
+    <<: *hardened
     build: ../web
     restart: unless-stopped
     env_file: ${QUESTBOARD_ENV_FILE:-.env}
@@ -29,11 +53,18 @@ services:
       - questboard-data:/data
     depends_on:
       - app
+    logging: *logging
 
   # HTTPS: Caddy gets and renews the certificate for QUESTBOARD_DOMAIN by itself.
   caddy:
     image: caddy:2
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE # ports 80 and 443
     ports:
       - "80:80"
       - "443:443"
@@ -45,6 +76,7 @@ services:
       - caddy-config:/config
     depends_on:
       - app
+    logging: *logging
 
 volumes:
   questboard-data: # the database, uploaded pictures and backups: keep this, and copy backups off the server

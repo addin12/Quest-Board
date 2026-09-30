@@ -19,11 +19,12 @@
     "db:backup": "node scripts/db-backup.mjs backup",
     "rehearsal": "node scripts/rehearsal.mjs",
     "load-test": "node scripts/load-test.mjs",
-    "db:restore": "node scripts/db-backup.mjs restore"
+    "db:restore": "node scripts/db-backup.mjs restore",
+    "db:offsite": "node scripts/offsite.mjs"
   },
   "dependencies": {
     "@flaticon/flaticon-uicons": "^3.3.1",
-    "next": "16.3.6",
+    "next": "16.3.7",
     "qrcode": "^1.5.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -39,7 +40,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.6",
+    "eslint-config-next": "16.3.7",
     "subset-font": "^2.9.0",
     "tailwindcss": "^4",
     "typescript": "^5"

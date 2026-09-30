@@ -25,6 +25,7 @@ The deployment kit in [`deploy/`](../deploy/README.md) (Docker: the app, a sched
 - [ ] Set `QUESTBOARD_CRON_SECRET` and schedule `/api/cron/reminders` every 5 minutes.
 - [ ] Schedule `npm run db:backup` nightly and copy `data/backups` off the server (it includes `uploads/`, the pictures people uploaded). **Test one restore on a copy** (rehearsed on 2026-09-28: a v25 backup restored onto an empty "new server", pictures put back, and the app upgraded it to v26 on start with every user, game and booking intact).
 - [ ] Keep `data/` (the database **and** `data/uploads`, or `QUESTBOARD_UPLOAD_DIR`) on the persistent disk.
+- [ ] Set up **off-site backups** (Cloudflare R2 or Backblaze B2, `QUESTBOARD_OFFSITE_*` — `deploy/README.md`, "Off-site backups") and make the first copy with `npm run db:offsite`; Admin → Setup should show it OK.
 - [ ] Smoke test on the live site: sign up, verify email (a real email arrives), become a GM, list a game, book it from a second account, check the reminder and chat, then report something and handle it in `/admin`.
 - [ ] Submit `https://<domain>/sitemap.xml` in Google Search Console.
 

@@ -9,7 +9,9 @@ const good: SetupFacts = {
   legalVersion: "2026-10-01",
   cronLastRun: new Date(now - 4 * 60_000).toISOString(),
   lastBackupAt: new Date(now - 10 * 3_600_000).toISOString(),
+  offsiteLast: { at: new Date(now - 10 * 3_600_000).toISOString(), ok: true, detail: "questboard-x.db + 3 picture(s)" },
   env: {
+    QUESTBOARD_OFFSITE_ENDPOINT: "https://x.r2.cloudflarestorage.com", QUESTBOARD_OFFSITE_BUCKET: "qb", QUESTBOARD_OFFSITE_KEY_ID: "k", QUESTBOARD_OFFSITE_SECRET: "s",
     NODE_ENV: "production", QUESTBOARD_SEED: "false", RESEND_API_KEY: "re_x", QUESTBOARD_MAIL_FROM: "Quest Board <halo@questboard.id>",
     QUESTBOARD_BASE_URL: "https://questboard.id", QUESTBOARD_ENFORCE_HTTPS: "true", QUESTBOARD_CONTACT_EMAIL: "halo@questboard.id", QUESTBOARD_CRON_SECRET: "s",
   },
@@ -35,6 +37,11 @@ test("production problems are marked for fixing", () => {
   assert.equal(level({ ...good, lastBackupAt: null }, "backup"), "danger");
   assert.equal(level({ ...good, lastBackupAt: new Date(now - 40 * 3_600_000).toISOString() }, "backup"), "danger");
   assert.equal(level({ ...good, legalVersion: "2026-09-29-draft" }, "legal"), "warn");
+  assert.equal(level({ ...good, offsiteLast: { at: good.offsiteLast!.at, ok: false, detail: "PUT: 403" } }, "offsite"), "danger");
+  assert.equal(level({ ...good, offsiteLast: { at: new Date(now - 50 * 3_600_000).toISOString(), ok: true, detail: "x" } }, "offsite"), "danger");
+  assert.equal(level({ ...good, offsiteLast: null }, "offsite"), "warn"); // configured, not run yet
+  assert.equal(level({ ...good, env: { ...good.env, QUESTBOARD_OFFSITE_SECRET: undefined } }, "offsite"), "warn"); // not set up
+  assert.equal(level({ ...good, env: { ...good.env, QUESTBOARD_RESEND_URL: "http://fakes:4000" } }, "email"), "warn");
 });
 
 test("a development machine gets reminders, not alarms", () => {

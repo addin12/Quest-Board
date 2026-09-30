@@ -29,7 +29,8 @@ async function deliver(id: number, mail: Email): Promise<boolean> {
   if (!key || !from) return false; // queued only (development, or no provider configured yet)
   db().prepare("UPDATE email_outbox SET attempts = attempts + 1 WHERE id = ?").run(id);
   try {
-    const res = await fetch("https://api.resend.com/emails", {
+    // QUESTBOARD_RESEND_URL: only for the production rehearsal's fake provider (Admin → Setup warns).
+    const res = await fetch(`${(process.env.QUESTBOARD_RESEND_URL ?? "https://api.resend.com").replace(/\/+$/, "")}/emails`, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from, to: [mail.to], subject: mail.subject, text: mail.text, html: emailHtml(mail.subject, mail.text) }),

@@ -16,6 +16,7 @@ const compose = (...args: string[]) =>
   execFileSync("docker", ["compose", "-p", "qb-rehearsal", "-f", "docker-compose.yml", "-f", "rehearsal/docker-compose.rehearsal.yml", ...args], { cwd: DEPLOY, env: ENV, encoding: "utf8" });
 
 const ADMIN = "owner@rehearsal.test";
+const FAKES = "http://localhost:4000"; // deploy/rehearsal: stand-ins for Resend and S3
 let password = "";
 let key = "";
 
@@ -69,19 +70,49 @@ test("the first admin: CLI account, Secure cookie, two-step login required, then
   await expect(page.getByText(/Two-step login is on \(since/)).toBeVisible();
 
   await page.goto("/admin/setup");
-  const level = (title: string) => page.getByTestId("setup-check").filter({ hasText: title }).getAttribute("data-level");
+  const ids: Record<string, string> = { "Test-only switches": "test-switches", "Demo data": "seed", "Site address": "base-url", "HTTPS only": "https", "Scheduled job": "cron", "Email provider": "email", "Backups": "backup", "Off-site copy of backups": "offsite" };
+  const level = (title: string) => page.locator(`[data-check="${ids[title]}"]`).getAttribute("data-level");
   expect(await level("Test-only switches")).toBe("ok");
   expect(await level("Demo data")).toBe("ok");
   expect(await level("Site address")).toBe("ok");
   expect(await level("HTTPS only")).toBe("ok");
   expect(await level("Scheduled job")).toBe("ok");
-  expect(await level("Email provider")).toBe("danger"); // the rehearsal has no Resend account
+  expect(await level("Email provider")).toBe("warn"); // set up, but pointed at the rehearsal's stand-in
   expect(await level("Backups")).toBe("danger"); // none yet
+  expect(await level("Off-site copy of backups")).toBe("warn"); // set up, nothing sent yet
 
-  // A real backup, then the check turns OK.
-  compose("exec", "-T", "scheduler", "node", "scripts/db-backup.mjs", "backup");
+  // A real backup and its off-site copy (what the scheduler does every night), then both turn OK.
+  compose("exec", "-T", "scheduler", "npm", "run", "db:backup");
+  compose("exec", "-T", "scheduler", "npm", "run", "db:offsite");
   await page.reload();
   expect(await level("Backups")).toBe("ok");
+  expect(await level("Off-site copy of backups")).toBe("ok");
+  const objects = (await (await fetch(`${FAKES}/objects`)).json()) as { key: string; size: number }[];
+  expect(objects.some((o) => /^rehearsal-bucket\/questboard\/db\/questboard-.+\.db\.gz$/.test(o.key) && o.size > 1000), JSON.stringify(objects)).toBe(true); // signature checked by the stand-in
+});
+
+test("sign-up works end to end over HTTPS: the emailed link uses the real address and signs you in", async ({ page }) => {
+  const email = `player-${Date.now()}@rehearsal.test`;
+  await page.goto("/signup");
+  await page.getByLabel("Display name").fill("Rehearsal Player");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill("a-good-password-123");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await page.waitForURL("**/signup/check-email");
+  let mail: { to: string[]; subject: string; text: string; html: string } | undefined;
+  await expect.poll(async () => {
+    const all = (await (await fetch(`${FAKES}/emails`)).json()) as { to: string[]; subject: string; text: string; html: string }[];
+    mail = all.find((m) => m.to.includes(email));
+    return !!mail;
+  }, { timeout: 30_000 }).toBe(true);
+  const links = mail!.text.match(/https?:\/\/\S+/g) ?? [];
+  expect(links.length).toBeGreaterThan(0);
+  for (const link of links) expect(link).toMatch(/^https:\/\/localhost:8443\//); // QUESTBOARD_BASE_URL, never the internal address
+  expect(mail!.html).toContain("<html"); // the HTML version goes out too
+  const confirm = links.find((l) => l.includes("/verify-email?token="))!;
+  await page.goto(confirm);
+  await page.getByRole("button", { name: "Confirm my email" }).click();
+  await expect(page.getByText("Your email is confirmed — welcome to Quest Board!")).toBeVisible();
 });
 
 test("no page trips the script policy over HTTPS", async ({ page }) => {
@@ -106,5 +137,5 @@ test("everything survives a restart of the app", async ({ page, request }) => {
   await page.getByRole("button", { name: "Log in" }).click();
   await page.waitForURL("**/dashboard");
   await page.goto("/admin/setup");
-  expect(await page.getByTestId("setup-check").filter({ hasText: "Backups" }).getAttribute("data-level")).toBe("ok"); // the backup is on the volume
+  expect(await page.locator('[data-check="backup"]').getAttribute("data-level")).toBe("ok"); // the backup is on the volume
 });

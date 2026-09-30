@@ -32,7 +32,7 @@ export default async function AdminSetupPage() {
       <AdminNav t={t} current="setup" openReports={adminStats().openReports} />
       <ul className="card divide-y divide-border">
         {sorted.map((c) => (
-          <li key={c.id} className="flex items-start gap-3 p-4" data-testid="setup-check" data-level={c.level}>
+          <li key={c.id} className="flex items-start gap-3 p-4" data-testid="setup-check" data-check={c.id} data-level={c.level}>
             <Icon name={LOOK[c.level].icon} className={`mt-1 shrink-0 ${LOOK[c.level].className}`} />
             <div className="min-w-0">
               <p className="font-semibold">

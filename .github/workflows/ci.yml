@@ -45,3 +45,33 @@ jobs:
           name: playwright-traces
           path: web/test-results/
           retention-days: 7
+
+  # The production rehearsal (TESTING.md): the real deployment kit in deploy/ — Docker image, scheduler,
+  # Caddy with HTTPS — started from nothing and checked end to end. Catches deployment-only problems
+  # (like headers fixed at build time) that the e2e servers, on plain http, can't see.
+  rehearsal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run rehearsal
+
+      - name: Upload rehearsal traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rehearsal-traces
+          path: web/test-results/
+          retention-days: 7

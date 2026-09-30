@@ -18,6 +18,8 @@ function lastBackupAt(): string | null {
 
 /** This server's setup checks (admin Setup tab, startup log). */
 export function currentSetupChecks(): SetupCheck[] {
-  const cronLastRun = (db().prepare("SELECT value FROM app_state WHERE key = 'cron_last_run'").get() as { value: string } | undefined)?.value ?? null;
-  return setupChecks({ env: process.env, cronLastRun, lastBackupAt: lastBackupAt(), legalVersion: LEGAL_VERSION, now: Date.now() });
+  const state = (key: string) => (db().prepare("SELECT value FROM app_state WHERE key = ?").get(key) as { value: string } | undefined)?.value ?? null;
+  let offsiteLast = null;
+  try { offsiteLast = JSON.parse(state("offsite_last") ?? "null"); } catch { /* unreadable: treat as none */ }
+  return setupChecks({ env: process.env, cronLastRun: state("cron_last_run"), lastBackupAt: lastBackupAt(), offsiteLast, legalVersion: LEGAL_VERSION, now: Date.now() });
 }
