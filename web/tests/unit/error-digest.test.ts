@@ -51,3 +51,14 @@ test("emails the provider couldn't deliver are reported too, even without server
   assert.match(en.text, /2 emails couldn't be delivered \(last error: Error: Resend 503: provider down\)/);
   assert.doesNotMatch(en.text, /The server logged/);
 });
+
+test("setup problems alone also make a digest, with a link to the setup check", async () => {
+  const at = t0 + 200 * H; // long after the other digests
+  const before = sent.length;
+  const problem = { id: "backup", level: "danger" as const, title: "setup.backupStale" as const, detail: "setup.backupStale" as const, vars: { hours: 50 } };
+  assert.equal(await sendErrorDigest("https://qb.test", new Date(at), [{ ...problem, title: "setup.backup" }]), 2);
+  const en = sent.slice(before).find((m) => m.to.includes("a1@x.test"))!;
+  assert.equal(en.subject, "Quest Board: 1 setup problem since the last summary");
+  assert.match(en.text, /• Backups: The newest backup is about 50 hours old/);
+  assert.match(en.text, /https:\/\/qb\.test\/admin\/setup/);
+});

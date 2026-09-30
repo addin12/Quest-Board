@@ -40,6 +40,9 @@ and the backup lines turn OK after the scheduler's first run (5 minutes) and fir
   off-site storage (below). A backup on the same disk doesn't survive losing the disk.
 - Point a free uptime monitor (e.g. UptimeRobot) at `https://<your domain>/api/health?full=1` every
   5 minutes: it fails when the site is down, the database is wrong, the job stopped or emails are stuck.
+- **The admins' daily summary email** lists server errors, emails that couldn't be sent, and anything
+  **Admin → Setup** marks "Fix" (a stopped backup or off-site copy, the scheduler not running, less
+  than 1 GB of disk left…), so a problem doesn't wait for someone to open the admin console.
 
 ## Off-site backups
 
@@ -58,9 +61,7 @@ Set these up before launch: they are what saves the site if the server's disk di
    ```
 
 **Admin → Setup** shows "Off-site copy of backups: OK" with the time of the last copy, and "Fix" if a
-night's copy fails. To restore from it: download `db/questboard-<time>.db.gz` from the bucket, unzip
-it, copy it into the data volume's `backups/` folder, and follow "Restoring a backup" below (pictures
-are under `uploads/` in the bucket).
+night's copy fails. To recover from it, see "Restoring a backup" below.
 
 ## Keeping the server safe
 
@@ -90,11 +91,24 @@ The database migrates itself on start. Check `docker compose logs app` and Admin
 
 ## Restoring a backup
 
+From one of the nightly backups on the server:
+
 ```sh
 docker compose stop app scheduler
 docker compose run --rm app node scripts/db-backup.mjs restore /data/backups/<file>.db --yes
 docker compose start app scheduler
 ```
 
-The restore checks the backup first and keeps the database it replaces next to it. See
+**After losing the server** (a new server, the same `deploy/.env` including `QUESTBOARD_OFFSITE_*`):
+first fetch the newest off-site copy and every picture, then restore the file it names.
+
+```sh
+docker compose up -d --build && docker compose stop app scheduler
+docker compose run --rm app npm run db:fetch-offsite      # prints the restore command to run next
+docker compose run --rm app node scripts/db-backup.mjs restore /data/backups/<file>.db --yes
+docker compose start app scheduler
+```
+
+The restore checks the backup first and keeps the database it replaces next to it. The production
+rehearsal (`npm run rehearsal`) goes through exactly these steps after deleting everything. See
 `docs/11-operations-and-deployment.md` for everything else (moderation, admin accounts, lost phones).

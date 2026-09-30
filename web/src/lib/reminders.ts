@@ -5,6 +5,7 @@ import { sendEmail, type Email } from "./mailer";
 import { makeT, type Lang } from "./i18n/dict";
 import { planReminders, type ReminderCandidate } from "./reminder-plan";
 import { formatWhen } from "./time-zones";
+import { unsubscribeHeaders } from "./unsubscribe";
 
 // Session reminders (P2-12): an in-app notification plus an email in the person's language,
 // 24 hours and 1 hour before each session. Triggered by /api/cron/reminders (production
@@ -52,14 +53,14 @@ export async function processReminders(origin: string, now = new Date()): Promis
       const u = who.get(d.user_id) as Recipient;
       if (!u.email_reminders || !u.email_verified_at) continue;
       const s = session.get(d.session_id) as SessionInfo;
-      emails.push(reminderEmail(u, s, d.kind, isGm, origin));
+      emails.push(reminderEmail(u, d.user_id, s, d.kind, isGm, origin));
     }
   });
   for (const e of emails) await sendEmail(e);
   return emails.length;
 }
 
-function reminderEmail(u: Recipient, s: SessionInfo, kind: "24h" | "1h", isGm: boolean, origin: string): Email {
+function reminderEmail(u: Recipient, userId: number, s: SessionInfo, kind: "24h" | "1h", isGm: boolean, origin: string): Email {
   const t = makeT(u.locale);
   const when = formatWhen(s.starts_at, u.locale, u.time_zone);
   const where = s.location_type === "online" ? t("mail.reminderOnline") : t("mail.reminderInPerson", { city: s.city });
@@ -68,6 +69,7 @@ function reminderEmail(u: Recipient, s: SessionInfo, kind: "24h" | "1h", isGm: b
     to: u.email,
     subject: t(kind === "24h" ? "mail.reminderSubject24" : "mail.reminderSubject1", vars),
     text: t(isGm ? "mail.reminderBodyGm" : "mail.reminderBody", vars),
+    headers: unsubscribeHeaders(origin, userId, "reminders"),
   };
 }
 

@@ -68,6 +68,10 @@ Then `docker compose up -d`. **Admin → Setup** shows "Email provider: OK".
 3. For a second opinion, send a password-reset email to the address shown on
    [mail-tester.com](https://www.mail-tester.com) and aim for 9/10 or better.
 
+Notification emails and session reminders carry Gmail's and Yahoo's one-click **Unsubscribe**
+header (`List-Unsubscribe`), which turns just that kind of email off in the person's settings.
+Security emails and safety warnings don't carry it and are always sent.
+
 If something fails: Resend's domain page says which record it can't find; `nslookup -type=TXT
 resend._domainkey.questboard.id` (or `dig`) shows what the world sees. Emails that fail to send are
 retried by the scheduler and counted in the admins' daily digest.

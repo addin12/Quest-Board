@@ -36,7 +36,8 @@
 // v31: automatic scam flags (reports.reporter_id may be NULL).
 // v32: users.legal_seen_version (the "we've updated our Privacy Policy" banner).
 // v33: users.time_zone (emails show times in the reader's zone: WIB, WITA, WIT…).
-export const SCHEMA_VERSION = 33;
+// v34: email_outbox.headers (List-Unsubscribe survives a retry).
+export const SCHEMA_VERSION = 34;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -337,7 +338,8 @@ CREATE TABLE IF NOT EXISTS email_outbox (
   sent_at     TEXT,
   error       TEXT,
   attempts    INTEGER NOT NULL DEFAULT 0,  -- v20: delivery attempts (retried by the cron)
-  retryable   INTEGER NOT NULL DEFAULT 1   -- v20: 0 when the stored copy had its one-time link blanked
+  retryable   INTEGER NOT NULL DEFAULT 1,  -- v20: 0 when the stored copy had its one-time link blanked
+  headers     TEXT                         -- v34: extra headers as JSON (List-Unsubscribe), or NULL
 );
 
 CREATE TABLE IF NOT EXISTS reports (

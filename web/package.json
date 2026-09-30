@@ -20,7 +20,8 @@
     "rehearsal": "node scripts/rehearsal.mjs",
     "load-test": "node scripts/load-test.mjs",
     "db:restore": "node scripts/db-backup.mjs restore",
-    "db:offsite": "node scripts/offsite.mjs"
+    "db:offsite": "node scripts/offsite.mjs",
+    "db:fetch-offsite": "node scripts/offsite.mjs fetch"
   },
   "dependencies": {
     "@flaticon/flaticon-uicons": "^3.3.1",

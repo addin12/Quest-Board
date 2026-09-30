@@ -342,3 +342,34 @@ test("the time zone for emails comes from the browser at sign-up and can be chan
   expect(tzOf()).toBe("Asia/Jayapura");
   db.close();
 });
+
+test("one-click unsubscribe links turn off exactly that kind of email; a wrong token does nothing", async ({ page, request }) => {
+  const { createHmac } = await import("node:crypto");
+  const email = unique("unsub");
+  await signup(page, "Unsub Reader", email);
+  await page.goto("/settings"); // any page load creates the signing key if needed
+  const db = e2eDb();
+  const id = (db.prepare("SELECT id FROM users WHERE email = ?").get(email) as { id: number }).id;
+  // The key is created on first use (e.g. the first notification email); make sure it exists.
+  db.prepare("INSERT OR IGNORE INTO app_state (key, value) VALUES ('unsubscribe_key', 'e2e-unsubscribe-key')").run();
+  const key = (db.prepare("SELECT value FROM app_state WHERE key = 'unsubscribe_key'").get() as { value: string }).value;
+  const token = (kind: string) => createHmac("sha256", key).update(`${id}:${kind}`).digest("base64url").slice(0, 32);
+  const prefs = () => db.prepare("SELECT email_notifications AS n, email_reminders AS r FROM users WHERE id = ?").get(id) as { n: number; r: number };
+  expect(prefs()).toEqual({ n: 1, r: 1 });
+
+  expect((await request.post(`/api/unsubscribe?u=${id}&k=notifications&t=wrong-token-wrong-token-wrong-tok`)).status()).toBe(400);
+  expect((await request.post(`/api/unsubscribe?u=${id + 1}&k=notifications&t=${token("notifications")}`)).status()).toBe(400); // someone else's
+  expect(prefs()).toEqual({ n: 1, r: 1 });
+
+  // A person opening the link sees a page first; the button (or the mail app's one-click POST) turns them off.
+  await page.goto(`/api/unsubscribe?u=${id}&k=notifications&t=${token("notifications")}`);
+  await expect(page.getByRole("heading", { name: "Stop these emails?" })).toBeVisible();
+  expect(prefs()).toEqual({ n: 1, r: 1 });
+  await page.getByRole("button", { name: "Turn them off" }).click();
+  await expect(page.getByText("You won't get emails about bookings, questions and offers any more.")).toBeVisible();
+  expect(prefs()).toEqual({ n: 0, r: 1 });
+  const oneClick = await request.post(`/api/unsubscribe?u=${id}&k=reminders&t=${token("reminders")}`, { form: { "List-Unsubscribe": "One-Click" } });
+  expect(oneClick.status()).toBe(200);
+  expect(prefs()).toEqual({ n: 0, r: 0 });
+  db.close();
+});

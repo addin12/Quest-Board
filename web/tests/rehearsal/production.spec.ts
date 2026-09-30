@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
+import sharp from "sharp";
 import { totpCode, totpStep } from "../../src/lib/totp";
 
 // The production rehearsal (npm run rehearsal): the deployment kit in deploy/ running on this machine —
@@ -19,6 +20,7 @@ const ADMIN = "owner@rehearsal.test";
 const FAKES = "http://localhost:4000"; // deploy/rehearsal: stand-ins for Resend and S3
 let password = "";
 let key = "";
+let picture = ""; // an uploaded portrait's /uploads/… path, checked after the recovery
 
 async function logIn(page: Page) {
   await page.goto("/login");
@@ -81,6 +83,19 @@ test("the first admin: CLI account, Secure cookie, two-step login required, then
   expect(await level("Backups")).toBe("danger"); // none yet
   expect(await level("Off-site copy of backups")).toBe("warn"); // set up, nothing sent yet
 
+  // An uploaded picture, so the recovery below has one to bring back.
+  await page.goto("/settings");
+  const png = await sharp({ create: { width: 400, height: 400, channels: 3, background: "#8e2b1c" } }).png().toBuffer();
+  await page.getByLabel("Or upload your own picture").setInputFiles({ name: "me.png", mimeType: "image/png", buffer: png });
+  await page.getByLabel("About you").fill("I run the Quest Board server and play on weekends."); // the CLI account has none yet
+  await page.getByRole("button", { name: "Save profile" }).click();
+  await expect(page.getByText("Profile saved.")).toBeVisible();
+  // Shown through the image optimizer (/_next/image?url=%2Fuploads%2F…): take the file's own path.
+  const src = decodeURIComponent((await page.locator('img[src*="uploads"]').first().getAttribute("src")) ?? "");
+  picture = /\/uploads\/[0-9a-f]{32}\.webp/.exec(src)?.[0] ?? src;
+  expect(picture).toMatch(/^\/uploads\/[0-9a-f]{32}\.webp$/);
+
+  await page.goto("/admin/setup");
   // A real backup and its off-site copy (what the scheduler does every night), then both turn OK.
   compose("exec", "-T", "scheduler", "npm", "run", "db:backup");
   compose("exec", "-T", "scheduler", "npm", "run", "db:offsite");
@@ -89,6 +104,20 @@ test("the first admin: CLI account, Secure cookie, two-step login required, then
   expect(await level("Off-site copy of backups")).toBe("ok");
   const objects = (await (await fetch(`${FAKES}/objects`)).json()) as { key: string; size: number }[];
   expect(objects.some((o) => /^rehearsal-bucket\/questboard\/db\/questboard-.+\.db\.gz$/.test(o.key) && o.size > 1000), JSON.stringify(objects)).toBe(true); // signature checked by the stand-in
+});
+
+test("recovery after losing the server's data: fetch the off-site copy and restore it (deploy/README.md)", async ({ request }) => {
+  compose("stop", "app", "scheduler");
+  // The disaster: the database, the local backups and the pictures are gone.
+  compose("run", "--rm", "--no-deps", "app", "sh", "-c", "rm -rf /data/questboard.db /data/questboard.db-wal /data/questboard.db-shm /data/backups /data/uploads");
+  // The README's recovery steps, word for word.
+  const fetched = compose("run", "--rm", "--no-deps", "app", "npm", "run", "db:fetch-offsite");
+  const file = /restore (\S+\.db) --yes/.exec(fetched)?.[1];
+  expect(file, fetched).toMatch(/^\/data\/backups\/questboard-.+\.db$/);
+  compose("run", "--rm", "--no-deps", "app", "node", "scripts/db-backup.mjs", "restore", file!, "--yes");
+  compose("start", "app", "scheduler");
+  await expect.poll(async () => (await request.get("/api/health").catch(() => null))?.status(), { timeout: 120_000, intervals: [3_000] }).toBe(200);
+  expect((await request.get(picture)).status(), picture).toBe(200); // the picture came back from the bucket
 });
 
 test("sign-up works end to end over HTTPS: the emailed link uses the real address and signs you in", async ({ page }) => {

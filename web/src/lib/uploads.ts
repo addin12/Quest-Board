@@ -12,7 +12,7 @@ import { UPLOAD_MAX_BYTES, UPLOAD_SIZES, detectImageType, isUploadName, parseUpl
 // phone photo's GPS location, and turns anything malformed or disguised into a plain image (or a
 // refusal). Files get random names and are served only from /uploads/<name> (app/uploads/[file]).
 
-export const uploadDir = () => process.env.QUESTBOARD_UPLOAD_DIR ?? path.join(process.cwd(), "data", "uploads");
+export const uploadDir = () => process.env.QUESTBOARD_UPLOAD_DIR ?? path.join(/* turbopackIgnore: true */ process.cwd(), "data", "uploads");
 
 export type UploadResult = { ok: true; path: string } | { ok: false; error: MsgKey };
 
@@ -32,8 +32,8 @@ export async function saveUpload(userId: number, kind: UploadKind, file: File): 
     return { ok: false, error: "v.uploadType" }; // not decodable as the picture it claims to be
   }
   const name = `${randomBytes(16).toString("hex")}.webp`;
-  mkdirSync(uploadDir(), { recursive: true });
-  writeFileSync(path.join(uploadDir(), name), output);
+  mkdirSync(/* turbopackIgnore: true */ uploadDir(), { recursive: true });
+  writeFileSync(/* turbopackIgnore: true */ path.join(/* turbopackIgnore: true */ uploadDir(), name), output);
   db().prepare("INSERT INTO uploads (user_id, kind, file) VALUES (?, ?, ?)").run(userId, kind, name);
   return { ok: true, path: uploadPath(name) };
 }
@@ -52,7 +52,7 @@ export function discardUpload(value: string | null | undefined): void {
     .prepare("SELECT 1 FROM games WHERE cover_image = ? UNION ALL SELECT 1 FROM users WHERE avatar_image = ? LIMIT 1")
     .get(uploadPath(name), uploadPath(name));
   if (inUse) return;
-  rmSync(path.join(uploadDir(), name), { force: true });
+  rmSync(/* turbopackIgnore: true */ path.join(/* turbopackIgnore: true */ uploadDir(), name), { force: true });
   db().prepare("DELETE FROM uploads WHERE file = ?").run(name);
 }
 
@@ -71,7 +71,7 @@ export function pruneOrphanUploads(olderThanMs = 86_400_000, now = Date.now()): 
     )
     .all(cutoff) as { file: string }[];
   for (const o of orphans) {
-    rmSync(path.join(uploadDir(), o.file), { force: true });
+    rmSync(/* turbopackIgnore: true */ path.join(/* turbopackIgnore: true */ uploadDir(), o.file), { force: true });
     db().prepare("DELETE FROM uploads WHERE file = ?").run(o.file);
   }
   return orphans.length;
@@ -80,7 +80,7 @@ export function pruneOrphanUploads(olderThanMs = 86_400_000, now = Date.now()): 
 /** Account deletion: every picture the person uploaded goes. */
 export function deleteUserUploads(userId: number): void {
   const rows = db().prepare("SELECT file FROM uploads WHERE user_id = ?").all(userId) as { file: string }[];
-  for (const r of rows) rmSync(path.join(uploadDir(), r.file), { force: true });
+  for (const r of rows) rmSync(/* turbopackIgnore: true */ path.join(/* turbopackIgnore: true */ uploadDir(), r.file), { force: true });
   db().prepare("DELETE FROM uploads WHERE user_id = ?").run(userId);
   db().prepare("UPDATE games SET cover_image = '' WHERE gm_id = ? AND cover_image LIKE '/uploads/%'").run(userId);
 }
@@ -88,6 +88,6 @@ export function deleteUserUploads(userId: number): void {
 /** The bytes of a stored picture, or null. */
 export function readUpload(name: string): Buffer | null {
   if (!isUploadName(name)) return null;
-  const file = path.join(uploadDir(), name);
-  return existsSync(file) ? readFileSync(file) : null;
+  const file = path.join(/* turbopackIgnore: true */ uploadDir(), name);
+  return existsSync(/* turbopackIgnore: true */ file) ? readFileSync(/* turbopackIgnore: true */ file) : null;
 }

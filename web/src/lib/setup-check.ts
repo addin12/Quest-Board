@@ -11,6 +11,8 @@ export type SetupFacts = {
   cronLastRun: string | null;
   /** When the newest backup file was written, or null when there is none. */
   lastBackupAt: string | null;
+  /** Free space where the database lives, in bytes (null when unknown). */
+  diskFreeBytes?: number | null;
   /** The last off-site upload (scripts/offsite.mjs → app_state offsite_last), or null. */
   offsiteLast?: { at: string; ok: boolean; detail: string } | null;
   legalVersion: string;
@@ -63,6 +65,16 @@ export function setupChecks(f: SetupFacts): SetupCheck[] {
     : backupHours > 36
       ? { id: "backup", level: "danger", title: "setup.backup", detail: "setup.backupStale", vars: { hours: backupHours } }
       : { id: "backup", level: "ok", title: "setup.backup", detail: "setup.backupOk", vars: { hours: backupHours } });
+  const GB = 1024 ** 3;
+  const free = f.diskFreeBytes;
+  if (free != null) {
+    const gb = Math.round((free / GB) * 10) / 10;
+    checks.push(free < 1 * GB
+      ? { id: "disk", level: "danger", title: "setup.disk", detail: "setup.diskLow", vars: { gb } }
+      : free < 3 * GB
+        ? { id: "disk", level: "warn", title: "setup.disk", detail: "setup.diskGettingLow", vars: { gb } }
+        : { id: "disk", level: "ok", title: "setup.disk", detail: "setup.diskOk", vars: { gb } });
+  }
   const offsiteOn = !!(e.QUESTBOARD_OFFSITE_ENDPOINT && e.QUESTBOARD_OFFSITE_BUCKET && e.QUESTBOARD_OFFSITE_KEY_ID && e.QUESTBOARD_OFFSITE_SECRET);
   const last = f.offsiteLast ?? null;
   const lastHours = last ? ago(last.at, f.now) : null;

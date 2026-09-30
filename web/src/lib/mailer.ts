@@ -9,7 +9,8 @@ import { emailHtml } from "./email-html";
 // are recorded on the row and never break the user's request.
 
 /** `secret`: a one-time link inside `text` (reset/verify) that must not be stored readable. */
-export type Email = { to: string; subject: string; text: string; secret?: string };
+/** `headers`: extra email headers, e.g. List-Unsubscribe (lib/unsubscribe.ts). */
+export type Email = { to: string; subject: string; text: string; secret?: string; headers?: Record<string, string> };
 
 export async function sendEmail(mail: Email): Promise<void> {
   // The outbox is an audit trail, not a copy of live credentials: outside dev/e2e (where the
@@ -17,7 +18,9 @@ export async function sendEmail(mail: Email): Promise<void> {
   const redacted = !!mail.secret && !devOutboxEnabled();
   const stored = redacted ? mail.text.split(mail.secret!).join("[link removed]") : mail.text;
   const id = Number(
-    db().prepare("INSERT INTO email_outbox (to_address, subject, body_text, retryable) VALUES (?, ?, ?, ?)").run(mail.to, mail.subject, stored, redacted ? 0 : 1).lastInsertRowid,
+    db()
+      .prepare("INSERT INTO email_outbox (to_address, subject, body_text, retryable, headers) VALUES (?, ?, ?, ?, ?)")
+      .run(mail.to, mail.subject, stored, redacted ? 0 : 1, mail.headers ? JSON.stringify(mail.headers) : null).lastInsertRowid,
   );
   await deliver(id, mail);
 }
@@ -33,7 +36,7 @@ async function deliver(id: number, mail: Email): Promise<boolean> {
     const res = await fetch(`${(process.env.QUESTBOARD_RESEND_URL ?? "https://api.resend.com").replace(/\/+$/, "")}/emails`, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [mail.to], subject: mail.subject, text: mail.text, html: emailHtml(mail.subject, mail.text) }),
+      body: JSON.stringify({ from, to: [mail.to], subject: mail.subject, text: mail.text, html: emailHtml(mail.subject, mail.text), ...(mail.headers ? { headers: mail.headers } : {}) }),
       signal: AbortSignal.timeout(8_000),
     });
     if (!res.ok) throw new Error(`Resend ${res.status}: ${(await res.text()).slice(0, 200)}`);
@@ -56,13 +59,16 @@ export async function retryFailedEmails(limit = 50): Promise<number> {
   const since = new Date(Date.now() - 86_400_000).toISOString();
   const rows = db()
     .prepare(
-      `SELECT id, to_address, subject, body_text FROM email_outbox
+      `SELECT id, to_address, subject, body_text, headers FROM email_outbox
         WHERE sent_at IS NULL AND error IS NOT NULL AND retryable = 1 AND attempts < ? AND created_at >= ?
         ORDER BY id LIMIT ?`,
     )
-    .all(MAX_ATTEMPTS, since, limit) as { id: number; to_address: string; subject: string; body_text: string }[];
+    .all(MAX_ATTEMPTS, since, limit) as { id: number; to_address: string; subject: string; body_text: string; headers: string | null }[];
   let ok = 0;
-  for (const r of rows) if (await deliver(r.id, { to: r.to_address, subject: r.subject, text: r.body_text })) ok++;
+  for (const r of rows) {
+    const mail: Email = { to: r.to_address, subject: r.subject, text: r.body_text, ...(r.headers ? { headers: JSON.parse(r.headers) } : {}) };
+    if (await deliver(r.id, mail)) ok++;
+  }
   return ok;
 }
 

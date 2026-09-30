@@ -5,6 +5,7 @@ import { cancellationEmail } from "./session-mail";
 import { describeNotification } from "./notification-view";
 import { makeT, type Lang } from "./i18n/dict";
 import { sendEmail } from "./mailer";
+import { unsubscribeHeaders } from "./unsubscribe";
 
 // Emails for important notifications. notify() queues them inside the same transaction;
 // this sends them afterwards: from the cron route, and at most every 10 s while people browse.
@@ -35,6 +36,8 @@ export async function deliverNotificationEmails(origin: string, limit = 50): Pro
       subject: n.kind === "gm_suspended" ? t("mail.gmSuspendedSubject", { name: view.actor?.name ?? n.actor_name ?? "" }) : view.text.slice(0, 150),
       // The body adds its own full stop; always-sent warnings can't be turned off, so they don't say they can.
       text: t(ALWAYS_EMAIL.has(n.kind) ? "mail.notifBodyImportant" : "mail.notifBody", { name: u.name, text: view.text.replace(/[.!?]$/, ""), link: origin + view.href }),
+      // One-click unsubscribe for the ones people can turn off (never on safety warnings).
+      ...(ALWAYS_EMAIL.has(n.kind) ? {} : { headers: unsubscribeHeaders(origin, n.user_id, "notifications") }),
     });
     sent++;
   }

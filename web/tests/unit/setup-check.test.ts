@@ -42,6 +42,12 @@ test("production problems are marked for fixing", () => {
   assert.equal(level({ ...good, offsiteLast: null }, "offsite"), "warn"); // configured, not run yet
   assert.equal(level({ ...good, env: { ...good.env, QUESTBOARD_OFFSITE_SECRET: undefined } }, "offsite"), "warn"); // not set up
   assert.equal(level({ ...good, env: { ...good.env, QUESTBOARD_RESEND_URL: "http://fakes:4000" } }, "email"), "warn");
+  const GB = 1024 ** 3;
+  assert.equal(level({ ...good, diskFreeBytes: 20 * GB }, "disk"), "ok");
+  assert.equal(level({ ...good, diskFreeBytes: 2 * GB }, "disk"), "warn");
+  assert.equal(level({ ...good, diskFreeBytes: 0.5 * GB }, "disk"), "danger");
+  assert.equal(setupChecks({ ...good, diskFreeBytes: 0.5 * GB }).find((c) => c.id === "disk")!.vars?.gb, 0.5);
+  assert.equal(setupChecks(good).find((c) => c.id === "disk"), undefined); // unknown: no line
 });
 
 test("a development machine gets reminders, not alarms", () => {

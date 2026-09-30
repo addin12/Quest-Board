@@ -452,6 +452,9 @@ export const MIGRATIONS: Record<number, string> = {
   33: `
     ALTER TABLE users ADD COLUMN time_zone TEXT NOT NULL DEFAULT 'Asia/Jakarta';
   `,
+  34: `
+    ALTER TABLE email_outbox ADD COLUMN headers TEXT;
+  `,
 };
 
 export type UpgradePlan =

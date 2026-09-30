@@ -13,7 +13,7 @@ process.env.QUESTBOARD_MAIL_FROM = "Quest Board <test@example.com>";
 process.env.QUESTBOARD_ENFORCE_HTTPS = "true"; // like production: the dev outbox is off, so one-time links are blanked
 
 let failNext = 0;
-const sent: { to: string[]; subject: string }[] = [];
+const sent: { to: string[]; subject: string; headers?: Record<string, string> }[] = [];
 globalThis.fetch = (async (_url: string, init: { body: string }) => {
   if (failNext > 0) { failNext--; return new Response("provider down", { status: 503 }); }
   sent.push(JSON.parse(init.body));
@@ -58,4 +58,16 @@ test(`retries stop after ${MAX_ATTEMPTS} attempts; blanked one-time links are ne
   failNext = 0;
   await retryFailedEmails();
   assert.equal(row("Reset link").sent_at, null); // would have been useless without the link
+});
+
+test("extra headers (List-Unsubscribe) reach the provider, also when the email is retried", async () => {
+  const headers = { "List-Unsubscribe": "<https://qb.test/api/unsubscribe?u=1&k=reminders&t=x>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" };
+  failNext = 1;
+  await sendEmail({ to: "h@x.test", subject: "With headers", text: "hello", headers });
+  assert.equal(await retryFailedEmails(), 1);
+  const copies = sent.filter((m) => m.subject === "With headers");
+  assert.equal(copies.length, 1);
+  assert.deepEqual(copies[0].headers, headers);
+  await sendEmail({ to: "h@x.test", subject: "No headers", text: "hello" });
+  assert.equal(sent.find((m) => m.subject === "No headers")!.headers, undefined);
 });
