@@ -95,8 +95,8 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
 async function setupUser(i) {
   const email = `load-${Date.now()}-${i}@questboard.test`;
-  await timed("signup", () => submit("/signup", 'name="email"', { name: `Load ${i}`, email, password: "password123", role: "player", agree: "on" }));
-  const login = await timed("login", () => submit("/login", 'name="email"', { email, password: "password123" }));
+  await timed("signup", () => submit("/signup", 'name="email"', { name: `Load ${i}`, email, password: "tavern-demo-42", role: "player", agree: "on" }));
+  const login = await timed("login", () => submit("/login", 'name="email"', { email, password: "tavern-demo-42" }));
   const session = login?.setCookie.map((c) => c.split(";")[0]).find((c) => c.startsWith("qb_session="));
   if (!session) throw new Error(`user ${i} could not log in (status ${login?.status})`);
   return { cookie: session, booked: new Set() };

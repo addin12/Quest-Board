@@ -59,7 +59,7 @@
 13. **GM location:** Raka's profile shows "Location: Jakarta" and Bima's shows "Location: Online"; no "Timezone" appears anywhere. (In journey 10, the new GM types "online", which is saved as "Online".)
 
 ## 3. Test data
-All accounts use the password `password123`.
+All accounts use the password `tavern-demo-42`.
 
 | Email | Role | Notes |
 |---|---|---|

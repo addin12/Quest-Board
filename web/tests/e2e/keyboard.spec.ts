@@ -42,7 +42,7 @@ test("keyboard only: confirm a new account, and reply to a review as the GM", as
   await page.keyboard.press("Tab");
   await page.keyboard.type(email);
   await page.keyboard.press("Tab");
-  await page.keyboard.type("password123");
+  await page.keyboard.type("tavern-demo-42");
   await tabTo(page, "Create account", stops);
   await page.keyboard.press("Enter");
   await page.waitForURL("**/signup/check-email");

@@ -73,9 +73,9 @@ Open http://localhost:3000. On first load the database is created and filled wit
 
 | Demo account | Password | Try this |
 |---|---|---|
-| `player@questboard.test` | `password123` | Book a seat, see how to pay the GM, chat with the table, ask a GM a question |
-| `gm@questboard.test` | `password123` | GM dashboard, earnings, schedule sessions, answer player questions |
-| `admin@questboard.test` | `password123` | The admin console at `/admin` |
+| `player@questboard.test` | `tavern-demo-42` | Book a seat, see how to pay the GM, chat with the table, ask a GM a question |
+| `gm@questboard.test` | `tavern-demo-42` | GM dashboard, earnings, schedule sessions, answer player questions |
+| `admin@questboard.test` | `tavern-demo-42` | The admin console at `/admin` |
 
 ## Commands
 

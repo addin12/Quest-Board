@@ -6,7 +6,7 @@ import { confirmSignup } from "./helpers";
 async function login(page: Page, email: string) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill("password123");
+  await page.getByLabel("Password").fill("tavern-demo-42");
   await page.getByRole("button", { name: "Log in" }).click();
   await page.waitForURL("**/dashboard");
 }
@@ -170,7 +170,7 @@ test("new GM signs up, sets payment details, lists a game in Rupiah and it appea
   await page.getByText("Run games").click();
   await page.getByLabel("Display name").fill("Nova Quill");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill("password123");
+  await page.getByLabel("Password").fill("tavern-demo-42");
   await page.getByRole("button", { name: "Create account" }).click();
   await confirmSignup(page, email, true);
   await expect(page.getByRole("heading", { name: "GM dashboard" })).toBeVisible();
@@ -295,7 +295,7 @@ test("a GM can pick an illustrated portrait instead of initials", async ({ page 
   await page.getByLabel("Display name").fill("Laras Wibisono");
   const larasEmail = `laras-${Date.now()}@questboard.test`;
   await page.getByLabel("Email").fill(larasEmail);
-  await page.getByLabel("Password").fill("password123");
+  await page.getByLabel("Password").fill("tavern-demo-42");
   await page.getByRole("button", { name: "Create account" }).click();
   await confirmSignup(page, larasEmail, true);
 

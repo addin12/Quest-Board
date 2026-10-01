@@ -3,6 +3,7 @@
 // so messages render in the viewer's language.
 
 import type { MsgKey } from "./i18n/dict";
+import { isCommonPassword } from "./common-passwords";
 
 export type FieldErrors = Record<string, MsgKey>;
 export type Parsed<T> = { ok: true; value: T } | { ok: false; errors: FieldErrors };
@@ -133,6 +134,7 @@ export function parseSignup(raw: Record<string, unknown>): Parsed<SignupInput> {
   if (name.length < 2 || name.length > 50) errors.name = "v.name";
   if (!isEmail(email)) errors.email = "v.email";
   if (password.length < 8) errors.password = "v.password";
+  else if (isCommonPassword(password, [name, email])) errors.password = "v.passwordCommon";
 
   return Object.keys(errors).length ? { ok: false, errors } : { ok: true, value: { name, email, password, role } };
 }

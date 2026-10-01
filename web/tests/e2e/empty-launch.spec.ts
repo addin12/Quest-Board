@@ -32,7 +32,7 @@ test("launch day: every public page works and invites the first GMs and players"
 test("launch day: there is no demo admin — admins come from `npm run admin`", async ({ page }) => {
   await page.goto("/login");
   await page.getByLabel("Email").fill("admin@questboard.test");
-  await page.getByLabel("Password").fill("password123");
+  await page.getByLabel("Password").fill("tavern-demo-42");
   await page.getByRole("button", { name: /log in/i }).click();
   await expect(page.getByText(/incorrect|wrong|invalid/i).first()).toBeVisible();
 });
@@ -42,7 +42,7 @@ test("outside dev, the email outbox never keeps a working verification link", as
   await page.goto("/signup");
   await page.getByLabel(/display name/i).fill("First Visitor");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill("password123");
+  await page.getByLabel("Password").fill("tavern-demo-42");
   await page.getByRole("button", { name: /create account|sign up/i }).click();
   await expect(page).toHaveURL(/\/signup\/check-email$/);
   const { DatabaseSync } = await import("node:sqlite");
@@ -68,12 +68,12 @@ test("the admin console needs two-step login: an admin without it is sent to set
   const db = new DatabaseSync("data/e2e-empty.db");
   db.exec("PRAGMA busy_timeout = 5000");
   const email = `owner-${Date.now()}@example.com`;
-  db.prepare("INSERT INTO users (email, password_hash, name, role, email_verified_at) VALUES (?, ?, 'Owner', 'admin', ?)").run(email, hashPassword("password123"), new Date().toISOString());
+  db.prepare("INSERT INTO users (email, password_hash, name, role, email_verified_at) VALUES (?, ?, 'Owner', 'admin', ?)").run(email, hashPassword("tavern-demo-42"), new Date().toISOString());
   db.close();
   const page = await (await browser.newContext()).newPage();
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill("password123");
+  await page.getByLabel("Password").fill("tavern-demo-42");
   await page.getByRole("button", { name: /log in/i }).click();
   await page.waitForURL("**/dashboard");
   for (const path of ["/admin", "/admin/reports", "/admin/users"]) {

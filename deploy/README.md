@@ -38,6 +38,9 @@ and the backup lines turn OK after the scheduler's first run (5 minutes) and fir
 
 - **Every 5 minutes** the scheduler calls the app's job: session reminders, notification emails and
   retries, waitlist offers, the admin error digest, and clean-up.
+- **Every minute** it also checks the app is answering. After 10 minutes without an answer it emails the
+  admins straight from the email provider (`QUESTBOARD_DOWN_ALERT_MINUTES`), and again when the app is
+  back. If the whole server is down it can't: that's what the uptime monitor below is for.
 - **Every night** (03:00 WIB by default) it backs up the database and pictures into `backups/` on the
   data volume, keeps the newest 14, and — once you set it up — copies the backup and new pictures to
   off-site storage (below). A backup on the same disk doesn't survive losing the disk.
@@ -71,7 +74,8 @@ stays well inside the free 10 GB — "Off-site storage used" shows how much. To 
 ## Small servers (1 GB of memory)
 
 Building the image needs more memory than a 1 GB server has. Use the **ready-made image** instead: CI
-builds it after every change that passes all the tests, for both normal (x86) and ARM servers. In
+builds it after every change that passes all the tests, for both normal (x86) and ARM servers. It holds
+only what the server runs (about 400 MB, most of it Node.js itself). In
 `deploy/.env`:
 
 ```sh

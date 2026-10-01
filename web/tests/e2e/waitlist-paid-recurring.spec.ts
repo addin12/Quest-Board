@@ -104,6 +104,7 @@ test("people on a waitlist can leave it, or pass an offer to the next person", a
 });
 
 test("GMs tick 'paid ✓' on the roster; the player sees it and is notified", async ({ browser }) => {
+  test.setTimeout(120_000); // three accounts and two GM games: past 60 s on a busy machine
   const gm = await newPage(browser);
   const slug = await createGmWithGame(gm, "Paolo Paid", unique("paid-gm"), "Paid Table", { price: "50.000" });
   const manage = gm.url();

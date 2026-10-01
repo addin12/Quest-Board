@@ -3,9 +3,12 @@
 //     (reminders, notification emails, retries, waitlists, digest, clean-up);
 //   • once a day at QUESTBOARD_BACKUP_HOUR_UTC (default 20, i.e. 03:00 WIB): npm run db:backup into
 //     QUESTBOARD_BACKUP_DIR on the shared data volume (the database and uploaded pictures), then a copy
-//     to off-site storage when QUESTBOARD_OFFSITE_* is set (scripts/offsite.mjs).
+//     to off-site storage when QUESTBOARD_OFFSITE_* is set (scripts/offsite.mjs);
+//   • every minute: the app's /api/health — after QUESTBOARD_DOWN_ALERT_MINUTES (default 10) without an
+//     answer the admins are emailed, and again when it's back (scripts/health-watch.mjs).
 // Logs one line per run; a failure is logged and retried next time, never fatal.
 import { spawn } from "node:child_process";
+import { alertAdmins, watchStep } from "./health-watch.mjs";
 
 const APP = process.env.QUESTBOARD_APP_URL ?? "http://app:3000";
 const SECRET = process.env.QUESTBOARD_CRON_SECRET ?? "";
@@ -40,10 +43,33 @@ function maybeBackup() {
   });
 }
 
+const DOWN_AFTER_MS = Math.max(1, Number(process.env.QUESTBOARD_DOWN_ALERT_MINUTES ?? 10)) * 60_000;
+let watch = { downSince: null, alerted: false, detail: "" };
+async function checkHealth() {
+  let healthy = false;
+  let detail = "";
+  try {
+    const res = await fetch(`${APP}/api/health`, { signal: AbortSignal.timeout(15_000) });
+    healthy = res.ok;
+    if (!healthy) detail = `HTTP ${res.status}`;
+  } catch (err) {
+    detail = err instanceof Error ? (err.cause instanceof Error ? `${err.message}: ${err.cause.message}` : err.message) : String(err);
+  }
+  const step = watchStep(watch, healthy, Date.now(), DOWN_AFTER_MS, detail);
+  if (step.send) {
+    const minutes = Math.max(1, Math.round(step.downMs / 60_000));
+    const since = step.state.downSince ?? watch.downSince ?? Date.now();
+    const sent = await alertAdmins(step.send, { since, minutes, detail: step.state.detail || watch.detail });
+    log(`app ${step.send === "down" ? `down for ${minutes} min (${detail})` : `back after ${minutes} min`}: emailed ${sent} admin(s)`);
+  }
+  watch = step.state;
+}
+
 // Let the app start first; then run on the clock.
 setTimeout(() => {
   void cron();
   setInterval(() => void cron(), EVERY_MS);
 }, 30_000);
 setInterval(maybeBackup, 60_000);
-log(`started: cron every ${EVERY_MS / 60_000} min against ${APP}; backups daily at ${String(BACKUP_HOUR).padStart(2, "0")}:00 UTC`);
+setTimeout(() => setInterval(() => void checkHealth().catch((err) => log(`health check failed: ${err}`)), 60_000), 60_000);
+log(`started: cron every ${EVERY_MS / 60_000} min against ${APP}; backups daily at ${String(BACKUP_HOUR).padStart(2, "0")}:00 UTC; admins emailed after ${DOWN_AFTER_MS / 60_000} min down`);

@@ -34,17 +34,44 @@ jobs:
       - run: npm run lint
       - run: npm test
 
-      - name: Install Playwright browsers (Chromium; Firefox and WebKit for the cross-browser journeys)
-        run: npx playwright install --with-deps chromium firefox webkit
+  # The end-to-end suite (incl. the axe accessibility sweep) in two halves at once, about 13 minutes each
+  # instead of one 25-minute run. Each job starts all three test servers; the halves split the projects.
+  e2e:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - half: a
+            projects: --project=seeded --project=empty --project=firefox --project=webkit
+            browsers: chromium firefox webkit
+          - half: b
+            projects: --project=seeded-2
+            browsers: chromium
+    name: e2e (${{ matrix.half }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
 
-      - name: Build + end-to-end (incl. axe accessibility sweep)
-        run: npm run test:e2e
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.browsers }}
+      - run: npm run build
+      - run: npx playwright test ${{ matrix.projects }}
 
       - name: Upload Playwright traces on failure
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-traces
+          name: playwright-traces-${{ matrix.half }}
           path: web/test-results/
           retention-days: 7
 
@@ -100,7 +127,7 @@ jobs:
   # server downloads it instead of building (a Next.js build needs more memory than a 1 GB server has).
   image:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [test, rehearsal]
+    needs: [test, e2e, rehearsal]
     strategy:
       matrix:
         include:

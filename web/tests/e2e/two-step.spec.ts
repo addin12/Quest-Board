@@ -12,7 +12,7 @@ async function passwordStep(browser: Browser): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await page.goto("/login");
   await page.getByLabel("Email").fill(EMAIL);
-  await page.getByLabel("Password", { exact: true }).fill("password123");
+  await page.getByLabel("Password", { exact: true }).fill("tavern-demo-42");
   await page.getByRole("button", { name: "Log in" }).click();
   await page.waitForURL("**/login/code");
   return page;
@@ -76,7 +76,7 @@ test("admins can turn on two-step login, then need a code from their app to log 
   const page = await (await browser.newContext()).newPage();
   await page.goto("/login");
   await page.getByLabel("Email").fill(EMAIL);
-  await page.getByLabel("Password", { exact: true }).fill("password123");
+  await page.getByLabel("Password", { exact: true }).fill("tavern-demo-42");
   await page.getByRole("button", { name: "Log in" }).click();
   await page.waitForURL("**/dashboard");
   await page.goto("/settings#two-step");
@@ -107,7 +107,7 @@ test("admins can turn on two-step login, then need a code from their app to log 
   const resetMail = db.prepare("SELECT body_text FROM email_outbox WHERE to_address = ? AND body_text LIKE '%/reset-password?token=%' ORDER BY id DESC").get(EMAIL) as { body_text: string };
   const link = /https?:\/\/\S+\/reset-password\?token=[\w-]+/.exec(resetMail.body_text)![0];
   await reset.goto(new URL(link).pathname + new URL(link).search);
-  await reset.getByLabel("New password").fill("password123");
+  await reset.getByLabel("New password").fill("tavern-demo-42");
   await reset.getByRole("button", { name: "Save new password" }).click();
   await reset.waitForURL("**/login/code");
   await reset.goto("/dashboard");

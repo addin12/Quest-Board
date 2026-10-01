@@ -204,6 +204,19 @@ test("everything survives a restart of the app", async ({ page, request }) => {
   expect(await page.locator('[data-check="backup"]').getAttribute("data-level")).toBe("ok"); // the backup is on the volume
 });
 
+test("when the app is down, the scheduler emails the admins — and again when it is back", async ({ request }) => {
+  test.setTimeout(420_000);
+  const mails = async () => (await (await fetch(`${FAKES}/emails`)).json()) as { to: string[]; subject: string; text: string }[];
+  const before = (await mails()).length;
+  compose("stop", "app");
+  await expect.poll(async () => (await mails()).slice(before).find((m) => m.subject === "Quest Board is down")?.to, { timeout: 240_000, intervals: [10_000] }).toEqual([ADMIN]);
+  const down = (await mails()).slice(before).find((m) => m.subject === "Quest Board is down")!;
+  expect(down.text).toContain("docker compose logs --tail 100 app");
+  compose("start", "app");
+  await expect.poll(async () => (await request.get("/api/health").catch(() => null))?.status(), { timeout: 120_000, intervals: [3_000] }).toBe(200);
+  await expect.poll(async () => (await mails()).slice(before).some((m) => m.subject === "Quest Board is back up"), { timeout: 180_000, intervals: [10_000] }).toBe(true);
+});
+
 test("update.sh: a healthy version stays; a broken one is rolled back by itself, with the database as it was", async ({ request }) => {
   test.setTimeout(420_000);
   const update = (env: Record<string, string>) => spawnSync("sh", ["update.sh"], {

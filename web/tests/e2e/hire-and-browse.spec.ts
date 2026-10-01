@@ -3,7 +3,7 @@ import { e2eDb, signup } from "./helpers";
 
 // v0.9: profile settings, browse by category, hire a GM.
 
-async function login(page: Page, email: string, password = "password123") {
+async function login(page: Page, email: string, password = "tavern-demo-42") {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
@@ -33,7 +33,7 @@ test("settings: password change checks the current password", async ({ page, bro
   await page.getByRole("button", { name: "Change password" }).click();
   await expect(page.getByText("Your current password is incorrect.")).toBeVisible();
 
-  await page.getByLabel("Current password").fill("password123");
+  await page.getByLabel("Current password").fill("tavern-demo-42");
   await page.getByLabel("New password").fill("newpassword456");
   await page.getByRole("button", { name: "Change password" }).click();
   await expect(page.getByText(/Password changed/)).toBeVisible();

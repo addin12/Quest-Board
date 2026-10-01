@@ -31,7 +31,7 @@ npm run icons        # regenerate the Flaticon icon subset after editing src/lib
 npm run placeholders # regenerate demo cover art + GM portraits (public/images) from src/lib/placeholders.ts
 npm run db:reset     # delete local DB; re-seeded on next request
 ```
-Demo logins all use `password123`: `player@questboard.test`, `gm@questboard.test`, `admin@questboard.test`.
+Demo logins all use `tavern-demo-42`: `player@questboard.test`, `gm@questboard.test`, `admin@questboard.test`.
 
 ## Definition of done
 Before saying a change is finished, all of these must be green:

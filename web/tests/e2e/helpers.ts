@@ -13,7 +13,7 @@ export function e2eDb(file = (test.info().project.metadata as { db?: string }).d
 
 // Shared journey steps for e2e specs (English UI).
 
-export async function login(page: Page, email: string, password = "password123") {
+export async function login(page: Page, email: string, password = "tavern-demo-42") {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
@@ -30,7 +30,7 @@ export async function signup(page: Page, name: string, email: string, gm = false
   if (gm) await page.getByText("Run games").click();
   await page.getByLabel("Display name").fill(name);
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill("password123");
+  await page.getByLabel("Password").fill("tavern-demo-42");
   await page.getByRole("button", { name: "Create account" }).click();
   if (opts.confirm === false) {
     await page.waitForURL("**/signup/check-email");

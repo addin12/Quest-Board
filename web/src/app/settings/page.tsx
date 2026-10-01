@@ -33,6 +33,7 @@ export default async function SettingsPage() {
   const logins = await listLogins(user.id);
   const me = getUserSettings(user.id)!;
   const stopped = suppressionFor(user.email); // the address bounced, or reported our email as spam
+  const showTwoStep = user.role !== "player" || twoStep.state === "on";
   // In the person's own time zone (Settings → time zone), like their emails: "29 Sept 2026, 14.05 WITA".
   const when = (iso: string | null) => (iso ? formatMoment(new Date(iso), lang, me.time_zone) : "–");
   const origin = await siteOrigin();
@@ -43,6 +44,23 @@ export default async function SettingsPage() {
     <div className="mx-auto max-w-3xl px-4 py-10">
       <h1 className="flex items-center gap-2 text-3xl font-bold"><Icon name="settings" className="text-accent" /> {t("settings.title")}</h1>
       <p className="mt-1 text-muted">{t("settings.lead")}</p>
+      <nav aria-label={t("settings.jumpTo")} className="mt-4">
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          {([
+            ["profile", t("settings.profile")],
+            ["calendar", t("cal.feedTitle")],
+            ["game-master", t("settings.gmSection")],
+            ["login-email", t("settings.loginEmail")],
+            ["password", t("settings.password")],
+            ...(showTwoStep ? [["two-step", t("twoStep.title")]] : []),
+            ["security", t("dash.securityTitle")],
+            ["your-data", t("data.title")],
+            ["delete", t("delete.title")],
+          ] as [string, string][]).map(([id, label]) => (
+            <li key={id}><a href={`#${id}`} className="font-semibold text-accent hover:underline">{label}</a></li>
+          ))}
+        </ul>
+      </nav>
 
       <section className={`card mt-8 flex flex-wrap items-center gap-3 p-4 ${user.email_verified ? "" : "border-accent/50!"}`} aria-label={t("verify.statusLabel")}>
         <Icon name={user.email_verified ? "check-circle" : "envelope"} className={user.email_verified ? "text-success" : "text-accent"} />
@@ -61,12 +79,12 @@ export default async function SettingsPage() {
         </section>
       )}
 
-      <section className="card mt-6 p-6" aria-labelledby="profile-h">
+      <section className="card mt-6 scroll-mt-24 p-6" aria-labelledby="profile-h" id="profile">
         <h2 id="profile-h" className="mb-5 flex items-center gap-2 text-xl font-bold"><Icon name="user-pen" className="text-muted" /> {t("settings.profile")}</h2>
         <ProfileSettingsForm defaults={{ name: me.name, email: me.email, bio: me.bio, hue: me.avatar_hue, avatarImage: me.avatar_image, emailReminders: !!me.email_reminders, emailNotifications: !!me.email_notifications, timeZone: me.time_zone }} />
       </section>
 
-      <section className="card mt-6 p-6" aria-labelledby="cal-h">
+      <section className="card mt-6 scroll-mt-24 p-6" aria-labelledby="cal-h" id="calendar">
         <h2 id="cal-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="calendar-clock" className="text-muted" /> {t("cal.feedTitle")}</h2>
         <p className="mt-1 mb-4 text-sm text-muted">{t("cal.feedLead")}</p>
         {me.calendar_token ? (
@@ -84,7 +102,7 @@ export default async function SettingsPage() {
         )}
       </section>
 
-      <section className="card mt-6 p-6" aria-labelledby="gm-h">
+      <section className="card mt-6 scroll-mt-24 p-6" aria-labelledby="gm-h" id="game-master">
         <h2 id="gm-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="hat-wizard" className="text-muted" /> {t("settings.gmSection")}</h2>
         {isGm ? (
           <>
@@ -103,18 +121,18 @@ export default async function SettingsPage() {
         )}
       </section>
 
-      <section className="card mt-6 p-6" aria-labelledby="login-email-h" id="login-email">
+      <section className="card mt-6 scroll-mt-24 p-6" aria-labelledby="login-email-h" id="login-email">
         <h2 id="login-email-h" className="mb-5 flex items-center gap-2 text-xl font-bold"><Icon name="envelope" className="text-muted" /> {t("settings.loginEmail")}</h2>
         <EmailChangeForm pending={pendingEmailChange(user.id)} />
       </section>
 
-      <section className="card mt-6 p-6" aria-labelledby="pw-h">
+      <section className="card mt-6 scroll-mt-24 p-6" aria-labelledby="pw-h" id="password">
         <h2 id="pw-h" className="mb-5 flex items-center gap-2 text-xl font-bold"><Icon name="lock" className="text-muted" /> {t("settings.password")}</h2>
         <PasswordForm />
       </section>
 
-      {(user.role !== "player" || twoStep.state === "on") && (
-        <section className="card mt-6 p-6" aria-labelledby="two-step-h" id="two-step">
+      {showTwoStep && (
+        <section className="card mt-6 scroll-mt-24 p-6" aria-labelledby="two-step-h" id="two-step">
           {user.role === "admin" && !user.admin && (
             <div className="mb-4"><Notice tone="danger">{t("twoStep.adminRequired")}</Notice></div>
           )}
@@ -152,7 +170,7 @@ export default async function SettingsPage() {
         </section>
       )}
 
-      <section className="card mt-6 p-6" aria-labelledby="sec-h">
+      <section className="card mt-6 scroll-mt-24 p-6" aria-labelledby="sec-h" id="security">
         <h2 id="sec-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="shield-check" className="text-muted" /> {t("dash.securityTitle")}</h2>
         <p className="mt-1 mb-4 text-sm text-muted">{t("settings.securityLead")}</p>
         <h3 id="devices" className="font-semibold">{t("devices.title")}</h3>
@@ -181,13 +199,13 @@ export default async function SettingsPage() {
           </ConfirmButton>
         </form>
       </section>
-      <section className="card mt-6 p-6" aria-labelledby="data-h">
+      <section className="card mt-6 scroll-mt-24 p-6" aria-labelledby="data-h" id="your-data">
         <h2 id="data-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="user-lock" className="text-muted" /> {t("data.title")}</h2>
         <p className="mt-1 mb-4 text-sm text-muted">{t("data.lead")}</p>
         <a href="/api/me/export" download className="btn-secondary"><Icon name="file-download" /> {t("data.export")}</a>
       </section>
 
-      <section className="card mt-6 border-danger/40! p-6" aria-labelledby="delete-h">
+      <section className="card mt-6 scroll-mt-24 border-danger/40! p-6" aria-labelledby="delete-h" id="delete">
         <h2 id="delete-h" className="flex items-center gap-2 text-xl font-bold text-danger"><Icon name="trash" /> {t("delete.title")}</h2>
         <p className="mt-1 mb-4 whitespace-pre-line text-sm text-muted">{t(isGm ? "delete.leadGm" : "delete.lead")}</p>
         <DeleteAccountForm />

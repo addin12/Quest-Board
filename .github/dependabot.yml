@@ -20,6 +20,9 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: typescript
         update-types: ["version-update:semver-major"]
+      # Matches the Node.js the site runs on (24, long-term support): moves with the base image below.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
@@ -40,3 +43,8 @@ updates:
       day: monday
       time: "06:00"
       timezone: Asia/Jakarta
+    ignore:
+      # A new Node.js major only once it is long-term support (even versions, from October of their year):
+      # change web/Dockerfile, @types/node, CI and "engines" together, on purpose.
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]

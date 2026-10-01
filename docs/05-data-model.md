@@ -142,7 +142,7 @@ stateDiagram-v2
 ```
 
 ## Seed data (Indonesia)
-Every account uses the password `password123`.
+Every account uses the password `tavern-demo-42`.
 - **GMs**, each with sample payment details:
 
   | GM | Email | Style / systems | Base |

@@ -14,7 +14,7 @@ test.describe.configure({ timeout: 120_000 });
 async function login(page: Page, email: string) {
   await page.goto("/login");
   await page.locator("#email").fill(email);
-  await page.locator("#password").fill("password123");
+  await page.locator("#password").fill("tavern-demo-42");
   await page.locator("form button.btn-primary").click();
   await page.waitForURL("**/dashboard");
 }
@@ -80,7 +80,7 @@ test("sign-up's check-email and confirm pages, and a brand-new GM's dashboard (w
   await page.getByText("Run games").click();
   await page.getByLabel("Display name").fill("Axe Check GM");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill("password123");
+  await page.getByLabel("Password").fill("tavern-demo-42");
   await page.getByRole("button", { name: "Create account" }).click();
   await page.waitForURL("**/signup/check-email");
   const found = await violationsOf(page, "/signup/check-email");
@@ -126,7 +126,7 @@ test("two-step, payment-change and automatic-flag screens have no axe violations
     const second = await (await browser.newContext()).newPage();
     await second.goto("/login");
     await second.locator("#email").fill(email);
-    await second.locator("#password").fill("password123");
+    await second.locator("#password").fill("tavern-demo-42");
     await second.locator("form button.btn-primary").click();
     await second.waitForURL("**/login/code");
     found.push(...(await violationsOf(second, "/login/code")));
@@ -207,3 +207,36 @@ test.describe("phone width", () => {
     expect(found).toEqual([]);
   });
 });
+
+for (const scheme of ["light", "dark"] as const) {
+  test.describe(`newer screens · ${scheme}`, () => {
+    test.use({ colorScheme: scheme });
+    test("Settings with the bounce banner and errors, and the change-email page, have no axe violations", async ({ page }) => {
+      const { createHash } = await import("node:crypto");
+      const email = `a11y-new-${scheme}-${Date.now()}@questboard.test`;
+      await signup(page, "Ayu Axe", email);
+      const db = e2eDb();
+      const id = (db.prepare("SELECT id FROM users WHERE email = ?").get(email) as { id: number }).id;
+      db.prepare("INSERT OR REPLACE INTO email_suppressions (email, reason, provider) VALUES (?, 'bounce', 'resend')").run(email);
+      const raw = `a11y-token-${scheme}-${Date.now()}`;
+      db.prepare("INSERT INTO email_changes (user_id, new_email, token_hash, expires_at) VALUES (?, ?, ?, ?)")
+        .run(id, `ayu.baru-${scheme}@questboard.test`, createHash("sha256").update(raw).digest("hex"), new Date(Date.now() + 3_600_000).toISOString());
+      db.close();
+      const found: string[] = [];
+      await page.goto("/settings");
+      await expect(page.getByTestId("emails-stopped")).toBeVisible();
+      found.push(...(await violationsOf(page, `/settings with the bounce banner [${scheme}]`)));
+      const form = page.locator("#login-email");
+      await form.getByLabel("New email").fill(`ayu.other-${scheme}@questboard.test`);
+      await form.getByLabel("Your password").fill("wrong password");
+      await form.getByRole("button", { name: "Send confirmation link" }).click();
+      await expect(form.getByText("Your current password is incorrect.")).toBeVisible();
+      found.push(...(await violationsOf(page, `/settings login-email error [${scheme}]`)));
+      for (const path of [`/change-email?token=${raw}`, "/change-email?token=used-or-wrong", "/change-email?taken=1"]) {
+        await page.goto(path);
+        found.push(...(await violationsOf(page, `${path} [${scheme}]`)));
+      }
+      expect(found).toEqual([]);
+    });
+  });
+}

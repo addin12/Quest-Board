@@ -9,7 +9,7 @@ npm test           # unit tests
 npm run test:e2e   # production build + Playwright end-to-end tests
 ```
 
-Demo logins: `player@questboard.test`, `gm@questboard.test` and `admin@questboard.test`, all with the password `password123`.
+Demo logins: `player@questboard.test`, `gm@questboard.test` and `admin@questboard.test`, all with the password `tavern-demo-42`.
 
 ## Where things live
 

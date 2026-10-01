@@ -8,7 +8,7 @@ import { e2eDb } from "./helpers";
 async function login(page: Page, email: string) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill("password123");
+  await page.getByLabel("Password").fill("tavern-demo-42");
   await page.getByRole("button", { name: "Log in" }).click();
   await page.waitForURL("**/dashboard");
 }
@@ -191,7 +191,7 @@ test("forms keep what the user typed after a validation error", async ({ page })
 test("login never redirects off-site, even with a backslash trick", async ({ page }) => {
   await page.goto("/login?next=" + encodeURIComponent("/\\evil.example"));
   await page.getByLabel("Email").fill("player@questboard.test");
-  await page.getByLabel("Password").fill("password123");
+  await page.getByLabel("Password").fill("tavern-demo-42");
   await page.getByRole("button", { name: /log in/i }).click();
   await expect(page).toHaveURL(/localhost:\d+\/dashboard$/);
 });

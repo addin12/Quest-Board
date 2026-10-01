@@ -119,7 +119,7 @@ test("forgot password: same answer for any email, a one-time link, and other dev
   await other.goto("/dashboard");
   await expect(other).toHaveURL(/\/login/);
   await other.getByLabel("Email").fill(email);
-  await other.getByLabel("Password", { exact: true }).fill("password123");
+  await other.getByLabel("Password", { exact: true }).fill("tavern-demo-42");
   await other.getByRole("button", { name: "Log in" }).click();
   await expect(other.getByText("Incorrect email or password.")).toBeVisible();
   await login(other, email, "brandnew-pass-9");
@@ -171,7 +171,7 @@ test("deleting a player account releases their seats, tells the GM, and blocks l
   await expect(del.getByText("Your current password is incorrect.")).toBeVisible();
   await expect(del.getByText("Tick the box to confirm.")).toBeVisible();
 
-  await del.getByLabel("Confirm with your password").fill("password123");
+  await del.getByLabel("Confirm with your password").fill("tavern-demo-42");
   await del.getByLabel("I understand my account will be permanently deleted.").check();
   await del.getByRole("button", { name: "Delete my account" }).click();
   await page.waitForURL("**/?deleted=1");
@@ -180,7 +180,7 @@ test("deleting a player account releases their seats, tells the GM, and blocks l
   // Can't log back in.
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password", { exact: true }).fill("password123");
+  await page.getByLabel("Password", { exact: true }).fill("tavern-demo-42");
   await page.getByRole("button", { name: "Log in" }).click();
   await expect(page).toHaveURL(/\/login/);
 
@@ -227,7 +227,7 @@ test("deleting a GM account archives their games and notifies booked players", a
   await gm.goto("/settings");
   const del = gm.getByRole("region", { name: "Delete account" });
   await expect(del.getByText(/Your games are archived/)).toBeVisible();
-  await del.getByLabel("Confirm with your password").fill("password123");
+  await del.getByLabel("Confirm with your password").fill("tavern-demo-42");
   await del.getByLabel("I understand my account will be permanently deleted.").check();
   await del.getByRole("button", { name: "Delete my account" }).click();
   await gm.waitForURL("**/?deleted=1");
@@ -393,7 +393,7 @@ test("the login email can be changed: the new address confirms it, the old one i
   await expect(form.getByText("Your current password is incorrect.")).toBeVisible();
 
   await form.getByLabel("New email").fill(newEmail);
-  await form.getByLabel("Your password").fill("password123");
+  await form.getByLabel("Your password").fill("tavern-demo-42");
   await form.getByRole("button", { name: "Send confirmation link" }).click();
   await expect(form.getByText(`Check ${newEmail}: open the link there to finish.`)).toBeVisible();
   expect(mailsTo(oldEmail)[0].subject).toBe("Someone asked to change your Quest Board login email");
@@ -421,7 +421,7 @@ test("the login email can be changed: the new address confirms it, the old one i
   await other.goto("/settings");
   const otherForm = other.locator("#login-email");
   await otherForm.getByLabel("New email").fill(newEmail);
-  await otherForm.getByLabel("Your password").fill("password123");
+  await otherForm.getByLabel("Your password").fill("tavern-demo-42");
   await otherForm.getByRole("button", { name: "Send confirmation link" }).click();
   await expect(otherForm.getByText(`Check ${newEmail}: open the link there to finish.`)).toBeVisible();
   expect(mailsTo(newEmail)[0].subject).toBe("Someone tried to use your email on Quest Board");
@@ -430,7 +430,7 @@ test("the login email can be changed: the new address confirms it, the old one i
   // A pending change is dropped by a password reset (maybe someone else asked for it).
   const third = unique("move-third");
   await otherForm.getByLabel("New email").fill(third);
-  await otherForm.getByLabel("Your password").fill("password123");
+  await otherForm.getByLabel("Your password").fill("tavern-demo-42");
   await otherForm.getByRole("button", { name: "Send confirmation link" }).click();
   await expect(otherForm.getByText(`Check ${third}`)).toBeVisible();
   const thirdLink = /https?:\/\/\S+\/change-email\?token=[\w-]+/.exec(mailsTo(third)[0].body_text)![0];
@@ -475,4 +475,22 @@ test("a bounce or spam report from the email provider stops optional emails; Set
   expect((await request.post("/api/email-events/brevo?token=e2e-brevo-token", { data: spam })).status()).toBe(200);
   await page.reload();
   await expect(page.getByTestId("emails-stopped").getByText(/was marked as spam/)).toBeVisible();
+});
+
+test("sign-up and password changes refuse passwords that are too easy to guess", async ({ page }) => {
+  const email = unique("weakpw");
+  await page.goto("/signup");
+  await page.getByLabel("Display name").fill("Wira Weak");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill("password123");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.getByText("That password is too easy to guess")).toBeVisible();
+  await expect(page).toHaveURL(/\/signup/);
+
+  await signup(page, "Wira Weak", email); // a good one works
+  await page.goto("/settings");
+  await page.getByLabel("Current password").fill("tavern-demo-42");
+  await page.getByLabel("New password").fill("WiraWeak2024");
+  await page.getByRole("button", { name: "Change password" }).click();
+  await expect(page.getByText("That password is too easy to guess")).toBeVisible(); // made from their own name
 });

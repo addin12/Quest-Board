@@ -55,7 +55,7 @@ test("sign-up records Terms consent; a password change sends a security email", 
 
   const mark = (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM email_outbox").get() as { n: number }).n;
   await page.goto("/settings");
-  await page.getByLabel("Current password").fill("password123");
+  await page.getByLabel("Current password").fill("tavern-demo-42");
   await page.getByLabel("New password").fill("a-much-better-passphrase");
   await page.getByRole("button", { name: "Change password" }).click();
   await expect(page.getByText(/Password changed/)).toBeVisible();
@@ -148,7 +148,7 @@ test("the dev email gallery shows every email in both languages, with every plac
   for (const lang of ["en", "id"] as const) {
     await page.goto(`/dev/emails?lang=${lang}`);
     const mails = page.getByTestId("gallery-mail");
-    await expect(mails).toHaveCount(20);
+    await expect(mails).toHaveCount(22);
     const texts = [...(await page.getByTestId("gallery-subject").allInnerTexts()), ...(await page.getByTestId("gallery-body").allInnerTexts())];
     for (const text of texts) expect(text, `[${lang}] ${text.slice(0, 60)}`).not.toMatch(/\{\w+\}/);
   }

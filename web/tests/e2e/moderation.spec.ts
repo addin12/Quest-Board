@@ -128,7 +128,7 @@ test("a scam report leads to suspension: login blocked, profile hidden, game arc
   await gm.goto("/gm");
   await expect(gm).toHaveURL(/\/login/);
   await gm.getByLabel("Email").fill(gmEmail);
-  await gm.getByLabel("Password", { exact: true }).fill("password123");
+  await gm.getByLabel("Password", { exact: true }).fill("tavern-demo-42");
   await gm.getByRole("button", { name: "Log in" }).click();
   await expect(gm.getByText(/This account is suspended/)).toBeVisible();
 

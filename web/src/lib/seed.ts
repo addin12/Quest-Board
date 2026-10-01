@@ -5,7 +5,7 @@ import { LEGAL_VERSION } from "./legal";
 import { COVER_ART, GM_PORTRAITS, coverPath, portraitPath } from "./placeholders";
 
 // Demo data (Indonesia) so the marketplace is browsable on first run.
-// Every account uses the password "password123".
+// Every account uses the password "tavern-demo-42".
 
 type SeedGm = {
   name: string;
@@ -149,7 +149,7 @@ const REVIEW_LINES = [
 ];
 
 export function seedDatabase(conn: DatabaseSync) {
-  const pw = hashPassword("password123");
+  const pw = hashPassword("tavern-demo-42");
   const now = Date.now();
   const day = 86_400_000;
 

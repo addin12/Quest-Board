@@ -12,6 +12,7 @@ import { canBook, canCancel, isSafeNext, normalizeLocation, slugify } from "@/li
 import { isAllowedCover, isAllowedPortrait } from "@/lib/placeholders";
 import { isEmail, parseGame, parseGmRequest, parseOffer, parseProfile, parseRepeat, parseReview, parseSessionStart, parseSignup, weeklyStarts, type FieldErrors } from "@/lib/validation";
 import { cancelEmailChanges, consumeEmailChange, requestEmailChange } from "@/lib/email-change";
+import { isCommonPassword } from "@/lib/common-passwords";
 import { clearSuppression } from "@/lib/email-suppression";
 import { normalizeCategories } from "@/lib/categories";
 import { canReview, getGameById, getGmRequest, getGmSettings, getSessionWithGame, isGameMember, maxSeatsTakenUpcoming, removedFromSession } from "@/lib/queries";
@@ -743,6 +744,7 @@ async function changePasswordActionImpl(_: FormState, form: FormData): Promise<F
   if (!verifyPassword(current, row.password_hash)) return { fieldErrors: { currentPassword: "v.currentPassword" } };
   if (next.length < 8) return { fieldErrors: { newPassword: "v.password" } };
   if (next === current) return { fieldErrors: { newPassword: "v.passwordSame" } };
+  if (isCommonPassword(next, [user.name, user.email])) return { fieldErrors: { newPassword: "v.passwordCommon" } };
   db().prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hashPassword(next), user.id);
   await destroyAllSessions(user.id); // other devices must log in again…
   await createSession(user.id);      // …but this one stays signed in
@@ -1028,7 +1030,10 @@ async function resetPasswordActionImpl(_: FormState, form: FormData): Promise<Fo
   const token = String(form.get("token") ?? "");
   const next = String(form.get("newPassword") ?? "");
   if (next.length < 8) return { fieldErrors: { newPassword: "v.password" } };
-  if (!peekToken(token, "reset")) return { error: "err.tokenInvalid" };
+  const owner = peekToken(token, "reset");
+  if (!owner) return { error: "err.tokenInvalid" };
+  const who0 = db().prepare("SELECT name, email FROM users WHERE id = ?").get(owner) as { name: string; email: string } | undefined;
+  if (isCommonPassword(next, who0 ? [who0.name, who0.email] : [])) return { fieldErrors: { newPassword: "v.passwordCommon" } };
   const userId = consumeToken(token, "reset");
   if (!userId) return { error: "err.tokenInvalid" };
   db().prepare("UPDATE users SET password_hash = ?, email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?").run(hashPassword(next), new Date().toISOString(), userId);
