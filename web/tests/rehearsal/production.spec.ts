@@ -17,7 +17,8 @@ const compose = (...args: string[]) =>
   execFileSync("docker", ["compose", "-p", "qb-rehearsal", "-f", "docker-compose.yml", "-f", "rehearsal/docker-compose.rehearsal.yml", ...args], { cwd: DEPLOY, env: ENV, encoding: "utf8" });
 
 const ADMIN = "owner@rehearsal.test";
-const FAKES = "http://localhost:4000"; // deploy/rehearsal: stand-ins for Resend and S3
+const FAKES = "http://localhost:4000"; // deploy/rehearsal: stand-ins for Resend, Brevo and S3
+const fakes = (path: string, body: unknown) => fetch(`${FAKES}${path}`, { method: "POST", body: JSON.stringify(body) });
 let password = "";
 let key = "";
 let picture = ""; // an uploaded portrait's /uploads/… path, checked after the recovery
@@ -72,7 +73,7 @@ test("the first admin: CLI account, Secure cookie, two-step login required, then
   await expect(page.getByText(/Two-step login is on \(since/)).toBeVisible();
 
   await page.goto("/admin/setup");
-  const ids: Record<string, string> = { "Test-only switches": "test-switches", "Demo data": "seed", "Site address": "base-url", "HTTPS only": "https", "Scheduled job": "cron", "Email provider": "email", "Backups": "backup", "Off-site copy of backups": "offsite" };
+  const ids: Record<string, string> = { "Test-only switches": "test-switches", "Demo data": "seed", "Site address": "base-url", "HTTPS only": "https", "Scheduled job": "cron", "Email provider": "email", "Backup email provider": "email-backup", "Backups": "backup", "Off-site copy of backups": "offsite", "Off-site storage used": "offsite-space" };
   const level = (title: string) => page.locator(`[data-check="${ids[title]}"]`).getAttribute("data-level");
   expect(await level("Test-only switches")).toBe("ok");
   expect(await level("Demo data")).toBe("ok");
@@ -80,6 +81,7 @@ test("the first admin: CLI account, Secure cookie, two-step login required, then
   expect(await level("HTTPS only")).toBe("ok");
   expect(await level("Scheduled job")).toBe("ok");
   expect(await level("Email provider")).toBe("warn"); // set up, but pointed at the rehearsal's stand-in
+  expect(await level("Backup email provider")).toBe("ok"); // Resend, then Brevo
   expect(await level("Backups")).toBe("danger"); // none yet
   expect(await level("Off-site copy of backups")).toBe("warn"); // set up, nothing sent yet
 
@@ -96,6 +98,9 @@ test("the first admin: CLI account, Secure cookie, two-step login required, then
   expect(picture).toMatch(/^\/uploads\/[0-9a-f]{32}\.webp$/);
 
   await page.goto("/admin/setup");
+  // Older copies already in the bucket: past 60 days they go, but the newest 3 always stay.
+  for (const [stamp, daysAgo] of [["20000103-200000", 20], ["20000102-200000", 90], ["20000101-200000", 100]] as const)
+    await fakes("/seed-object", { key: `rehearsal-bucket/questboard/db/questboard-${stamp}.db.gz`, daysAgo });
   // A real backup and its off-site copy (what the scheduler does every night), then both turn OK.
   compose("exec", "-T", "scheduler", "npm", "run", "db:backup");
   compose("exec", "-T", "scheduler", "npm", "run", "db:offsite");
@@ -104,6 +109,11 @@ test("the first admin: CLI account, Secure cookie, two-step login required, then
   expect(await level("Off-site copy of backups")).toBe("ok");
   const objects = (await (await fetch(`${FAKES}/objects`)).json()) as { key: string; size: number }[];
   expect(objects.some((o) => /^rehearsal-bucket\/questboard\/db\/questboard-.+\.db\.gz$/.test(o.key) && o.size > 1000), JSON.stringify(objects)).toBe(true); // signature checked by the stand-in
+  const keys = objects.map((o) => o.key.replace("rehearsal-bucket/questboard/db/", ""));
+  expect(keys).toContain("questboard-20000103-200000.db.gz"); // 20 days: kept
+  expect(keys).toContain("questboard-20000102-200000.db.gz"); // 90 days, but one of the newest 3
+  expect(keys).not.toContain("questboard-20000101-200000.db.gz"); // 100 days: deleted (signed DELETE)
+  expect(await level("Off-site storage used")).toBe("ok");
 });
 
 test("recovery after losing the server's data: fetch the off-site copy and restore it (deploy/README.md)", async ({ request }) => {
@@ -121,6 +131,8 @@ test("recovery after losing the server's data: fetch the off-site copy and resto
 });
 
 test("sign-up works end to end over HTTPS: the emailed link uses the real address and signs you in", async ({ page }) => {
+  // Resend at its daily limit: Brevo takes over.
+  await fakes("/control", { resendStatus: 429 });
   const email = `player-${Date.now()}@rehearsal.test`;
   await page.goto("/signup");
   await page.getByLabel("Display name").fill("Rehearsal Player");
@@ -128,9 +140,9 @@ test("sign-up works end to end over HTTPS: the emailed link uses the real addres
   await page.getByLabel("Password").fill("a-good-password-123");
   await page.getByRole("button", { name: "Create account" }).click();
   await page.waitForURL("**/signup/check-email");
-  let mail: { to: string[]; subject: string; text: string; html: string } | undefined;
+  let mail: { to: string[]; subject: string; text: string; html: string; provider: string } | undefined;
   await expect.poll(async () => {
-    const all = (await (await fetch(`${FAKES}/emails`)).json()) as { to: string[]; subject: string; text: string; html: string }[];
+    const all = (await (await fetch(`${FAKES}/emails`)).json()) as { to: string[]; subject: string; text: string; html: string; provider: string }[];
     mail = all.find((m) => m.to.includes(email));
     return !!mail;
   }, { timeout: 30_000 }).toBe(true);
@@ -138,6 +150,8 @@ test("sign-up works end to end over HTTPS: the emailed link uses the real addres
   expect(links.length).toBeGreaterThan(0);
   for (const link of links) expect(link).toMatch(/^https:\/\/localhost:8443\//); // QUESTBOARD_BASE_URL, never the internal address
   expect(mail!.html).toContain("<html"); // the HTML version goes out too
+  expect(mail!.provider).toBe("brevo");
+  await fakes("/control", { resendStatus: 0 });
   const confirm = links.find((l) => l.includes("/verify-email?token="))!;
   await page.goto(confirm);
   await page.getByRole("button", { name: "Confirm my email" }).click();
@@ -155,6 +169,26 @@ test("no page trips the script policy over HTTPS", async ({ page }) => {
     await page.waitForLoadState("networkidle");
     expect(await page.evaluate(() => (window as unknown as { cspViolations: string[] }).cspViolations), path).toEqual([]);
   }
+});
+
+test("memory: after all of the above, the app and the scheduler use well under their caps (small servers)", async () => {
+  const MiB = (s: string) => {
+    const m = /([\d.]+)\s*([KMG]i?B)/.exec(s);
+    return m ? Number(m[1]) * ({ KiB: 1 / 1024, KB: 1 / 1024, MiB: 1, MB: 1, GiB: 1024, GB: 1024 } as Record<string, number>)[m[2]] : NaN;
+  };
+  const usage: Record<string, { used: number; cap: number }> = {};
+  for (const service of ["app", "scheduler"]) {
+    const id = compose("ps", "-q", service).trim();
+    const mem = execFileSync("docker", ["stats", "--no-stream", "--format", "{{.MemUsage}}", id], { encoding: "utf8" }).trim(); // "143.2MiB / 768MiB"
+    const [used, cap] = mem.split("/");
+    usage[service] = { used: MiB(used), cap: MiB(cap) };
+    expect(execFileSync("docker", ["inspect", "-f", "{{.State.OOMKilled}}", id], { encoding: "utf8" }).trim(), service).toBe("false");
+  }
+  console.log("[rehearsal] memory (MiB):", JSON.stringify(usage));
+  expect(usage.app.cap).toBe(768); // deploy/docker-compose.yml mem_limit
+  expect(usage.scheduler.cap).toBe(384);
+  expect(usage.app.used).toBeLessThan(768 / 2);
+  expect(usage.scheduler.used).toBeLessThan(384 / 2);
 });
 
 test("everything survives a restart of the app", async ({ page, request }) => {

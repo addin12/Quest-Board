@@ -51,6 +51,7 @@ test("notification popover, toasts and the phone layout", async ({ browser }) =>
 // The per-request script nonce (lib/csp.ts) in every engine: no page trips the policy, signed out
 // or in, and client-side navigation still loads its scripts ('strict-dynamic').
 test("no page trips the Content Security Policy", async ({ browser }) => {
+  test.setTimeout(240_000); // ~30 pages and three logins; WebKit on a busy machine needs more than 2 minutes
   const watch = async (page: import("@playwright/test").Page) => {
     await page.addInitScript(() => {
       const w = window as unknown as { cspViolations: string[] };

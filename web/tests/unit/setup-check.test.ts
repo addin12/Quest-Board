@@ -12,7 +12,7 @@ const good: SetupFacts = {
   offsiteLast: { at: new Date(now - 10 * 3_600_000).toISOString(), ok: true, detail: "questboard-x.db + 3 picture(s)" },
   env: {
     QUESTBOARD_OFFSITE_ENDPOINT: "https://x.r2.cloudflarestorage.com", QUESTBOARD_OFFSITE_BUCKET: "qb", QUESTBOARD_OFFSITE_KEY_ID: "k", QUESTBOARD_OFFSITE_SECRET: "s",
-    NODE_ENV: "production", QUESTBOARD_SEED: "false", RESEND_API_KEY: "re_x", QUESTBOARD_MAIL_FROM: "Quest Board <halo@questboard.id>",
+    NODE_ENV: "production", QUESTBOARD_SEED: "false", RESEND_API_KEY: "re_x", BREVO_API_KEY: "xkeysib-x", QUESTBOARD_MAIL_FROM: "Quest Board <halo@questboard.id>",
     QUESTBOARD_BASE_URL: "https://questboard.id", QUESTBOARD_ENFORCE_HTTPS: "true", QUESTBOARD_CONTACT_EMAIL: "halo@questboard.id", QUESTBOARD_CRON_SECRET: "s",
   },
 };
@@ -27,7 +27,15 @@ test("production problems are marked for fixing", () => {
   const withSwitches = setupChecks({ ...good, env: { ...good.env, QUESTBOARD_INSECURE_COOKIES: "true", QUESTBOARD_RATE_LIMIT: "off" } }).find((c) => c.id === "test-switches")!;
   assert.equal(withSwitches.vars?.names, "QUESTBOARD_INSECURE_COOKIES, QUESTBOARD_RATE_LIMIT");
   assert.equal(level({ ...good, env: { ...good.env, QUESTBOARD_SEED: undefined } }, "seed"), "danger"); // demo accounts with a known password
-  assert.equal(level({ ...good, env: { ...good.env, RESEND_API_KEY: undefined } }, "email"), "danger");
+  assert.equal(level({ ...good, env: { ...good.env, RESEND_API_KEY: undefined, BREVO_API_KEY: undefined } }, "email"), "danger");
+  assert.equal(level({ ...good, env: { ...good.env, RESEND_API_KEY: undefined } }, "email"), "ok"); // Brevo alone is enough…
+  assert.equal(level({ ...good, env: { ...good.env, BREVO_API_KEY: undefined } }, "email-backup"), "warn"); // …but one provider has no backup
+  assert.equal(level({ ...good, env: { ...good.env, QUESTBOARD_BREVO_URL: "http://fakes:4000" } }, "email"), "warn");
+  // Emails in the last 24 hours against the two free plans (100 + 300).
+  assert.equal(level({ ...good, emailSent24h: { resend: 100, brevo: 150 } }, "email-today"), "ok");
+  assert.equal(level({ ...good, emailSent24h: { resend: 100, brevo: 220 } }, "email-today"), "warn");
+  assert.deepEqual(setupChecks({ ...good, emailSent24h: { resend: 12 } }).find((c) => c.id === "email-today")!.vars, { used: 12, limit: 400 });
+  assert.equal(setupChecks({ ...good, env: { ...good.env, RESEND_DAILY_LIMIT: "0" } }).find((c) => c.id === "email-today"), undefined); // a paid plan without a limit
   assert.equal(level({ ...good, env: { ...good.env, QUESTBOARD_BASE_URL: "http://questboard.id" } }, "base-url"), "danger");
   assert.equal(level({ ...good, env: { ...good.env, QUESTBOARD_ENFORCE_HTTPS: undefined } }, "https"), "warn");
   assert.equal(level({ ...good, env: { ...good.env, QUESTBOARD_CONTACT_EMAIL: undefined } }, "contact"), "warn");
@@ -48,6 +56,14 @@ test("production problems are marked for fixing", () => {
   assert.equal(level({ ...good, diskFreeBytes: 0.5 * GB }, "disk"), "danger");
   assert.equal(setupChecks({ ...good, diskFreeBytes: 0.5 * GB }).find((c) => c.id === "disk")!.vars?.gb, 0.5);
   assert.equal(setupChecks(good).find((c) => c.id === "disk"), undefined); // unknown: no line
+  // Off-site space against the free 10 GB.
+  const stored = (bytes: number, keepDays = 60) => ({ ...good, offsiteLast: { ...good.offsiteLast!, bytes, keepDays } });
+  assert.equal(level(stored(300 * 1024 ** 2), "offsite-space"), "ok");
+  assert.equal(setupChecks(stored(300 * 1024 ** 2)).find((c) => c.id === "offsite-space")!.vars?.size, "300 MB");
+  assert.equal(setupChecks(stored(2.5 * GB)).find((c) => c.id === "offsite-space")!.vars?.size, "2.5 GB");
+  assert.equal(level(stored(9 * GB), "offsite-space"), "warn");
+  assert.equal(setupChecks(stored(1024, 0)).find((c) => c.id === "offsite-space")!.detail, "setup.offsiteSpaceKeepAll");
+  assert.equal(setupChecks(good).find((c) => c.id === "offsite-space"), undefined); // not measured yet
 });
 
 test("a development machine gets reminders, not alarms", () => {

@@ -1,5 +1,7 @@
 # Quest Board on one server: see deploy/README.md.
 #   docker compose up -d --build      start (or update after git pull)
+#   With QUESTBOARD_IMAGE set (small servers: the ready-made image from GitHub), instead:
+#   docker compose pull app scheduler && docker compose up -d --no-build
 #   docker compose logs -f app        watch the app (setup problems are logged at start)
 #   docker compose exec app npm run admin -- create you@example.com "Your Name"
 
@@ -26,8 +28,12 @@ x-hardened: &hardened
 services:
   app:
     <<: *hardened
+    # Built here from ../web, or QUESTBOARD_IMAGE=ghcr.io/addin12/quest-board:latest (built by CI).
+    image: ${QUESTBOARD_IMAGE:-questboard-app}
     build: ../web
     restart: unless-stopped
+    # A cap well above what it uses (the rehearsal measures it), so one runaway can't starve the server.
+    mem_limit: ${QUESTBOARD_APP_MEMORY:-768m}
     env_file: ${QUESTBOARD_ENV_FILE:-.env}
     environment:
       QUESTBOARD_PROXY_HOPS: "1" # Caddy is the one proxy in front
@@ -41,8 +47,10 @@ services:
   # (and a copy to off-site storage when QUESTBOARD_OFFSITE_* is set).
   scheduler:
     <<: *hardened
+    image: ${QUESTBOARD_IMAGE:-questboard-app}
     build: ../web
     restart: unless-stopped
+    mem_limit: ${QUESTBOARD_SCHEDULER_MEMORY:-384m}
     env_file: ${QUESTBOARD_ENV_FILE:-.env}
     environment:
       QUESTBOARD_APP_URL: http://app:3000

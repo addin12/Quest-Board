@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { changePasswordAction, updateProfileAction, type FormState } from "@/app/actions";
+import { changePasswordAction, requestEmailChangeAction, updateProfileAction, type FormState } from "@/app/actions";
 import { SubmitButton } from "./submit-button";
 import { FieldError, Notice, errAttrs } from "./ui";
 import { useI18n } from "./i18n-provider";
@@ -101,6 +101,35 @@ export function PasswordForm() {
       {state?.ok && <Notice tone="success">{t("settings.passwordChanged")}</Notice>}
       {state?.error && <Notice tone="danger">{t(state.error)}</Notice>}
       <SubmitButton className="btn-secondary" pendingText={t("common.saving")}><Icon name="key" /> {t("settings.changePassword")}</SubmitButton>
+    </form>
+  );
+}
+
+/** Change the login email: the new address gets a link; nothing changes until it's opened. */
+export function EmailChangeForm({ pending }: { pending: string | null }) {
+  const { t } = useI18n();
+  const [state, action] = useActionState<FormState, FormData>(requestEmailChangeAction, undefined);
+  const fe = state?.fieldErrors ?? {};
+  const waitingFor = state?.ok ? state.values?.newEmail ?? null : pending;
+  return (
+    <form action={action} className="space-y-4">
+      <p className="text-sm text-muted">{t("settings.loginEmailLead")}</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label htmlFor="newEmail" className="label">{t("settings.newEmail")}</label>
+          <input id="newEmail" {...errAttrs("newEmail", fe.newEmail)} name="newEmail" type="email" autoComplete="email" required defaultValue={state?.values?.newEmail} className="input" />
+          <FieldError id="newEmail" msg={fe.newEmail && t(fe.newEmail)} />
+        </div>
+        <div>
+          <label htmlFor="emailPassword" className="label">{t("settings.emailPassword")}</label>
+          <input id="emailPassword" {...errAttrs("emailPassword", fe.emailPassword)} name="currentPassword" type="password" autoComplete="current-password" required className="input" />
+          <FieldError id="emailPassword" msg={fe.emailPassword && t(fe.emailPassword)} />
+        </div>
+      </div>
+      {state?.ok && waitingFor ? <Notice tone="success">{t("settings.emailChangeSent", { email: waitingFor })}</Notice>
+        : waitingFor && <Notice tone="info">{t("settings.emailChangePending", { email: waitingFor })}</Notice>}
+      {state?.error && <Notice tone="danger">{t(state.error)}</Notice>}
+      <SubmitButton className="btn-secondary" pendingText={t("common.saving")}><Icon name="envelope" /> {t("settings.changeEmail")}</SubmitButton>
     </form>
   );
 }

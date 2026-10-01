@@ -37,7 +37,8 @@ export async function deliverNotificationEmails(origin: string, limit = 50): Pro
       // The body adds its own full stop; always-sent warnings can't be turned off, so they don't say they can.
       text: t(ALWAYS_EMAIL.has(n.kind) ? "mail.notifBodyImportant" : "mail.notifBody", { name: u.name, text: view.text.replace(/[.!?]$/, ""), link: origin + view.href }),
       // One-click unsubscribe for the ones people can turn off (never on safety warnings).
-      ...(ALWAYS_EMAIL.has(n.kind) ? {} : { headers: unsubscribeHeaders(origin, n.user_id, "notifications") }),
+      // …and those may wait for room under the daily email limit (up to a day; the app shows them anyway).
+      ...(ALWAYS_EMAIL.has(n.kind) ? {} : { headers: unsubscribeHeaders(origin, n.user_id, "notifications"), optional: true, expiresAt: new Date(Date.now() + 86_400_000).toISOString() }),
     });
     sent++;
   }

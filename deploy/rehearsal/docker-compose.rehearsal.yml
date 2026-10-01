@@ -7,7 +7,7 @@ services:
       - "8080:80"
       - "8443:443"
 
-  # Stand-ins for Resend and S3-compatible storage (scripts/rehearsal-fakes.mjs), so the rehearsal can
+  # Stand-ins for Resend, Brevo and S3-compatible storage (scripts/rehearsal-fakes.mjs), so the rehearsal can
   # follow sign-up emails and off-site backups. Only here — never in a real deployment.
   fakes:
     build: ../web

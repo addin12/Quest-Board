@@ -12,9 +12,17 @@ process.env.RESEND_API_KEY = "test-key";
 process.env.QUESTBOARD_MAIL_FROM = "Quest Board <test@example.com>";
 process.env.QUESTBOARD_ENFORCE_HTTPS = "true"; // like production: the dev outbox is off, so one-time links are blanked
 
-let failNext = 0;
+let failNext = 0; // Resend answers 503 this many times
+let resendStatus = 0; // or always this status (429 = its daily limit), when set
 const sent: { to: string[]; subject: string; headers?: Record<string, string> }[] = [];
-globalThis.fetch = (async (_url: string, init: { body: string }) => {
+const viaBrevo: { to: { email: string }[]; subject: string; sender: { name?: string; email: string }; textContent: string; htmlContent: string; headers?: Record<string, string> }[] = [];
+globalThis.fetch = (async (url: string, init: { body: string; headers: Record<string, string> }) => {
+  if (String(url).startsWith("https://api.brevo.com/")) {
+    assert.equal(init.headers["api-key"], "brevo-key");
+    viaBrevo.push(JSON.parse(init.body));
+    return new Response('{"messageId":"x"}', { status: 201 });
+  }
+  if (resendStatus) return new Response("limit", { status: resendStatus });
   if (failNext > 0) { failNext--; return new Response("provider down", { status: 503 }); }
   sent.push(JSON.parse(init.body));
   return new Response("{}", { status: 200 });
@@ -22,8 +30,8 @@ globalThis.fetch = (async (_url: string, init: { body: string }) => {
 
 const { db } = await import("../../src/lib/db.ts");
 const { sendEmail, retryFailedEmails, MAX_ATTEMPTS } = await import("../../src/lib/mailer.ts");
-const row = (subject: string) => db().prepare("SELECT sent_at, error, attempts, retryable, body_text FROM email_outbox WHERE subject = ?").get(subject) as
-  { sent_at: string | null; error: string | null; attempts: number; retryable: number; body_text: string };
+const row = (subject: string) => db().prepare("SELECT sent_at, error, attempts, retryable, body_text, provider, deferred FROM email_outbox WHERE subject = ?").get(subject) as
+  { sent_at: string | null; error: string | null; attempts: number; retryable: number; body_text: string; provider: string | null; deferred: number };
 
 before(() => { db(); });
 
@@ -70,4 +78,74 @@ test("extra headers (List-Unsubscribe) reach the provider, also when the email i
   assert.deepEqual(copies[0].headers, headers);
   await sendEmail({ to: "h@x.test", subject: "No headers", text: "hello" });
   assert.equal(sent.find((m) => m.subject === "No headers")!.headers, undefined);
+});
+
+test("Brevo takes over when Resend is down or full, and is counted separately", async () => {
+  process.env.BREVO_API_KEY = "brevo-key";
+  try {
+    failNext = 1;
+    await sendEmail({ to: "d@x.test", subject: "Resend down", text: "hello" });
+    assert.equal(row("Resend down").provider, "brevo");
+    assert.equal(row("Resend down").error, null);
+    const b = viaBrevo.find((m) => m.subject === "Resend down")!;
+    assert.deepEqual(b.sender, { name: "Quest Board", email: "test@example.com" });
+    assert.deepEqual(b.to, [{ email: "d@x.test" }]);
+    assert.equal(b.textContent, "hello");
+    assert.match(b.htmlContent, /hello/);
+
+    resendStatus = 429; // Resend's own daily limit: not an error, just full
+    await sendEmail({ to: "d@x.test", subject: "Resend full", text: "hello", headers: { "List-Unsubscribe": "<https://x>" } });
+    assert.equal(row("Resend full").provider, "brevo");
+    assert.deepEqual(viaBrevo.find((m) => m.subject === "Resend full")!.headers, { "List-Unsubscribe": "<https://x>" });
+    resendStatus = 0;
+    await sendEmail({ to: "d@x.test", subject: "Resend back", text: "hello" });
+    assert.equal(row("Resend back").provider, "resend");
+  } finally {
+    delete process.env.BREVO_API_KEY;
+  }
+});
+
+test("near the daily limit optional emails wait (important ones still go), then go out once there's room", async () => {
+  // Fill today's Resend count up to 80 of 100: the reserve for important emails starts there.
+  const filled = db().prepare("SELECT COUNT(*) AS n FROM email_outbox WHERE provider = 'resend' AND sent_at IS NOT NULL").get() as { n: number };
+  const fill = db().prepare("INSERT INTO email_outbox (to_address, subject, body_text, sent_at, provider) VALUES ('f@x.test', 'filler', 'x', ?, 'resend')");
+  for (let i = filled.n; i < 80; i++) fill.run(new Date().toISOString());
+
+  await sendEmail({ to: "e@x.test", subject: "Reminder waits", text: "x", optional: true, expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
+  assert.equal(row("Reminder waits").sent_at, null);
+  assert.equal(row("Reminder waits").deferred, 1);
+  assert.equal(row("Reminder waits").error, null); // waiting is not failing
+  assert.equal(row("Reminder waits").attempts, 0);
+  await sendEmail({ to: "e@x.test", subject: "Reset goes", text: "x" });
+  assert.equal(row("Reset goes").provider, "resend");
+
+  await sendEmail({ to: "e@x.test", subject: "Too late", text: "x", optional: true, expiresAt: new Date(Date.now() + 1_000).toISOString() });
+  assert.equal(row("Too late").deferred, 1);
+
+  // Room again (the filler ages out of the 24 hours): the waiting one goes, the expired one never does.
+  db().prepare("UPDATE email_outbox SET sent_at = ? WHERE subject = 'filler'").run(new Date(Date.now() - 2 * 86_400_000).toISOString());
+  await new Promise((r) => setTimeout(r, 1_100));
+  await retryFailedEmails();
+  assert.equal(row("Reminder waits").provider, "resend");
+  assert.equal(row("Reminder waits").deferred, 0);
+  assert.equal(row("Too late").sent_at, null);
+});
+
+test("when every provider is full, important emails wait too and go first when there's room", async () => {
+  process.env.RESEND_DAILY_LIMIT = "1";
+  try {
+    // Start from an empty day, then use up the one slot.
+    db().prepare("UPDATE email_outbox SET sent_at = ? WHERE sent_at IS NOT NULL").run(new Date(Date.now() - 2 * 86_400_000).toISOString());
+    db().prepare("INSERT INTO email_outbox (to_address, subject, body_text, sent_at, provider) VALUES ('f@x.test', 'filler2', 'x', ?, 'resend')").run(new Date().toISOString());
+    await sendEmail({ to: "g@x.test", subject: "Optional first in line", text: "x", optional: true });
+    await sendEmail({ to: "g@x.test", subject: "Important later in line", text: "x" });
+    assert.equal(row("Important later in line").deferred, 1);
+    db().prepare("UPDATE email_outbox SET sent_at = ? WHERE subject IN ('filler2')").run(new Date(Date.now() - 2 * 86_400_000).toISOString());
+    // One slot: the important one takes it even though it was queued later.
+    await retryFailedEmails();
+    assert.equal(row("Important later in line").provider, "resend");
+    assert.equal(row("Optional first in line").sent_at, null);
+  } finally {
+    delete process.env.RESEND_DAILY_LIMIT;
+  }
 });

@@ -37,7 +37,9 @@
 // v32: users.legal_seen_version (the "we've updated our Privacy Policy" banner).
 // v33: users.time_zone (emails show times in the reader's zone: WIB, WITA, WIT…).
 // v34: email_outbox.headers (List-Unsubscribe survives a retry).
-export const SCHEMA_VERSION = 34;
+// v35: email_outbox.provider / optional / expires_at / deferred (a second provider, daily limits),
+//      email_changes (changing the login email: a link to the new address).
+export const SCHEMA_VERSION = 35;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -329,6 +331,16 @@ CREATE TABLE IF NOT EXISTS auth_tokens (
   created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_auth_tokens_user ON auth_tokens(user_id, kind);
+CREATE TABLE IF NOT EXISTS email_changes (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  new_email   TEXT NOT NULL,
+  token_hash  TEXT NOT NULL UNIQUE,     -- SHA-256 of the emailed token
+  expires_at  TEXT NOT NULL,
+  used_at     TEXT,                     -- confirmed, replaced by a newer request, or cancelled by a password reset
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_email_changes_user ON email_changes(user_id);
 CREATE TABLE IF NOT EXISTS email_outbox (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   to_address  TEXT NOT NULL,
@@ -339,7 +351,11 @@ CREATE TABLE IF NOT EXISTS email_outbox (
   error       TEXT,
   attempts    INTEGER NOT NULL DEFAULT 0,  -- v20: delivery attempts (retried by the cron)
   retryable   INTEGER NOT NULL DEFAULT 1,  -- v20: 0 when the stored copy had its one-time link blanked
-  headers     TEXT                         -- v34: extra headers as JSON (List-Unsubscribe), or NULL
+  headers     TEXT,                        -- v34: extra headers as JSON (List-Unsubscribe), or NULL
+  provider    TEXT,                        -- v35: who accepted it ('resend' | 'brevo'), counted for daily limits
+  optional    INTEGER NOT NULL DEFAULT 0,  -- v35: 1 = may wait for room under the daily limit (notifications, reminders)
+  expires_at  TEXT,                        -- v35: not worth sending after this, or NULL
+  deferred    INTEGER NOT NULL DEFAULT 0   -- v35: 1 = waiting for room under the daily limit (not a failure)
 );
 
 CREATE TABLE IF NOT EXISTS reports (

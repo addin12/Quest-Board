@@ -1,6 +1,9 @@
-# Email that lands in the inbox: DNS for Resend
+# Email that lands in the inbox: DNS for Resend and Brevo
 
-Quest Board sends sign-up confirmations, password resets and session reminders through **Resend**.
+Quest Board sends sign-up confirmations, password resets and session reminders through **Resend**,
+with **Brevo** as the backup (both have free plans: 100 and 300 emails a day). With both set up, Resend
+is tried first and Brevo takes over when Resend is down or full; near the day's limit, notification
+emails and reminders wait so that sign-ups and password resets always get through.
 Gmail, Yahoo and Outlook now expect every sender to prove the mail is really theirs — without these
 records, confirmation emails go to spam or are rejected, and new players can't finish signing up.
 
@@ -49,18 +52,32 @@ One TXT record on `_dmarc`:
   `p=quarantine` so forged mail from your domain goes to spam.
 - `rua=` is where receivers send daily reports; any address you read works (or leave it out).
 
-## 4. Tell Quest Board
+## 4. The backup provider: Brevo
+
+Brevo → **Senders, Domains & Dedicated IPs → Domains → Add a domain** (the same domain). Brevo shows the
+records for your domain — a `brevo-code` TXT record and its DKIM records, and sometimes SPF and DMARC.
+Add them at your registrar the same way, and press **Authenticate** in Brevo.
+
+- Keep the DMARC record from step 3; you only need one.
+- If Brevo asks for an SPF `include:` on a name that already has an SPF record, add the `include:` to
+  the existing `v=spf1 …` record instead of creating a second one.
+- Then Brevo → **SMTP & API → API keys → Generate a new API key**.
+
+## 5. Tell Quest Board
 
 In `deploy/.env`:
 
 ```sh
 RESEND_API_KEY=re_…                                # Resend → API Keys → Create (sending access is enough)
+BREVO_API_KEY=xkeysib-…                            # Brevo → SMTP & API → API keys
 QUESTBOARD_MAIL_FROM=Quest Board <halo@questboard.id>   # must be on the domain you verified
+# On a paid plan, its daily limit (0 = none): RESEND_DAILY_LIMIT=…, BREVO_DAILY_LIMIT=…
 ```
 
-Then `docker compose up -d`. **Admin → Setup** shows "Email provider: OK".
+Then `docker compose up -d`. **Admin → Setup** shows "Email provider: OK", "Backup email provider: OK"
+and how many of the day's emails have been used.
 
-## 5. Check it works
+## 6. Check it works
 
 1. Sign up on the live site with a Gmail address. The confirmation should arrive in the **inbox**
    within a minute.

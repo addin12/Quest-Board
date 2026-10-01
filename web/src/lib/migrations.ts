@@ -455,6 +455,23 @@ export const MIGRATIONS: Record<number, string> = {
   34: `
     ALTER TABLE email_outbox ADD COLUMN headers TEXT;
   `,
+  35: `
+    ALTER TABLE email_outbox ADD COLUMN provider TEXT;
+    ALTER TABLE email_outbox ADD COLUMN optional INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE email_outbox ADD COLUMN expires_at TEXT;
+    ALTER TABLE email_outbox ADD COLUMN deferred INTEGER NOT NULL DEFAULT 0;
+    UPDATE email_outbox SET provider = 'resend' WHERE sent_at IS NOT NULL; -- the only provider before v35
+    CREATE TABLE IF NOT EXISTS email_changes (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      new_email   TEXT NOT NULL,
+      token_hash  TEXT NOT NULL UNIQUE,
+      expires_at  TEXT NOT NULL,
+      used_at     TEXT,
+      created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_email_changes_user ON email_changes(user_id);
+  `,
 };
 
 export type UpgradePlan =

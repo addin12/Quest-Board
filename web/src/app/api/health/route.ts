@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { SCHEMA_VERSION } from "@/lib/schema";
+import { configuredProviders } from "@/lib/mail-providers";
 
 // GET /api/health — for container health checks: 200 when the database answers at the expected
 // schema version, 503 otherwise. GET /api/health?full=1 — for an uptime monitor (e.g. UptimeRobot):
@@ -29,10 +30,11 @@ export async function GET(request: Request) {
     const cronOk = !cronConfigured || (!!lastRun && now - Date.parse(lastRun) < CRON_STALE_MINUTES * 60_000);
 
     // Emails still unsent after a while, within the 24-hour retry window, when a provider is set.
-    const providerConfigured = !!process.env.RESEND_API_KEY && !!process.env.QUESTBOARD_MAIL_FROM;
+    // Optional emails waiting for room under the daily limit aren't stuck; important ones are.
+    const providerConfigured = configuredProviders(process.env).length > 0;
     const stuck = providerConfigured
       ? (db()
-          .prepare("SELECT COUNT(*) AS n FROM email_outbox WHERE sent_at IS NULL AND created_at < ? AND created_at > ?")
+          .prepare("SELECT COUNT(*) AS n FROM email_outbox WHERE sent_at IS NULL AND NOT (deferred = 1 AND optional = 1) AND created_at < ? AND created_at > ?")
           .get(new Date(now - EMAIL_STUCK_MINUTES * 60_000).toISOString(), new Date(now - 86_400_000).toISOString()) as { n: number }).n
       : 0;
     const emailOk = stuck === 0;

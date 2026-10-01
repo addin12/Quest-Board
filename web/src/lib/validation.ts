@@ -118,6 +118,9 @@ export const SYSTEMS = [
 
 export type GameLanguage = "id" | "en" | "both";
 
+/** Loose on purpose: the confirmation link is the real check. */
+export const isEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
 export type SignupInput = { name: string; email: string; password: string; role: "player" | "gm" };
 
 export function parseSignup(raw: Record<string, unknown>): Parsed<SignupInput> {
@@ -128,7 +131,7 @@ export function parseSignup(raw: Record<string, unknown>): Parsed<SignupInput> {
   const role = raw.role === "gm" ? "gm" : "player";
 
   if (name.length < 2 || name.length > 50) errors.name = "v.name";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "v.email";
+  if (!isEmail(email)) errors.email = "v.email";
   if (password.length < 8) errors.password = "v.password";
 
   return Object.keys(errors).length ? { ok: false, errors } : { ok: true, value: { name, email, password, role } };

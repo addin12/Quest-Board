@@ -72,6 +72,7 @@ export function deleteAccount(userId: number): void {
     c.prepare("UPDATE gm_profiles SET headline = '', systems = '', location = '', payment_info = '', verified = 0 WHERE user_id = ?").run(userId);
     c.prepare("DELETE FROM auth_sessions WHERE user_id = ?").run(userId);
     c.prepare("DELETE FROM auth_tokens WHERE user_id = ?").run(userId);
+    c.prepare("DELETE FROM email_changes WHERE user_id = ?").run(userId);
     c.prepare("DELETE FROM notifications WHERE user_id = ?").run(userId);
   });
   deleteUserUploads(userId); // their uploaded pictures (files and records)

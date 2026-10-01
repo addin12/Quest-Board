@@ -37,7 +37,10 @@ export async function sendErrorDigest(origin: string, now = new Date(), setupPro
          FROM email_outbox WHERE sent_at IS NULL AND error IS NOT NULL AND created_at > ? AND created_at <= ?`,
     )
     .get(since, now.toISOString(), since, now.toISOString()) as { n: number; last_error: string | null };
-  if (total === 0 && failed.n === 0 && setupProblems.length === 0) return 0;
+  const held = (db()
+    .prepare("SELECT COUNT(*) AS n FROM email_outbox WHERE deferred = 1 AND sent_at IS NULL AND created_at > ? AND created_at <= ?")
+    .get(since, now.toISOString()) as { n: number }).n;
+  if (total === 0 && failed.n === 0 && held === 0 && setupProblems.length === 0) return 0;
   const admins = db()
     .prepare("SELECT email, name, locale FROM users WHERE role = 'admin' AND email_verified_at IS NOT NULL AND deleted_at IS NULL AND suspended_at IS NULL")
     .all() as { email: string; name: string; locale: Lang }[];
@@ -53,6 +56,10 @@ export async function sendErrorDigest(origin: string, now = new Date(), setupPro
     if (failed.n > 0) {
       summary.push(t("mail.digestEmailsCount", { n: failed.n }));
       sections.push(t("mail.digestEmails", { n: failed.n, error: (failed.last_error ?? "").slice(0, 160) }));
+    }
+    if (held > 0) {
+      summary.push(t("mail.digestHeldCount", { n: held }));
+      sections.push(t("mail.digestHeld", { n: held }));
     }
     if (setupProblems.length > 0) {
       summary.push(t("mail.digestSetupCount", { n: setupProblems.length }));

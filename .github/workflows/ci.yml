@@ -48,9 +48,14 @@ jobs:
 
   # The production rehearsal (TESTING.md): the real deployment kit in deploy/ — Docker image, scheduler,
   # Caddy with HTTPS — started from nothing and checked end to end. Catches deployment-only problems
-  # (like headers fixed at build time) that the e2e servers, on plain http, can't see.
+  # (like headers fixed at build time) that the e2e servers, on plain http, can't see. On both kinds of
+  # processor: ARM is what Oracle Cloud's free servers use (deploy/ORACLE-FREE.md).
   rehearsal:
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     defaults:
       run:
@@ -72,6 +77,78 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: rehearsal-traces
+          name: rehearsal-traces-${{ matrix.runner }}
           path: web/test-results/
           retention-days: 7
+
+  # The ready-made image (deploy/README.md, "Small servers"): after every green push to main, the
+  # production image is built on both processors and published as one multi-platform image, so a small
+  # server downloads it instead of building (a Next.js build needs more memory than a 1 GB server has).
+  image:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [test, rehearsal]
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: web
+          platforms: ${{ matrix.platform }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          outputs: type=image,name=ghcr.io/${{ github.repository_owner }}/quest-board,push-by-digest=true,name-canonical=true,push=true
+      - name: Remember the digest
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${DIGEST#sha256:}"
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: digest-${{ matrix.runner }}
+          path: /tmp/digests/*
+          retention-days: 1
+
+  image-publish:
+    needs: image
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: digest-*
+          path: /tmp/digests
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish :latest and :<commit> for both processors
+        working-directory: /tmp/digests
+        run: |
+          IMAGE="ghcr.io/${OWNER,,}/quest-board"
+          docker buildx imagetools create -t "$IMAGE:latest" -t "$IMAGE:${GITHUB_SHA::7}" $(printf "$IMAGE@sha256:%s " *)
+          docker buildx imagetools inspect "$IMAGE:latest"
+        env:
+          OWNER: ${{ github.repository_owner }}

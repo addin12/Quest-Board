@@ -70,6 +70,8 @@ function reminderEmail(u: Recipient, userId: number, s: SessionInfo, kind: "24h"
     subject: t(kind === "24h" ? "mail.reminderSubject24" : "mail.reminderSubject1", vars),
     text: t(isGm ? "mail.reminderBodyGm" : "mail.reminderBody", vars),
     headers: unsubscribeHeaders(origin, userId, "reminders"),
+    optional: true, // may wait for room under the daily limit, but never past the start
+    expiresAt: s.starts_at,
   };
 }
 

@@ -3,6 +3,7 @@ import { readdirSync, statSync, statfsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { db } from "./db";
 import { LEGAL_VERSION } from "./legal";
+import { sentLast24h } from "./mailer";
 import { setupChecks, type SetupCheck } from "./setup-check";
 
 /** The newest backup file's time (db-backup.mjs writes questboard-<stamp>.db into QUESTBOARD_BACKUP_DIR). */
@@ -31,5 +32,5 @@ export function currentSetupChecks(): SetupCheck[] {
   const state = (key: string) => (db().prepare("SELECT value FROM app_state WHERE key = ?").get(key) as { value: string } | undefined)?.value ?? null;
   let offsiteLast = null;
   try { offsiteLast = JSON.parse(state("offsite_last") ?? "null"); } catch { /* unreadable: treat as none */ }
-  return setupChecks({ env: process.env, cronLastRun: state("cron_last_run"), lastBackupAt: lastBackupAt(), diskFreeBytes: diskFreeBytes(), offsiteLast, legalVersion: LEGAL_VERSION, now: Date.now() });
+  return setupChecks({ env: process.env, cronLastRun: state("cron_last_run"), lastBackupAt: lastBackupAt(), emailSent24h: sentLast24h(), diskFreeBytes: diskFreeBytes(), offsiteLast, legalVersion: LEGAL_VERSION, now: Date.now() });
 }

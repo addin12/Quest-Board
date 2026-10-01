@@ -10,7 +10,8 @@ import { clientIp, hit, purgeOldWindows } from "@/lib/rate-limit";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { canBook, canCancel, isSafeNext, normalizeLocation, slugify } from "@/lib/policy";
 import { isAllowedCover, isAllowedPortrait } from "@/lib/placeholders";
-import { parseGame, parseGmRequest, parseOffer, parseProfile, parseRepeat, parseReview, parseSessionStart, parseSignup, weeklyStarts, type FieldErrors } from "@/lib/validation";
+import { isEmail, parseGame, parseGmRequest, parseOffer, parseProfile, parseRepeat, parseReview, parseSessionStart, parseSignup, weeklyStarts, type FieldErrors } from "@/lib/validation";
+import { cancelEmailChanges, consumeEmailChange, requestEmailChange } from "@/lib/email-change";
 import { normalizeCategories } from "@/lib/categories";
 import { canReview, getGameById, getGmRequest, getGmSettings, getSessionWithGame, isGameMember, maxSeatsTakenUpcoming, removedFromSession } from "@/lib/queries";
 import { LANG_COOKIE, type MsgKey } from "@/lib/i18n/dict";
@@ -748,6 +749,65 @@ async function changePasswordActionImpl(_: FormState, form: FormData): Promise<F
   return { ok: true };
 }
 
+/**
+ * Change my login email: needs the current password. The new address gets a confirmation link; the old
+ * one is told right away (so its owner can react while nothing has changed yet). An address that already
+ * has an account gets the same answer here (no way to probe which addresses exist); its owner is told.
+ */
+async function requestEmailChangeActionImpl(_: FormState, form: FormData): Promise<FormState> {
+  const user = await requireUser("/settings");
+  const newEmail = String(form.get("newEmail") ?? "").trim().toLowerCase();
+  if (!isEmail(newEmail)) return { fieldErrors: { newEmail: "v.email" } };
+  if (newEmail === user.email.toLowerCase()) return { fieldErrors: { newEmail: "v.emailSame" } };
+  if (!hit("emailChange", String(user.id))) return { error: "err.rateLimited" };
+  const row = db().prepare("SELECT password_hash FROM users WHERE id = ?").get(user.id) as { password_hash: string };
+  if (!verifyPassword(String(form.get("currentPassword") ?? ""), row.password_hash)) return { fieldErrors: { emailPassword: "v.currentPassword" } };
+  const { t, lang } = await getI18n();
+  const origin = await siteOrigin();
+  const taken = db().prepare("SELECT name FROM users WHERE email = ?").get(newEmail) as { name: string } | undefined;
+  if (taken) {
+    if (hit("signupNotice", newEmail)) {
+      await sendEmail({ to: newEmail, subject: t("mail.emailTakenSubject"), text: t("mail.emailTakenBody", { name: taken.name, when: nowFor(lang, newEmail), login: `${origin}/login` }) });
+    }
+    return { ok: true, values: { newEmail } };
+  }
+  const link = `${origin}/change-email?token=${requestEmailChange(user.id, newEmail)}`;
+  await sendEmail({ to: newEmail, subject: t("mail.emailChangeSubject"), text: t("mail.emailChangeBody", { name: user.name, email: newEmail, link }), secret: link });
+  await sendEmail({
+    to: user.email,
+    subject: t("mail.emailChangeRequestedSubject"),
+    text: t("mail.emailChangeRequestedBody", { name: user.name, email: newEmail, when: nowFor(lang, user.email), reset: `${origin}/forgot-password` }),
+  });
+  revalidatePath("/settings");
+  return { ok: true, values: { newEmail } };
+}
+
+/** The button on the emailed link's page (a POST, like confirming a new account). Works signed out. */
+export async function confirmEmailChangeAction(form: FormData) {
+  const change = consumeEmailChange(String(form.get("token") ?? ""));
+  if (!change) redirect("/change-email?invalid=1");
+  const u = db().prepare("SELECT email, name, deleted_at FROM users WHERE id = ?").get(change.userId) as { email: string; name: string; deleted_at: string | null } | undefined;
+  if (!u || u.deleted_at) redirect("/change-email?invalid=1");
+  try {
+    db().prepare("UPDATE users SET email = ?, email_verified_at = ? WHERE id = ?").run(change.newEmail, new Date().toISOString(), change.userId);
+  } catch (err) {
+    if (isUniqueViolation(err)) redirect("/change-email?taken=1"); // someone signed up with it in the meantime
+    throw err;
+  }
+  const { t, lang } = await getI18n();
+  await sendEmail({
+    to: u.email,
+    subject: t("mail.emailChangedSubject"),
+    text: t("mail.emailChangedBody", { name: u.name, email: change.newEmail, when: nowFor(lang, change.newEmail), help: `${await siteOrigin()}/feedback` }),
+  });
+  await toast("toast.emailChanged");
+  redirect((await getCurrentUser())?.id === change.userId ? "/settings" : "/login");
+}
+
+export async function requestEmailChangeAction(prev: FormState, form: FormData): Promise<FormState> {
+  return requestEmailChangeActionImpl(prev, form);
+}
+
 /** Create (or replace) my private calendar feed link; an old link stops working. */
 export async function resetCalendarFeedAction() {
   const user = await requireUser("/settings");
@@ -959,6 +1019,7 @@ async function resetPasswordActionImpl(_: FormState, form: FormData): Promise<Fo
   if (!userId) return { error: "err.tokenInvalid" };
   db().prepare("UPDATE users SET password_hash = ?, email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?").run(hashPassword(next), new Date().toISOString(), userId);
   await destroyAllSessions(userId); // anyone holding an old session is signed out
+  cancelEmailChanges(userId); // …and a login-email change they started doesn't go through
   const who = db().prepare("SELECT email, name FROM users WHERE id = ?").get(userId) as { email: string; name: string };
   await sendPasswordChangedEmail(who.email, who.name);
   if (twoStep.twoStepEnabled(userId)) {

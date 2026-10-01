@@ -40,6 +40,7 @@ const COVERAGE: Record<string, string> = {
   uploads: "uploads",
   auth_sessions: "excluded: sign-in session tokens (secrets, no personal content)",
   auth_tokens: "excluded: one-time link tokens (secrets)",
+  email_changes: "excluded: one-time links for a login-email change (secrets; the pending address is shown in Settings)",
   session_reminders: "excluded: which reminders were sent (bookkeeping; the notifications are exported)",
   review_prompts: "excluded: when a review prompt was sent (bookkeeping; the notification is exported)",
   admin_log: "excluded: the moderators' audit trail (kept for accountability; decisions about you reach you as notifications)",

@@ -21,6 +21,7 @@ export const LIMITS = {
   reset: { limit: 5, windowMs: 60 * 60_000 },    // "forgot password" emails per IP + email
   resetIp: { limit: 100, windowMs: 60 * 60_000 }, // per IP, any email (no mass reset emails)
   verify: { limit: 5, windowMs: 60 * 60_000 },   // verification emails per user
+  emailChange: { limit: 5, windowMs: 60 * 60_000 }, // login-email change requests per user
   deleteAccount: { limit: 5, windowMs: 60 * 60_000 }, // deletion attempts per user
   report: { limit: 10, windowMs: 60 * 60_000 },  // reports per user
   notice: { limit: 5, windowMs: 24 * 60 * 60_000 }, // notice-board posts per user per day

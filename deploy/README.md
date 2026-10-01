@@ -7,9 +7,12 @@ SQLite database, uploaded pictures and backups — lives in one Docker volume, `
 ## What you need
 
 - A server close to your players (Jakarta or Singapore), 1 vCPU / 1–2 GB RAM is plenty to start, with
-  Docker and the Docker Compose plugin installed, and ports 80 and 443 open.
+  Docker and the Docker Compose plugin installed, and ports 80 and 443 open. **Free:** Oracle Cloud's
+  Always Free ARM server — step by step in [ORACLE-FREE.md](ORACLE-FREE.md). On a 1 GB server, see
+  "Small servers" below.
 - A domain, with an **A record** pointing at the server's IP (and `www` too, if you want it).
-- A **Resend** account with that domain verified — see [EMAIL-DNS.md](EMAIL-DNS.md).
+- An email provider with that domain verified — **Resend and Brevo**, both free to start (100 and 300
+  emails a day); with both, one takes over when the other is full or down. See [EMAIL-DNS.md](EMAIL-DNS.md).
 
 ## First start
 
@@ -61,7 +64,36 @@ Set these up before launch: they are what saves the site if the server's disk di
    ```
 
 **Admin → Setup** shows "Off-site copy of backups: OK" with the time of the last copy, and "Fix" if a
-night's copy fails. To recover from it, see "Restoring a backup" below.
+night's copy fails. Database copies older than 60 days are deleted from the bucket automatically
+(`QUESTBOARD_OFFSITE_KEEP_DAYS`; the newest 3 always stay, pictures are never deleted), so a small site
+stays well inside the free 10 GB — "Off-site storage used" shows how much. To recover from it, see "Restoring a backup" below.
+
+## Small servers (1 GB of memory)
+
+Building the image needs more memory than a 1 GB server has. Use the **ready-made image** instead: CI
+builds it after every change that passes all the tests, for both normal (x86) and ARM servers. In
+`deploy/.env`:
+
+```sh
+QUESTBOARD_IMAGE=ghcr.io/addin12/quest-board:latest
+```
+
+Then start (and later update) with:
+
+```sh
+docker compose pull app scheduler && docker compose up -d --no-build
+```
+
+Also give the server some swap, so a busy moment slows it down instead of stopping it:
+
+```sh
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+The app and the scheduler have memory caps (`QUESTBOARD_APP_MEMORY`, default 768m;
+`QUESTBOARD_SCHEDULER_MEMORY`, 384m) well above what they use (the app about 225 MB after a busy rehearsal, the scheduler about 10 MB) — the rehearsal measures it on every
+change — so one runaway process can't take the whole server down.
 
 ## Keeping the server safe
 
@@ -85,6 +117,8 @@ extra Linux capabilities, logs rotate so they can't fill the disk, and only Cadd
 
 ```sh
 cd Quest-Board && git pull && cd deploy && docker compose up -d --build
+# or, with the ready-made image (QUESTBOARD_IMAGE):
+cd Quest-Board && git pull && cd deploy && docker compose pull app scheduler && docker compose up -d --no-build
 ```
 
 The database migrates itself on start. Check `docker compose logs app` and Admin → Setup afterwards.

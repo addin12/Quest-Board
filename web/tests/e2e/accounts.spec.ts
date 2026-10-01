@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { e2eDb, login, signup } from "./helpers";
+import { e2eDb, login, newPage, signup } from "./helpers";
 
 // Iteration 3: email verification, password reset, data export, account deletion, legal pages.
 // Emails land in the dev outbox (QUESTBOARD_DEV_OUTBOX=true in playwright.config.ts).
@@ -371,5 +371,76 @@ test("one-click unsubscribe links turn off exactly that kind of email; a wrong t
   const oneClick = await request.post(`/api/unsubscribe?u=${id}&k=reminders&t=${token("reminders")}`, { form: { "List-Unsubscribe": "One-Click" } });
   expect(oneClick.status()).toBe(200);
   expect(prefs()).toEqual({ n: 0, r: 0 });
+  db.close();
+});
+
+test("the login email can be changed: the new address confirms it, the old one is told; taken addresses and a password reset change nothing", async ({ page, browser }) => {
+  test.setTimeout(120_000);
+  const db = e2eDb();
+  const mailsTo = (to: string) => db.prepare("SELECT subject, body_text FROM email_outbox WHERE to_address = ? ORDER BY id DESC").all(to) as { subject: string; body_text: string }[];
+  const oldEmail = unique("move-old");
+  const newEmail = unique("move-new");
+  await signup(page, "Mira Mover", oldEmail);
+  await page.goto("/settings");
+  const form = page.locator("#login-email");
+
+  // The password is checked first.
+  await form.getByLabel("New email").fill(newEmail);
+  await form.getByLabel("Your password").fill("not-my-password");
+  await form.getByRole("button", { name: "Send confirmation link" }).click();
+  await expect(form.getByText("Your current password is incorrect.")).toBeVisible();
+
+  await form.getByLabel("New email").fill(newEmail);
+  await form.getByLabel("Your password").fill("password123");
+  await form.getByRole("button", { name: "Send confirmation link" }).click();
+  await expect(form.getByText(`Check ${newEmail}: open the link there to finish.`)).toBeVisible();
+  expect(mailsTo(oldEmail)[0].subject).toBe("Someone asked to change your Quest Board login email");
+  await page.reload();
+  await expect(page.locator("#login-email").getByText(`Waiting for you to confirm ${newEmail}`)).toBeVisible();
+
+  // Opened on another device, signed out: it still works (the password was checked when asking).
+  const link = /https?:\/\/\S+\/change-email\?token=[\w-]+/.exec(mailsTo(newEmail)[0].body_text)![0];
+  const phone = await newPage(browser);
+  await phone.goto(new URL(link).pathname + new URL(link).search);
+  await expect(phone.getByText(`Make ${newEmail} the email you log in with?`)).toBeVisible();
+  await phone.getByRole("button", { name: "Yes, use this email" }).click();
+  await phone.waitForURL("**/login");
+  expect(mailsTo(oldEmail)[0].subject).toBe("Your Quest Board login email was changed");
+  await login(phone, newEmail); // the new address logs in…
+  await phone.goto(new URL(link).pathname + new URL(link).search); // …and the link is used up
+  await expect(phone.getByText("This link isn't valid, has expired or was already used.")).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(newEmail, { exact: true }).first()).toBeVisible();
+
+  // Someone else asking for an address that has an account: the same answer, nothing changes, its owner is told.
+  const other = await newPage(browser);
+  const otherEmail = unique("move-other");
+  await signup(other, "Otto Other", otherEmail);
+  await other.goto("/settings");
+  const otherForm = other.locator("#login-email");
+  await otherForm.getByLabel("New email").fill(newEmail);
+  await otherForm.getByLabel("Your password").fill("password123");
+  await otherForm.getByRole("button", { name: "Send confirmation link" }).click();
+  await expect(otherForm.getByText(`Check ${newEmail}: open the link there to finish.`)).toBeVisible();
+  expect(mailsTo(newEmail)[0].subject).toBe("Someone tried to use your email on Quest Board");
+  expect((db.prepare("SELECT email FROM users WHERE email = ?").get(otherEmail) as { email: string }).email).toBe(otherEmail);
+
+  // A pending change is dropped by a password reset (maybe someone else asked for it).
+  const third = unique("move-third");
+  await otherForm.getByLabel("New email").fill(third);
+  await otherForm.getByLabel("Your password").fill("password123");
+  await otherForm.getByRole("button", { name: "Send confirmation link" }).click();
+  await expect(otherForm.getByText(`Check ${third}`)).toBeVisible();
+  const thirdLink = /https?:\/\/\S+\/change-email\?token=[\w-]+/.exec(mailsTo(third)[0].body_text)![0];
+  const anon = await newPage(browser);
+  await anon.goto("/forgot-password");
+  await anon.getByLabel("Email").fill(otherEmail);
+  await anon.getByRole("button", { name: "Send reset link" }).click();
+  await anon.goto(await linkFromOutbox(anon, otherEmail, "/reset-password"));
+  await anon.getByLabel("New password").fill("brandnew-pass-9");
+  await anon.getByRole("button", { name: "Save new password" }).click();
+  await anon.waitForURL("**/dashboard?reset=1");
+  await anon.goto(new URL(thirdLink).pathname + new URL(thirdLink).search);
+  await expect(anon.getByText("This link isn't valid, has expired or was already used.")).toBeVisible();
   db.close();
 });

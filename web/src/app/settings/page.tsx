@@ -4,7 +4,8 @@ import { requireUser } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
 import { getUserSettings, getGmSettings } from "@/lib/queries";
 import { Icon } from "@/components/icon";
-import { PasswordForm, ProfileSettingsForm } from "@/components/settings-forms";
+import { EmailChangeForm, PasswordForm, ProfileSettingsForm } from "@/components/settings-forms";
+import { pendingEmailChange } from "@/lib/email-change";
 import { DeleteAccountForm, ResendVerificationButton } from "@/components/account-forms";
 import { logoutEverywhereAction, resetCalendarFeedAction } from "../actions";
 import { CalendarFeedLinks } from "@/components/calendar-feed";
@@ -87,6 +88,11 @@ export default async function SettingsPage() {
             <Link href="/become-a-gm" className="btn-secondary"><Icon name="arrow-right" /> {t("nav.becomeGm")}</Link>
           </>
         )}
+      </section>
+
+      <section className="card mt-6 p-6" aria-labelledby="login-email-h" id="login-email">
+        <h2 id="login-email-h" className="mb-5 flex items-center gap-2 text-xl font-bold"><Icon name="envelope" className="text-muted" /> {t("settings.loginEmail")}</h2>
+        <EmailChangeForm pending={pendingEmailChange(user.id)} />
       </section>
 
       <section className="card mt-6 p-6" aria-labelledby="pw-h">
