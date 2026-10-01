@@ -88,6 +88,8 @@ test("search matches each word on its own, and Indonesian category and level wor
   const titles = async (q: string) => {
     await page.goto(`/games?q=${encodeURIComponent(q)}`);
     const results = page.getByRole("region", { name: "Results" }).getByRole("heading", { level: 3 });
+    // The results stream in after the loading screen: wait for them (reading at once sometimes saw none).
+    await expect(results.first()).toBeVisible();
     return (await results.allInnerTexts()).map((s) => s.trim()).sort();
   };
   // No seed game says "horor" or "pemula" in its text: these come from the genre and level tags.
