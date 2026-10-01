@@ -64,6 +64,7 @@ export function deleteAccount(userId: number): void {
     c.prepare("DELETE FROM gm_follows WHERE follower_id = ? OR gm_id = ?").run(userId, userId);
     c.prepare("DELETE FROM gm_request_offers WHERE gm_id = ? AND request_id IN (SELECT id FROM gm_requests WHERE status = 'open')").run(userId);
 
+    c.prepare("DELETE FROM email_suppressions WHERE email = (SELECT email FROM users WHERE id = ?)").run(userId); // before the address is scrubbed
     c.prepare(
       `UPDATE users SET email = ?, name = ?, bio = '', avatar_image = '', password_hash = '!', email_verified_at = NULL, deleted_at = ?, calendar_token = NULL,
                         role = CASE WHEN role = 'admin' THEN 'player' ELSE role END
@@ -86,6 +87,7 @@ export function exportAccount(userId: number) {
     feedback: q("SELECT kind, body, page, created_at FROM feedback WHERE user_id = ? ORDER BY created_at", userId),
     payment_detail_changes: q("SELECT changed_at FROM payment_changes WHERE user_id = ? ORDER BY changed_at", userId),
     login_devices: q("SELECT device, first_seen_at, last_seen_at FROM login_devices WHERE user_id = ? ORDER BY first_seen_at", userId),
+    email_delivery_stopped: one("SELECT reason, created_at FROM email_suppressions WHERE email = (SELECT email FROM users WHERE id = ?)", userId) ?? null,
     questions: q(
       `SELECT g.title AS game, m.body, m.created_at FROM game_question_messages m JOIN game_questions gq ON gq.id = m.question_id
          JOIN games g ON g.id = gq.game_id WHERE m.user_id = ? ORDER BY m.created_at`, userId),

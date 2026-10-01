@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
+import { readdirSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import sharp from "sharp";
 import { totpCode, totpStep } from "../../src/lib/totp";
@@ -201,4 +202,39 @@ test("everything survives a restart of the app", async ({ page, request }) => {
   await page.waitForURL("**/dashboard");
   await page.goto("/admin/setup");
   expect(await page.locator('[data-check="backup"]').getAttribute("data-level")).toBe("ok"); // the backup is on the volume
+});
+
+test("update.sh: a healthy version stays; a broken one is rolled back by itself, with the database as it was", async ({ request }) => {
+  test.setTimeout(420_000);
+  const update = (env: Record<string, string>) => spawnSync("sh", ["update.sh"], {
+    cwd: DEPLOY, encoding: "utf8",
+    env: { ...ENV, QUESTBOARD_COMPOSE: "docker compose -p qb-rehearsal -f docker-compose.yml -f rehearsal/docker-compose.rehearsal.yml", QUESTBOARD_UPDATE_SKIP_FETCH: "1", MSYS_NO_PATHCONV: "1", ...env }, // (Git Bash on Windows: keep /data/… as is)
+  });
+  const appState = (key: string) => compose("exec", "-T", "app", "node", "-e",
+    `const {DatabaseSync}=require("node:sqlite");const d=new DatabaseSync("/data/questboard.db",{readOnly:true});console.log(JSON.stringify(d.prepare("SELECT value FROM app_state WHERE key = ?").get(${JSON.stringify(key)}) ?? null))`).trim();
+
+  // The same version again: it is healthy, so it stays.
+  const same = update({});
+  expect(same.status, same.stdout + same.stderr).toBe(0);
+  expect(same.stdout).toContain("Updated.");
+
+  // A "new version" that copies the database the way an upgrade does (lib/db.ts), changes it, then crashes.
+  const broken = `const {DatabaseSync}=require("node:sqlite");const d=new DatabaseSync("/data/questboard.db");
+if(!d.prepare("SELECT 1 FROM app_state WHERE key='broken_upgrade'").get()){
+const s=new Date().toISOString().replace(/[-:]/g,"").replace("T","-").slice(0,15);
+d.exec("VACUUM INTO '/data/backups/questboard-before-v99-from-v98-"+s+".db'");
+d.prepare("INSERT INTO app_state (key, value) VALUES ('broken_upgrade','yes')").run();}
+process.exit(1);`.replace(/\n/g, "");
+  // Something people did before the update, which must survive the rollback.
+  compose("exec", "-T", "app", "node", "-e", `const {DatabaseSync}=require("node:sqlite");new DatabaseSync("/data/questboard.db").prepare("INSERT OR REPLACE INTO app_state (key, value) VALUES ('before_update', 'kept')").run()`);
+  execFileSync("docker", ["build", "-q", "-t", "qb-rehearsal-broken", "-"], { input: `FROM questboard-app\nCMD ["node", "-e", ${JSON.stringify(broken)}]\n`, encoding: "utf8" });
+  const rolledBack = update({ QUESTBOARD_IMAGE: "qb-rehearsal-broken", QUESTBOARD_UPDATE_WAIT: "45" });
+  expect(rolledBack.status, rolledBack.stdout + rolledBack.stderr).toBe(1);
+  expect(rolledBack.stdout).toContain("Restoring the database as it was before the upgrade");
+  expect(rolledBack.stdout).toContain("Rolled back");
+  await expect.poll(async () => (await request.get("/api/health").catch(() => null))?.status(), { timeout: 60_000, intervals: [3_000] }).toBe(200);
+  expect(appState("broken_upgrade")).toBe("null"); // the broken version's change is gone…
+  expect(appState("before_update")).toBe('{"value":"kept"}'); // …and what was there before it is still there
+  for (const f of readdirSync(DEPLOY).filter((n) => /^update-failed-.*\.log$/.test(n))) rmSync(resolve(DEPLOY, f)); // its logs were kept
+  execFileSync("docker", ["rmi", "-f", "qb-rehearsal-broken"]);
 });

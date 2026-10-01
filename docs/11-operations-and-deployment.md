@@ -2,6 +2,10 @@
 
 ## 1. Local development
 
+**A real server's settings** — every one, with what it does — are in [`deploy/.env.example`](../deploy/.env.example);
+a unit test (`tests/unit/settings-documented.test.ts`) fails when the code reads a setting that isn't
+listed there. The table below covers what matters on a development machine.
+
 ```bash
 cd web
 npm install
@@ -25,7 +29,7 @@ Requires **Node ≥ 22.13** (developed on 24). No database server or native buil
 | `QUESTBOARD_RATE_LIMIT_OVERRIDES` | unset | Per-bucket limits, e.g. `signup=500` (e2e runs only) |
 | `QUESTBOARD_ALLOW_RESET` | `false` | Lets `next start` back up and reset a DB that has no migration path. **Never set this in real production** |
 | `QUESTBOARD_ENFORCE_HTTPS` | `false` | Behind TLS: adds HSTS and `upgrade-insecure-requests` |
-| `RESEND_API_KEY` + `QUESTBOARD_MAIL_FROM` | unset | Deliver emails through Resend (e.g. `Quest Board <no-reply@questboard.id>`). Unset: emails are only queued in `email_outbox` |
+| `RESEND_API_KEY` / `BREVO_API_KEY` + `QUESTBOARD_MAIL_FROM` | unset | Deliver emails through Resend, with Brevo taking over when Resend is down or full (daily limits `RESEND_DAILY_LIMIT` / `BREVO_DAILY_LIMIT`; `lib/mail-providers.ts`) (e.g. `Quest Board <no-reply@questboard.id>`). Unset: emails are only queued in `email_outbox` |
 | `QUESTBOARD_DEV_OUTBOX` | `false` | Shows `/dev/outbox` in a production build (**e2e only**: it reveals reset links). Always off when `QUESTBOARD_ENFORCE_HTTPS=true` |
 | `QUESTBOARD_CONTACT_EMAIL` | unset | Contact address shown on the Terms and Privacy pages |
 | `QUESTBOARD_LEGAL_FINAL` | `false` | Set `true` once a lawyer has approved the legal texts (hides the "draft" notice) |
@@ -42,24 +46,16 @@ There are **no payment or API keys** to configure.
 npm run build && npm start      # :3000
 ```
 
-A single stateful Node process with SQLite on a persistent disk:
-- **Good fits:** a small VPS or container with a volume (e.g. a VPS in Jakarta or Singapore for low latency to Indonesian users; Fly.io `sin` region with a volume; Railway or Render with a disk).
+A single stateful Node process with SQLite on a persistent disk. **Use the deployment kit**
+([`deploy/README.md`](../deploy/README.md)): the app, a scheduler (the 5-minute job, nightly backups and
+their off-site copies) and Caddy for HTTPS, with memory caps and a read-only file system.
+- **Free:** Oracle Cloud's Always Free ARM server — [`deploy/ORACLE-FREE.md`](../deploy/ORACLE-FREE.md).
+- **Cheapest paid:** a 1–2 GB VPS in Jakarta or Singapore with the ready-made image
+  (`ghcr.io/addin12/quest-board`, built by CI for x86 and ARM; README "Small servers").
 - **Not suitable as-is:** serverless or multi-instance hosting. Move to Postgres first (§4).
 
-```dockerfile
-FROM node:24-slim
-WORKDIR /app
-COPY web/package*.json ./
-RUN npm ci
-COPY web/ .
-RUN npm run build
-ENV NODE_ENV=production QUESTBOARD_DB=/app/data/questboard.db QUESTBOARD_SEED=false TZ=Asia/Jakarta
-VOLUME /app/data
-EXPOSE 3000
-CMD ["npm", "start"]
-```
-
-`TZ` doesn't affect correctness, because dates are stored in UTC and formatted per viewer. It only makes server logs read in WIB.
+Updates: `sh deploy/update.sh` (backup, update, health check, automatic rollback). Before a database
+upgrade the app keeps a copy of the database as it was (`backups/questboard-before-v…`).
 
 ## 3. Runbook
 
@@ -74,6 +70,8 @@ CMD ["npm", "start"]
 | Remove abusive payment details | `UPDATE gm_profiles SET payment_info = '' WHERE user_id = ?;` |
 | Hide a listing | `UPDATE games SET status = 'archived' WHERE slug = ?;` |
 | Expire sessions | `DELETE FROM auth_sessions WHERE expires_at < strftime('%Y-%m-%dT%H:%M:%fZ','now');` |
+| Update | `cd deploy && sh update.sh`: a backup, the new version, a health check; if it isn't healthy it goes back to the previous version (and the database as it was before the upgrade) by itself. By hand: `deploy/README.md`, "Rolling back an update" |
+| Load rehearsal | `npm run load-rehearsal` (needs Docker): the deployment kit with demo data and 100 virtual users for 2 minutes; checks errors, overbooking and memory against the caps (also in CI) |
 | Deployment kit | `deploy/` (Docker Compose: app, scheduler, Caddy) — see `deploy/README.md`; settings in `deploy/.env` from `deploy/.env.example`; **Admin → Setup** checks them. Rehearse locally with `npm run rehearsal` |
 | Health check | `GET /api/health` returns `{"ok":true,"schema":N}` with 200 when the database answers at the expected schema version, and 503 otherwise — use it for the container health check (Docker: `HEALTHCHECK CMD curl -fsS http://localhost:3000/api/health || exit 1`). **Uptime monitor:** `GET /api/health?full=1` adds `cron` (last run; 503 when it hasn't run for 30 minutes) and `email` (unsent for over 30 minutes while a provider is configured); each says `"not configured"` when that part isn't set up |
 | Server errors | Admin console → **Server errors** (`/admin/errors`): errors captured by `src/instrumentation.ts`, grouped, last 30 days (no cookies, headers or query strings are stored). The cron route prunes older rows. The admin home also shows this week's count. Admins also get a **daily email digest** (at most every 20 hours, only when there were errors) from the cron route |

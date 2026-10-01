@@ -116,12 +116,34 @@ extra Linux capabilities, logs rotate so they can't fill the disk, and only Cadd
 ## Updating
 
 ```sh
-cd Quest-Board && git pull && cd deploy && docker compose up -d --build
-# or, with the ready-made image (QUESTBOARD_IMAGE):
-cd Quest-Board && git pull && cd deploy && docker compose pull app scheduler && docker compose up -d --no-build
+cd Quest-Board/deploy && sh update.sh
 ```
 
-The database migrates itself on start. Check `docker compose logs app` and Admin → Setup afterwards.
+`update.sh` makes a backup, gets the new version (`git pull`, then the ready-made image when
+`QUESTBOARD_IMAGE` is set, or a build), starts it and waits until it's healthy. **If it doesn't become
+healthy, it goes back to the previous version by itself** — with the database as it was just before the
+upgrade — and keeps the new version's logs in `deploy/update-failed-<time>.log`. It ends with
+"Updated." or "Rolled back: …". Afterwards, check Admin → Setup once.
+
+The database upgrades itself when a new version starts, and first keeps a copy of itself as it was:
+`backups/questboard-before-v<new>-from-v<old>-<time>.db` (the newest 5 are kept, next to the nightly ones).
+
+### Rolling back an update by hand
+
+If you updated without `update.sh` and need the previous version back: an older version can't open a
+database a newer one has upgraded, so put back both.
+
+```sh
+docker compose stop app scheduler
+docker compose run --rm app ls /data/backups              # the newest questboard-before-v… file
+QUESTBOARD_IMAGE=ghcr.io/addin12/quest-board:<previous commit> docker compose run --rm app \
+  node scripts/db-backup.mjs restore /data/backups/questboard-before-v….db --yes
+QUESTBOARD_IMAGE=ghcr.io/addin12/quest-board:<previous commit> docker compose up -d --no-build
+```
+
+(Built on the server instead? `git checkout <previous commit>` and `docker compose up -d --build`,
+after the same restore.) Every image is published both as `:latest` and as `:<commit>` (the first 7
+characters of the commit), so any earlier version can be named.
 
 ## Restoring a backup
 

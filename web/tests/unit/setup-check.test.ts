@@ -12,7 +12,7 @@ const good: SetupFacts = {
   offsiteLast: { at: new Date(now - 10 * 3_600_000).toISOString(), ok: true, detail: "questboard-x.db + 3 picture(s)" },
   env: {
     QUESTBOARD_OFFSITE_ENDPOINT: "https://x.r2.cloudflarestorage.com", QUESTBOARD_OFFSITE_BUCKET: "qb", QUESTBOARD_OFFSITE_KEY_ID: "k", QUESTBOARD_OFFSITE_SECRET: "s",
-    NODE_ENV: "production", QUESTBOARD_SEED: "false", RESEND_API_KEY: "re_x", BREVO_API_KEY: "xkeysib-x", QUESTBOARD_MAIL_FROM: "Quest Board <halo@questboard.id>",
+    NODE_ENV: "production", QUESTBOARD_SEED: "false", RESEND_API_KEY: "re_x", BREVO_API_KEY: "xkeysib-x", RESEND_WEBHOOK_SECRET: "whsec_x", QUESTBOARD_BREVO_WEBHOOK_TOKEN: "t", QUESTBOARD_MAIL_FROM: "Quest Board <halo@questboard.id>",
     QUESTBOARD_BASE_URL: "https://questboard.id", QUESTBOARD_ENFORCE_HTTPS: "true", QUESTBOARD_CONTACT_EMAIL: "halo@questboard.id", QUESTBOARD_CRON_SECRET: "s",
   },
 };
@@ -31,6 +31,8 @@ test("production problems are marked for fixing", () => {
   assert.equal(level({ ...good, env: { ...good.env, RESEND_API_KEY: undefined } }, "email"), "ok"); // Brevo alone is enough…
   assert.equal(level({ ...good, env: { ...good.env, BREVO_API_KEY: undefined } }, "email-backup"), "warn"); // …but one provider has no backup
   assert.equal(level({ ...good, env: { ...good.env, QUESTBOARD_BREVO_URL: "http://fakes:4000" } }, "email"), "warn");
+  assert.equal(level({ ...good, env: { ...good.env, QUESTBOARD_BREVO_WEBHOOK_TOKEN: undefined } }, "email-events"), "warn"); // Brevo's bounces go unseen
+  assert.equal(setupChecks({ ...good, env: { ...good.env, RESEND_WEBHOOK_SECRET: undefined } }).find((c) => c.id === "email-events")!.vars?.providers, "Resend");
   // Emails in the last 24 hours against the two free plans (100 + 300).
   assert.equal(level({ ...good, emailSent24h: { resend: 100, brevo: 150 } }, "email-today"), "ok");
   assert.equal(level({ ...good, emailSent24h: { resend: 100, brevo: 220 } }, "email-today"), "warn");

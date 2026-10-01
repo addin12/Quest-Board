@@ -150,9 +150,8 @@ This is the decision log. Treat these entries as requirements: they came from th
 
 ## Open questions for the product owner
 - Should in-person venue addresses stay chat-only, or become a structured field?
-- Should GMs be able to mark seats as "paid"? This is on the roadmap as a GM-only toggle.
 - What are the SEO priorities, given that English is the default? (See ADR-7 in `docs/04-technical-architecture.md`.)
-- Who will do the native-speaker review of the Indonesian copy?
+- Answered: GMs can mark seats as paid ("paid ✓", v11). The owner reviews the Indonesian copy themselves, on the review page (docs/indonesian-review.md).
 
 ## Environment notes (this machine)
 - Windows 11. The Bash tool is Git Bash. **Python is not installed**; use Node scripts instead.

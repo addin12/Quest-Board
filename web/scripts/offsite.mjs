@@ -131,7 +131,7 @@ export async function fetchOffsite({ backupDir, uploadsDir, settings }) {
 
 /** Upload the newest backup and the pictures not uploaded yet. Returns what was sent. */
 export async function uploadOffsite({ backupDir, uploadsDir, settings }) {
-  const newest = readdirSync(backupDir).filter((f) => f.endsWith(".db")).map((f) => ({ f, t: statSync(join(backupDir, f)).mtimeMs })).sort((a, b) => b.t - a.t)[0];
+  const newest = readdirSync(backupDir).filter((f) => /^questboard-\d{8}-\d{6}(-\d+)?\.db$/.test(f)).map((f) => ({ f, t: statSync(join(backupDir, f)).mtimeMs })).sort((a, b) => b.t - a.t)[0];
   if (!newest) throw new Error(`no backup in ${backupDir} to upload`);
   await put(settings, `db/${newest.f}.gz`, gzipSync(readFileSync(join(backupDir, newest.f))), "application/gzip");
   // Pictures never change once uploaded (random names): send each one once, remembered in a list.

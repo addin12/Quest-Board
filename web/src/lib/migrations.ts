@@ -472,6 +472,16 @@ export const MIGRATIONS: Record<number, string> = {
     );
     CREATE INDEX IF NOT EXISTS idx_email_changes_user ON email_changes(user_id);
   `,
+  36: `
+    ALTER TABLE email_outbox ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0;
+    CREATE TABLE IF NOT EXISTS email_suppressions (
+      email       TEXT PRIMARY KEY COLLATE NOCASE,
+      reason      TEXT NOT NULL CHECK (reason IN ('bounce','complaint')),
+      provider    TEXT NOT NULL,
+      detail      TEXT,
+      created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );
+  `,
 };
 
 export type UpgradePlan =

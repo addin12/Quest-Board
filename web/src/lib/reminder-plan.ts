@@ -1,4 +1,3 @@
-import { formatWhen } from "./time-zones.ts";
 // Which session reminders are due. Pure module (no server imports) so node --test can load it.
 //
 // Two reminders per person per session: "24h" (sent once the session is within a day) and
@@ -35,7 +34,3 @@ export function planReminders(rows: ReminderCandidate[], now: Date): { session_i
   return out;
 }
 
-/** "Sat 27 Sept, 19.00 WIB". Emails use formatWhen with the reader's zone (lib/time-zones.ts). */
-export function formatWib(iso: string, lang: "en" | "id"): string {
-  return formatWhen(iso, lang, "Asia/Jakarta");
-}

@@ -1,6 +1,6 @@
 import "server-only";
 import { DatabaseSync } from "node:sqlite";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
 import { SCHEMA_SQL, SCHEMA_VERSION } from "./schema";
 import { MIGRATIONS, planSchemaUpgrade } from "./migrations";
@@ -31,6 +31,28 @@ function backupAndEmpty(conn: DatabaseSync, file: string, version: number) {
   console.warn(`[quest-board] No migration path from schema v${oldVersion}; backed up to ${backup} and recreating v${SCHEMA_VERSION}.`);
 }
 
+/** How many before-upgrade copies to keep (they're not part of the nightly rotation). */
+export const KEEP_BEFORE_UPGRADE = 5;
+
+/**
+ * A copy of the database just before it is upgraded — `backups/questboard-before-v<N>-<stamp>.db` — so an
+ * upgrade that goes wrong can be undone exactly (deploy/README.md, "Rolling back an update"): last night's
+ * backup can be almost a day old, and an older version of the app can't open an upgraded database.
+ */
+function copyBeforeUpgrade(conn: DatabaseSync, file: string, from: number, to: number): string {
+  const dir = process.env.QUESTBOARD_BACKUP_DIR ?? path.join(/* turbopackIgnore: true */ path.dirname(file), "backups");
+  mkdirSync(/* turbopackIgnore: true */ dir, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
+  const out = path.join(/* turbopackIgnore: true */ dir, `questboard-before-v${to}-from-v${from}-${stamp}.db`);
+  conn.exec(`VACUUM INTO '${out.replace(/'/g, "''")}'`);
+  // Keep the newest few (names sort by time within the same target version; compare stamps across them).
+  const stampOf = (f: string) => /-(\d{8}-\d{6})\.db$/.exec(f)?.[1] ?? "";
+  const copies = readdirSync(/* turbopackIgnore: true */ dir).filter((f) => /^questboard-before-v\d+-from-v\d+-\d{8}-\d{6}\.db$/.test(f)).sort((a, b) => (stampOf(a) < stampOf(b) ? -1 : 1));
+  for (const old of copies.slice(0, Math.max(0, copies.length - KEEP_BEFORE_UPGRADE))) rmSync(/* turbopackIgnore: true */ path.join(dir, old), { force: true });
+  console.info(`[quest-board] Copied the database to ${out} before upgrading it from schema v${from} to v${to}.`);
+  return out;
+}
+
 /** Bring the database to SCHEMA_VERSION: create, migrate (keeping data), or — dev only — reset. */
 function prepareSchema(conn: DatabaseSync, file: string) {
   const { user_version } = conn.prepare("PRAGMA user_version").get() as { user_version: number };
@@ -57,6 +79,7 @@ function prepareSchema(conn: DatabaseSync, file: string) {
       conn.exec(`PRAGMA user_version = ${SCHEMA_VERSION};`);
       return;
     case "migrate":
+      if (file !== ":memory:") copyBeforeUpgrade(conn, file, user_version, SCHEMA_VERSION);
       for (const v of plan.steps) {
         conn.exec("BEGIN IMMEDIATE");
         try {

@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { MIGRATIONS } from "../../src/lib/migrations.ts";
 import { SCHEMA_SQL } from "../../src/lib/schema.ts";
-import { formatWib, planReminders, type ReminderCandidate } from "../../src/lib/reminder-plan.ts";
+import { planReminders, type ReminderCandidate } from "../../src/lib/reminder-plan.ts";
+import { formatWhen } from "../../src/lib/time-zones.ts";
 
 const H = 3_600_000;
 const now = new Date("2026-10-01T00:00:00.000Z");
@@ -33,9 +34,10 @@ test("players who booked after a window opened don't get that reminder; the GM a
   assert.deepEqual(kinds([row({ role: "gm", booked_at: null, starts_at: at(20) })]), ["24h"]);
 });
 
-test("email times are shown in WIB in the reader's language", () => {
-  assert.equal(formatWib("2026-10-03T12:00:00.000Z", "en"), "Sat 3 Oct, 19.00 WIB");
-  assert.equal(formatWib("2026-10-03T12:00:00.000Z", "id"), "Sab, 3 Okt, 19.00 WIB");
+test("email times are shown in the reader's zone and language", () => {
+  assert.equal(formatWhen("2026-10-03T12:00:00.000Z", "en"), "Sat 3 Oct, 19.00 WIB");
+  assert.equal(formatWhen("2026-10-03T12:00:00.000Z", "id"), "Sab, 3 Okt, 19.00 WIB");
+  assert.equal(formatWhen("2026-10-03T12:00:00.000Z", "id", "Asia/Makassar"), "Sab, 3 Okt, 20.00 WITA");
 });
 
 test("migration 13 adds locale and reminder settings (existing people: English, reminders on) and the reminders table", () => {

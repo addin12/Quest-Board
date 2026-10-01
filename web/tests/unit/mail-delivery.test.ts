@@ -149,3 +149,17 @@ test("when every provider is full, important emails wait too and go first when t
     delete process.env.RESEND_DAILY_LIMIT;
   }
 });
+
+test("optional emails don't go to an address that bounced or reported spam; important ones still do", async () => {
+  const { recordEmailEvent, clearSuppression } = await import("../../src/lib/email-suppression.ts");
+  recordEmailEvent({ emails: ["gone@x.test"], reason: "bounce", detail: "no such mailbox" }, "resend");
+  await sendEmail({ to: "Gone@x.test", subject: "Optional to a dead address", text: "x", optional: true });
+  const held = db().prepare("SELECT sent_at, suppressed, retryable, error FROM email_outbox WHERE subject = 'Optional to a dead address'").get() as { sent_at: string | null; suppressed: number; retryable: number; error: string | null };
+  assert.deepEqual({ ...held }, { sent_at: null, suppressed: 1, retryable: 0, error: null }); // not a failure, never retried
+  assert.equal(sent.some((m) => m.subject === "Optional to a dead address"), false);
+  await sendEmail({ to: "gone@x.test", subject: "Password reset to a dead address", text: "x" });
+  assert.ok(row("Password reset to a dead address").sent_at);
+  clearSuppression("GONE@x.test");
+  await sendEmail({ to: "gone@x.test", subject: "Optional again", text: "x", optional: true });
+  assert.ok(row("Optional again").sent_at);
+});

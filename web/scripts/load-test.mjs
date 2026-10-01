@@ -57,8 +57,21 @@ async function timed(op, fn) {
   }
 }
 
+let networkRetries = 0;
+/** fetch's "fetch failed" hides why; say it (e.g. "other side closed"). */
+const why = (err) => `${err.message}${err.cause ? ` (${err.cause.code ?? ""} ${err.cause.message ?? err.cause})` : ""}`;
+
 async function get(path, cookie) {
-  const res = await fetch(BASE + path, { headers: cookie ? { cookie } : {}, redirect: "manual" });
+  const once = () => fetch(BASE + path, { headers: cookie ? { cookie } : {}, redirect: "manual" });
+  let res;
+  try {
+    res = await once();
+  } catch (err) {
+    // A dropped keep-alive connection: browsers quietly retry a GET once, so the test does too (and counts it).
+    networkRetries++;
+    if (errorSamples.length < 10) errorSamples.push(`retried GET ${path}: ${why(err)}`);
+    try { res = await once(); } catch (again) { throw new Error(`GET ${path}: ${why(again)}`); }
+  }
   const body = await res.text();
   if (res.status >= 500 || /database is locked/i.test(body)) throw new Error(`GET ${path} → ${res.status}`);
   return { res, body };
@@ -139,7 +152,7 @@ async function main() {
     console.log("  " + row.join(" "));
   }
   const total = [...stats.values()].reduce((n, s) => n + s.ms.length, 0);
-  console.log(`\n  ${total} requests in ${SECONDS}s ≈ ${(total / SECONDS).toFixed(1)} per second; ${totalErrors} errors`);
+  console.log(`\n  ${total} requests in ${SECONDS}s ≈ ${(total / SECONDS).toFixed(1)} per second; ${totalErrors} errors; ${networkRetries} GET(s) retried after a dropped connection`);
   for (const e of errorSamples) console.log(`  ! ${e}`);
 
   if (DB) {

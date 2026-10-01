@@ -1,0 +1,12 @@
+# The load rehearsal (npm run load-rehearsal in web/): the production rehearsal's kit — same image,
+# memory caps and HTTPS through Caddy — with demo data to book and chat in, and the per-IP limits off
+# (every virtual user comes from this one machine; real visitors come from many). Never on a real server.
+services:
+  app:
+    environment:
+      QUESTBOARD_SEED: "true"
+      QUESTBOARD_RATE_LIMIT: "off"
+  scheduler:
+    environment:
+      QUESTBOARD_SEED: "true"
+      QUESTBOARD_RATE_LIMIT: "off"

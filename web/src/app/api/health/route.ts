@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     const providerConfigured = configuredProviders(process.env).length > 0;
     const stuck = providerConfigured
       ? (db()
-          .prepare("SELECT COUNT(*) AS n FROM email_outbox WHERE sent_at IS NULL AND NOT (deferred = 1 AND optional = 1) AND created_at < ? AND created_at > ?")
+          .prepare("SELECT COUNT(*) AS n FROM email_outbox WHERE sent_at IS NULL AND suppressed = 0 AND NOT (deferred = 1 AND optional = 1) AND created_at < ? AND created_at > ?")
           .get(new Date(now - EMAIL_STUCK_MINUTES * 60_000).toISOString(), new Date(now - 86_400_000).toISOString()) as { n: number }).n
       : 0;
     const emailOk = stuck === 0;

@@ -50,6 +50,11 @@ export function setupChecks(f: SetupFacts): SetupCheck[] {
     checks.push(providers.length > 1
       ? { id: "email-backup", level: "ok", title: "setup.emailBackup", detail: "setup.emailBackupOn", vars: { first: providers[0].name, second: providers[1].name } }
       : { id: "email-backup", level: "warn", title: "setup.emailBackup", detail: "setup.emailBackupOff", vars: { provider: providers[0].name } });
+    // Bounces and spam reports (deploy/EMAIL-DNS.md): providers suspend accounts that have too many.
+    const unheard = providers.filter((p) => !(p.id === "resend" ? e.RESEND_WEBHOOK_SECRET : e.QUESTBOARD_BREVO_WEBHOOK_TOKEN)).map((p) => p.name);
+    checks.push(unheard.length
+      ? { id: "email-events", level: "warn", title: "setup.emailEvents", detail: "setup.emailEventsOff", vars: { providers: unheard.join(" + ") } }
+      : { id: "email-events", level: "ok", title: "setup.emailEvents", detail: "setup.emailEventsOn", vars: { providers: providers.map((p) => p.name).join(" + ") } });
     if (providers.every((p) => p.limit > 0)) {
       const used = providers.reduce((n, p) => n + (f.emailSent24h?.[p.id] ?? 0), 0);
       const limit = providers.reduce((n, p) => n + p.limit, 0);

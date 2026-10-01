@@ -1,0 +1,42 @@
+# Weekly update pull requests (Monday morning WIB): CI runs the full gate on each one — tests, both
+# rehearsals — so a green one is safe to merge. Minor and patch updates come grouped in one pull request.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Jakarta
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Tried and held back (IMPROVEMENTS.md): eslint-plugin-react inside eslint-config-next crashes on
+      # ESLint 10 (round 24), and its TypeScript parser needs the TypeScript 5 API (TypeScript 7, round 25).
+      - dependency-name: eslint
+        update-types: ["version-update:semver-major"]
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Jakarta
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # The production image's base (web/Dockerfile: node:24-slim).
+  - package-ecosystem: docker
+    directory: /web
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Jakarta

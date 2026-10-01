@@ -4,6 +4,7 @@ import { sendEmail } from "./mailer";
 import { makeT, type Lang } from "./i18n/dict";
 import { devOutboxEnabled } from "./mailer";
 import { currentSetupChecks } from "./setup-facts";
+import { countSuppressions } from "./email-suppression";
 import type { SetupCheck } from "./setup-check";
 
 // Admins hear about problems without having to look: at most once a day, and only when there were
@@ -40,7 +41,9 @@ export async function sendErrorDigest(origin: string, now = new Date(), setupPro
   const held = (db()
     .prepare("SELECT COUNT(*) AS n FROM email_outbox WHERE deferred = 1 AND sent_at IS NULL AND created_at > ? AND created_at <= ?")
     .get(since, now.toISOString()) as { n: number }).n;
-  if (total === 0 && failed.n === 0 && held === 0 && setupProblems.length === 0) return 0;
+  const stopped = countSuppressions(since, now.toISOString());
+  const stoppedN = stopped.bounces + stopped.complaints;
+  if (total === 0 && failed.n === 0 && held === 0 && stoppedN === 0 && setupProblems.length === 0) return 0;
   const admins = db()
     .prepare("SELECT email, name, locale FROM users WHERE role = 'admin' AND email_verified_at IS NOT NULL AND deleted_at IS NULL AND suspended_at IS NULL")
     .all() as { email: string; name: string; locale: Lang }[];
@@ -60,6 +63,10 @@ export async function sendErrorDigest(origin: string, now = new Date(), setupPro
     if (held > 0) {
       summary.push(t("mail.digestHeldCount", { n: held }));
       sections.push(t("mail.digestHeld", { n: held }));
+    }
+    if (stoppedN > 0) {
+      summary.push(t("mail.digestBouncesCount", { n: stoppedN }));
+      sections.push(t("mail.digestBounces", { n: stoppedN, bounces: stopped.bounces, complaints: stopped.complaints }));
     }
     if (setupProblems.length > 0) {
       summary.push(t("mail.digestSetupCount", { n: setupProblems.length }));

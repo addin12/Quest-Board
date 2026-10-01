@@ -47,6 +47,12 @@ export function formatWhen(iso: string, lang: "en" | "id", tz: string = DEFAULT_
   return `${s.replace(/(\d{2}):(\d{2})/, "$1.$2")} ${zoneLabel(zone, lang, at)}`;
 }
 
+/** "29 September" (or with the year: "29 Sept 2026") — a day, in the reader's zone. */
+export function formatDay(at: Date, lang: "en" | "id", tz: string = DEFAULT_TIME_ZONE, withYear = false): string {
+  const opts: Intl.DateTimeFormatOptions = withYear ? { dateStyle: "medium" } : { day: "numeric", month: "long" };
+  return at.toLocaleDateString(lang === "id" ? "id-ID" : "en-GB", { ...opts, timeZone: timeZoneOr(tz) });
+}
+
 /** "29 Sept 2026, 14.05 WITA" — when something happened, for security emails. */
 export function formatMoment(at: Date, lang: "en" | "id", tz: string = DEFAULT_TIME_ZONE): string {
   const zone = timeZoneOr(tz);

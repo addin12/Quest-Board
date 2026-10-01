@@ -12,6 +12,7 @@ import { canBook, canCancel, isSafeNext, normalizeLocation, slugify } from "@/li
 import { isAllowedCover, isAllowedPortrait } from "@/lib/placeholders";
 import { isEmail, parseGame, parseGmRequest, parseOffer, parseProfile, parseRepeat, parseReview, parseSessionStart, parseSignup, weeklyStarts, type FieldErrors } from "@/lib/validation";
 import { cancelEmailChanges, consumeEmailChange, requestEmailChange } from "@/lib/email-change";
+import { clearSuppression } from "@/lib/email-suppression";
 import { normalizeCategories } from "@/lib/categories";
 import { canReview, getGameById, getGmRequest, getGmSettings, getSessionWithGame, isGameMember, maxSeatsTakenUpcoming, removedFromSession } from "@/lib/queries";
 import { LANG_COOKIE, type MsgKey } from "@/lib/i18n/dict";
@@ -790,6 +791,7 @@ export async function confirmEmailChangeAction(form: FormData) {
   if (!u || u.deleted_at) redirect("/change-email?invalid=1");
   try {
     db().prepare("UPDATE users SET email = ?, email_verified_at = ? WHERE id = ?").run(change.newEmail, new Date().toISOString(), change.userId);
+    clearSuppression(change.newEmail); // the link reached it
   } catch (err) {
     if (isUniqueViolation(err)) redirect("/change-email?taken=1"); // someone signed up with it in the meantime
     throw err;
@@ -802,6 +804,16 @@ export async function confirmEmailChangeAction(form: FormData) {
   });
   await toast("toast.emailChanged");
   redirect((await getCurrentUser())?.id === change.userId ? "/settings" : "/login");
+}
+
+/** Settings: "Start sending again" after a bounce or a spam report (e.g. the mailbox was full, or it was a mistake). */
+export async function resumeEmailsAction() {
+  const user = await requireUser("/settings");
+  if (hit("verify", String(user.id))) {
+    clearSuppression(user.email);
+    await toast("toast.emailsResumed");
+  }
+  revalidatePath("/settings");
 }
 
 export async function requestEmailChangeAction(prev: FormState, form: FormData): Promise<FormState> {
@@ -955,6 +967,8 @@ export async function confirmEmailAction(form: FormData) {
     | { email_verified_at: string | null; suspended_at: string | null; deleted_at: string | null } | undefined;
   if (!u || u.deleted_at) redirect("/verify-email?invalid=1");
   db().prepare("UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?").run(new Date().toISOString(), userId);
+  // A link sent to the address was opened: it takes mail (again).
+  clearSuppression((db().prepare("SELECT email FROM users WHERE id = ?").get(userId) as { email: string }).email);
   const current = await getCurrentUser();
   // (Never for two-step accounts: the link proves the inbox, not the phone.)
   if (!u.email_verified_at && !u.suspended_at && current?.id !== userId && !twoStep.twoStepEnabled(userId)) await createSession(userId);

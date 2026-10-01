@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "./db";
 import { emailHtml } from "./email-html";
 import { configuredProviders, hasRoom, parseFrom, type ProviderId, type ProviderInfo } from "./mail-providers";
+import { isSuppressed } from "./email-suppression";
 
 // Transactional email. Every message is written to `email_outbox` first (audit trail,
 // and the dev outbox page reads it), then delivered through the first provider that has room
@@ -55,12 +56,14 @@ export async function sendEmail(mail: Email): Promise<void> {
   // dev outbox page needs working links) the one-time link is blanked before it is stored.
   const redacted = !!mail.secret && !devOutboxEnabled();
   const stored = redacted ? mail.text.split(mail.secret!).join("[link removed]") : mail.text;
+  // Optional emails don't go to an address that bounced for good or reported spam (lib/email-suppression.ts).
+  const held = !!mail.optional && isSuppressed(mail.to);
   const id = Number(
     db()
-      .prepare("INSERT INTO email_outbox (to_address, subject, body_text, retryable, headers, optional, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-      .run(mail.to, mail.subject, stored, redacted ? 0 : 1, mail.headers ? JSON.stringify(mail.headers) : null, mail.optional ? 1 : 0, mail.expiresAt ?? null).lastInsertRowid,
+      .prepare("INSERT INTO email_outbox (to_address, subject, body_text, retryable, headers, optional, expires_at, suppressed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(mail.to, mail.subject, stored, redacted || held ? 0 : 1, mail.headers ? JSON.stringify(mail.headers) : null, mail.optional ? 1 : 0, mail.expiresAt ?? null, held ? 1 : 0).lastInsertRowid,
   );
-  await deliver(id, mail);
+  if (!held) await deliver(id, mail);
 }
 
 /** Send one outbox row through the first provider with room (no-op without one). Records the outcome. */

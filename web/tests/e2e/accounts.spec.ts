@@ -333,6 +333,8 @@ test("the time zone for emails comes from the browser at sign-up and can be chan
   const tzOf = () => (db.prepare("SELECT time_zone FROM users WHERE email = ?").get(email) as { time_zone: string }).time_zone;
   expect(tzOf()).toBe("Asia/Makassar");
   await page.goto("/settings");
+  // Times on the page are in that zone too, not always WIB ("Where you're logged in").
+  await expect(page.getByText(/Logged in .+ WITA · last active .+ WITA/)).toBeVisible();
   const select = page.getByLabel("Time zone for emails and reminders");
   await expect(select).toHaveValue("Asia/Makassar");
   await expect(select.locator("option:checked")).toHaveText(/^WITA — Central Indonesia/);
@@ -443,4 +445,34 @@ test("the login email can be changed: the new address confirms it, the old one i
   await anon.goto(new URL(thirdLink).pathname + new URL(thirdLink).search);
   await expect(anon.getByText("This link isn't valid, has expired or was already used.")).toBeVisible();
   db.close();
+});
+
+test("a bounce or spam report from the email provider stops optional emails; Settings says so and can start them again", async ({ page, request }) => {
+  const { createHmac } = await import("node:crypto");
+  const email = unique("bounce");
+  await signup(page, "Bram Bounce", email);
+  const resend = (body: string, secret = "e2e webhook key") => {
+    const id = `msg_${Date.now()}`, ts = String(Math.floor(Date.now() / 1000));
+    const sig = createHmac("sha256", Buffer.from(secret)).update(`${id}.${ts}.${body}`).digest("base64");
+    return request.post("/api/email-events/resend", { data: body, headers: { "content-type": "application/json", "svix-id": id, "svix-timestamp": ts, "svix-signature": `v1,${sig}` } });
+  };
+  const bounced = JSON.stringify({ type: "email.bounced", data: { to: [email], bounce: { type: "Permanent", message: "550 no such user" } } });
+  expect((await resend(bounced, "someone else's key")).status()).toBe(401); // forged
+  const ok = await resend(bounced);
+  expect(ok.status()).toBe(200);
+  expect((await ok.json()).recorded).toBe(1);
+
+  await page.goto("/settings");
+  const banner = page.getByTestId("emails-stopped");
+  await expect(banner.getByText(`Emails to ${email} bounced`)).toBeVisible();
+  await banner.getByRole("button", { name: "Start sending again" }).click();
+  await expect(page.getByText("Notification emails and reminders are on again.")).toBeVisible();
+  await expect(page.getByTestId("emails-stopped")).toHaveCount(0);
+
+  // Brevo: a token in the URL instead of a signature.
+  const spam = { event: "spam", email };
+  expect((await request.post("/api/email-events/brevo?token=wrong", { data: spam })).status()).toBe(401);
+  expect((await request.post("/api/email-events/brevo?token=e2e-brevo-token", { data: spam })).status()).toBe(200);
+  await page.reload();
+  await expect(page.getByTestId("emails-stopped").getByText(/was marked as spam/)).toBeVisible();
 });

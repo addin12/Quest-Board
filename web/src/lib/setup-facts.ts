@@ -10,7 +10,8 @@ import { setupChecks, type SetupCheck } from "./setup-check";
 function lastBackupAt(): string | null {
   const dir = process.env.QUESTBOARD_BACKUP_DIR ?? "data/backups";
   try {
-    const times = readdirSync(/* turbopackIgnore: true */ dir).filter((f) => f.endsWith(".db")).map((f) => statSync(/* turbopackIgnore: true */ join(/* turbopackIgnore: true */ dir, f)).mtimeMs);
+    // Nightly ones only: a copy made before an upgrade (questboard-before-v…) says nothing about the nightly job.
+    const times = readdirSync(/* turbopackIgnore: true */ dir).filter((f) => /^questboard-\d{8}-\d{6}(-\d+)?\.db$/.test(f)).map((f) => statSync(/* turbopackIgnore: true */ join(/* turbopackIgnore: true */ dir, f)).mtimeMs);
     return times.length ? new Date(Math.max(...times)).toISOString() : null;
   } catch {
     return null; // no backup folder yet

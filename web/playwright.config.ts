@@ -12,7 +12,8 @@ const PORT_2 = 3102;
 const SECOND = /\/(a11y|ux-polish|hire-and-browse|share-calendar-live|board-social|gm-tools|taxonomy|notification-email|questions|language-urls|earnings|permissions|two-step)\.spec\.ts$/;
 // Chromium projects: the installed Edge locally (no download), Playwright's bundled Chromium on CI.
 const CHROMIUM = process.env.PW_CHANNEL || (process.env.CI ? undefined : "msedge");
-const SEEDED_ENV = { QUESTBOARD_INSECURE_COOKIES: "true", QUESTBOARD_DEV_OUTBOX: "true", QUESTBOARD_RATE_LIMIT_OVERRIDES: "signup=500,login=40,loginIp=5000,resetIp=500", QUESTBOARD_CRON_SECRET: "e2e-cron-secret", QUESTBOARD_ADMIN_TWO_STEP: "optional" };
+const SEEDED_ENV = { QUESTBOARD_INSECURE_COOKIES: "true", QUESTBOARD_DEV_OUTBOX: "true", QUESTBOARD_RATE_LIMIT_OVERRIDES: "signup=500,login=40,loginIp=5000,resetIp=500", QUESTBOARD_CRON_SECRET: "e2e-cron-secret", QUESTBOARD_ADMIN_TWO_STEP: "optional",
+  RESEND_WEBHOOK_SECRET: "whsec_" + Buffer.from("e2e webhook key").toString("base64"), QUESTBOARD_BREVO_WEBHOOK_TOKEN: "e2e-brevo-token" };
 
 export default defineConfig({
   testDir: "tests/e2e",

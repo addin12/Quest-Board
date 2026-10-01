@@ -6,8 +6,9 @@ import { getUserSettings, getGmSettings } from "@/lib/queries";
 import { Icon } from "@/components/icon";
 import { EmailChangeForm, PasswordForm, ProfileSettingsForm } from "@/components/settings-forms";
 import { pendingEmailChange } from "@/lib/email-change";
+import { suppressionFor } from "@/lib/email-suppression";
 import { DeleteAccountForm, ResendVerificationButton } from "@/components/account-forms";
-import { logoutEverywhereAction, resetCalendarFeedAction } from "../actions";
+import { logoutEverywhereAction, resetCalendarFeedAction, resumeEmailsAction } from "../actions";
 import { CalendarFeedLinks } from "@/components/calendar-feed";
 import { ConfirmButton, SubmitButton } from "@/components/submit-button";
 import { siteOrigin } from "@/lib/site";
@@ -17,6 +18,7 @@ import { logoutDeviceAction } from "../actions";
 import { TwoStepConfirmForm, TwoStepDisableForm } from "@/components/two-step-forms";
 import { beginTwoStepAction, cancelTwoStepAction } from "../actions";
 import { Notice } from "@/components/ui";
+import { formatDay, formatMoment } from "@/lib/time-zones";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -29,8 +31,10 @@ export default async function SettingsPage() {
   const { t, lang } = await getI18n();
   const twoStep = await twoStepState(user.id, user.email);
   const logins = await listLogins(user.id);
-  const when = (iso: string | null) => iso ? new Date(iso).toLocaleString(lang === "id" ? "id-ID" : "en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }) + " WIB" : "–";
   const me = getUserSettings(user.id)!;
+  const stopped = suppressionFor(user.email); // the address bounced, or reported our email as spam
+  // In the person's own time zone (Settings → time zone), like their emails: "29 Sept 2026, 14.05 WITA".
+  const when = (iso: string | null) => (iso ? formatMoment(new Date(iso), lang, me.time_zone) : "–");
   const origin = await siteOrigin();
   const isGm = user.role === "gm" || user.role === "admin";
   const gmProfile = isGm ? getGmSettings(user.id) : undefined; // the public page exists once the profile is filled in
@@ -47,6 +51,15 @@ export default async function SettingsPage() {
         </p>
         {!user.email_verified && <ResendVerificationButton />}
       </section>
+      {stopped && (
+        <section className="card mt-4 space-y-3 border-danger/40! p-4" aria-label={t("settings.emailsStopped")} data-testid="emails-stopped">
+          <Notice tone="danger">{t(stopped.reason === "complaint" ? "settings.complained" : "settings.bounced", { email: user.email })}</Notice>
+          <div className="flex flex-wrap items-center gap-3">
+            <form action={resumeEmailsAction}><SubmitButton className="btn-secondary">{t("settings.emailsTryAgain")}</SubmitButton></form>
+            <a href="#login-email" className="text-sm font-semibold text-accent hover:underline">{t("settings.loginEmail")}</a>
+          </div>
+        </section>
+      )}
 
       <section className="card mt-6 p-6" aria-labelledby="profile-h">
         <h2 id="profile-h" className="mb-5 flex items-center gap-2 text-xl font-bold"><Icon name="user-pen" className="text-muted" /> {t("settings.profile")}</h2>
@@ -131,7 +144,7 @@ export default async function SettingsPage() {
           )}
           {twoStep.state === "on" && (
             <div className="mt-2 space-y-4">
-              <p className="flex items-center gap-2 text-sm font-semibold text-success"><Icon name="check-circle" /> {t("twoStep.on", { date: new Date(twoStep.since).toLocaleDateString(lang === "id" ? "id-ID" : "en-GB", { dateStyle: "medium", timeZone: "Asia/Jakarta" }) })}</p>
+              <p className="flex items-center gap-2 text-sm font-semibold text-success"><Icon name="check-circle" /> {t("twoStep.on", { date: formatDay(new Date(twoStep.since), lang, me.time_zone, true) })}</p>
               <TwoStepDisableForm />
               <p className="text-xs text-muted">{t("twoStep.lostPhone")}</p>
             </div>

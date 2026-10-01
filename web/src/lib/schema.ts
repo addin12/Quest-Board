@@ -39,7 +39,8 @@
 // v34: email_outbox.headers (List-Unsubscribe survives a retry).
 // v35: email_outbox.provider / optional / expires_at / deferred (a second provider, daily limits),
 //      email_changes (changing the login email: a link to the new address).
-export const SCHEMA_VERSION = 35;
+// v36: email_suppressions (bounced / spam-reported addresses) + email_outbox.suppressed.
+export const SCHEMA_VERSION = 36;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -355,7 +356,16 @@ CREATE TABLE IF NOT EXISTS email_outbox (
   provider    TEXT,                        -- v35: who accepted it ('resend' | 'brevo'), counted for daily limits
   optional    INTEGER NOT NULL DEFAULT 0,  -- v35: 1 = may wait for room under the daily limit (notifications, reminders)
   expires_at  TEXT,                        -- v35: not worth sending after this, or NULL
-  deferred    INTEGER NOT NULL DEFAULT 0   -- v35: 1 = waiting for room under the daily limit (not a failure)
+  deferred    INTEGER NOT NULL DEFAULT 0,  -- v35: 1 = waiting for room under the daily limit (not a failure)
+  suppressed  INTEGER NOT NULL DEFAULT 0   -- v36: 1 = not sent: optional, and the address bounced or reported spam
+);
+
+CREATE TABLE IF NOT EXISTS email_suppressions (
+  email       TEXT PRIMARY KEY COLLATE NOCASE,
+  reason      TEXT NOT NULL CHECK (reason IN ('bounce','complaint')),
+  provider    TEXT NOT NULL,              -- who told us ('resend' | 'brevo')
+  detail      TEXT,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
 CREATE TABLE IF NOT EXISTS reports (

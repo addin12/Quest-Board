@@ -77,7 +77,25 @@ QUESTBOARD_MAIL_FROM=Quest Board <halo@questboard.id>   # must be on the domain 
 Then `docker compose up -d`. **Admin → Setup** shows "Email provider: OK", "Backup email provider: OK"
 and how many of the day's emails have been used.
 
-## 6. Check it works
+## 6. Bounces and spam reports
+
+Both providers suspend accounts that send too much to dead addresses or get reported as spam — on a
+free plan that's easy to hit by accident (a typo at sign-up, a full mailbox). Let them tell Quest Board,
+and those addresses stop getting notification emails and reminders (the person sees why in Settings):
+
+- **Resend** → **Webhooks → Add endpoint**: `https://<your domain>/api/email-events/resend`, events
+  **email.bounced** and **email.complained**. Copy its **signing secret** (`whsec_…`) into
+  `RESEND_WEBHOOK_SECRET`.
+- **Brevo** → **Transactional → Settings → Webhook → Add a new webhook**: make up a long random token
+  (e.g. `node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"`), set
+  `QUESTBOARD_BREVO_WEBHOOK_TOKEN` to it, and use the URL
+  `https://<your domain>/api/email-events/brevo?token=<that token>` with the events **Hard bounce**,
+  **Invalid email**, **Blocked** and **Marked as spam**.
+
+Then `docker compose up -d`. **Admin → Setup** shows "Bounces and spam reports: OK", and the admins'
+daily summary counts the addresses that were stopped.
+
+## 7. Check it works
 
 1. Sign up on the live site with a Gmail address. The confirmation should arrive in the **inbox**
    within a minute.
