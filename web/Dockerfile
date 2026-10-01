@@ -1,14 +1,14 @@
 # Quest Board: the production image (deploy/docker-compose.yml runs it as the app and the scheduler).
 # One Node process, SQLite on the /data volume (database, uploaded pictures, backups).
 
-FROM node:24-slim AS build
+FROM node:26-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 RUN npm run build && npm prune --omit=dev
 
-FROM node:24-slim
+FROM node:26-slim
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
