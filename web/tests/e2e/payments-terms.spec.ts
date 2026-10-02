@@ -77,3 +77,32 @@ test("an invite can be emailed: one email, in both languages, with the link", as
   expect(mail.body_text).toContain(link); // the dev outbox keeps it (on a real server the stored copy is blanked)
   expect(mail.body_text).toContain("Terima di sini");
 });
+
+test("hire a GM: the requester who chose a GM sees their QRIS code; nobody else does", async ({ page, browser }) => {
+  test.setTimeout(120_000);
+  const gmEmail = unique("hire-qr-gm");
+  await createGmWithGame(page, "Hana Hire", gmEmail, "Hire QR Table");
+  await page.goto("/become-a-gm");
+  const qr = await sharp({ create: { width: 200, height: 200, channels: 3, background: "#000000" } }).png().toBuffer();
+  await page.getByLabel("QRIS code (optional)").setInputFiles({ name: "qr.png", mimeType: "image/png", buffer: qr });
+  await page.getByRole("button", { name: /Save & go to GM dashboard/ }).click();
+  await page.waitForURL("**/gm");
+
+  const requester = await newPage(browser);
+  const reqEmail = unique("hire-qr-req");
+  await signup(requester, "Rina Requester", reqEmail);
+  const db = e2eDb();
+  const gmId = (db.prepare("SELECT id FROM users WHERE email = ?").get(gmEmail) as { id: number }).id;
+  const reqId = (db.prepare("SELECT id FROM users WHERE email = ?").get(reqEmail) as { id: number }).id;
+  // A request where this GM's offer was chosen.
+  const requestId = Number(db.prepare("INSERT INTO gm_requests (requester_id, title, group_size, status, matched_gm_id) VALUES (?, 'A one-shot for four friends', 4, 'matched', ?)").run(reqId, gmId).lastInsertRowid);
+  db.prepare("INSERT INTO gm_request_offers (request_id, gm_id, message, price_idr) VALUES (?, ?, 'I can run it on Saturday.', 0)").run(requestId, gmId);
+  db.close();
+
+  await requester.goto(`/hire-a-gm/requests/${requestId}`);
+  await expect(requester.getByRole("img", { name: /The GM's QRIS code/ })).toBeVisible();
+  expect((await requester.request.get(`/payment-qr/${gmId}`)).status()).toBe(200);
+  const stranger = await newPage(browser);
+  await signup(stranger, "Sari Stranger", unique("hire-qr-x"));
+  expect((await stranger.request.get(`/payment-qr/${gmId}`)).status()).toBe(404);
+});

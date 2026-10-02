@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { isPrelaunch } from "@/lib/prelaunch";
 import { getI18n } from "@/lib/i18n/server";
 import { shownName } from "@/lib/i18n/dict";
 import { PaymentChangedNote } from "@/components/payment-changed-note";
@@ -67,6 +68,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
   const waits = user ? myWaitlist(user.id, game.id) : [];
   const reviews = listGameReviews(game.id);
   const booked = user ? playerBookedSessionIds(game.id, user.id) : [];
+  const soon = isPrelaunch();
   const removed = user ? playerRemovedSessionIds(game.id, user.id) : [];
   const member = user ? isGameMember(game.id, user.id) : false;
   const reviewable = user ? canReview(game.id, user.id) : false;
@@ -281,6 +283,9 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                         </div>
                         {mine ? (
                           <span className="chip gap-1 border-success/30! bg-success-soft! text-success!"><Icon name="check-circle" solid />{t("game.booked")}</span>
+                        ) : soon ? (
+                          // Pre-launch (GMs first): no booking or waitlist yet, just where to leave an email.
+                          <Link href="/opening" className="text-xs font-semibold text-accent hover:underline">{t("prelaunch.bookSoon")}</Link>
                         ) : verdict.ok && offered ? (
                           <WaitlistOffer sessionId={s.id} expiresAt={wait?.expires_at ?? null} t={t} />
                         ) : verdict.ok ? (

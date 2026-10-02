@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { confirmLink, e2eDb, signup } from "./helpers";
+import { confirmLink, createGmWithGame, e2eDb, signup } from "./helpers";
 import { totpCode, totpStep } from "../../src/lib/totp";
 import { LEGAL_VERSION } from "../../src/lib/legal";
 
@@ -240,3 +240,71 @@ for (const scheme of ["light", "dark"] as const) {
     });
   });
 }
+
+test("rounds 29–30 screens have no axe violations: pre-launch, invites, the pulse, QRIS, refund terms, table link", async ({ page, browser }) => {
+  test.setTimeout(240_000);
+  const { createHash } = await import("node:crypto");
+  const sharp = (await import("sharp")).default;
+  const db = e2eDb();
+  const found: string[] = [];
+  try {
+    // A GM with refund terms, a QRIS code and a table link; a player with a seat.
+    const gmEmail = `a11y-qr-${Date.now()}@questboard.test`;
+    const slug = await createGmWithGame(page, "Qori QRIS", gmEmail, "A11y Table");
+    await page.goto("/become-a-gm");
+    await page.getByLabel(/Cancellation & refund terms/).fill("Cancel a day before for a full refund.");
+    const qr = await sharp({ create: { width: 200, height: 200, channels: 3, background: "#000000" } }).png().toBuffer();
+    await page.getByLabel("QRIS code (optional)").setInputFiles({ name: "qr.png", mimeType: "image/png", buffer: qr });
+    await page.getByRole("button", { name: /Save & go to GM dashboard/ }).click();
+    await page.waitForURL("**/gm");
+    const gameId = (db.prepare("SELECT id FROM games WHERE slug = ?").get(slug) as { id: number }).id;
+    db.prepare("UPDATE games SET table_link = 'https://discord.gg/a11y-table' WHERE id = ?").run(gameId);
+    await page.goto("/become-a-gm");
+    found.push(...(await violationsOf(page, "/become-a-gm with a QRIS code")));
+
+    const player = await (await browser.newContext()).newPage();
+    await signup(player, "Ari Axe", `a11y-booker-${Date.now()}@questboard.test`);
+    await player.goto(`/games/${slug}`);
+    await player.getByRole("link", { name: "Book" }).first().click();
+    await expect(player.getByTestId("refund-terms")).toBeVisible();
+    found.push(...(await violationsOf(player, "/book with refund terms")));
+    await player.getByRole("checkbox").check();
+    await player.getByRole("button", { name: "Reserve my seat" }).click();
+    await player.waitForURL("**/dashboard?booked=*");
+    await player.goto(`/games/${slug}`);
+    await expect(player.getByTestId("payment-qr")).toBeVisible();
+    await expect(player.getByTestId("table-link")).toBeVisible();
+    found.push(...(await violationsOf(player, "/games/… as a player with a seat (QRIS, table link)")));
+
+    // An invite (valid and used-up), signed out.
+    const raw = `a11y-invite-${Date.now()}`;
+    db.prepare("INSERT INTO gm_invites (token_hash, note, expires_at) VALUES (?, 'a11y', ?)").run(createHash("sha256").update(raw).digest("hex"), new Date(Date.now() + 86_400_000).toISOString());
+    const anon = await (await browser.newContext()).newPage();
+    for (const path of [`/invite/${raw}`, "/invite/not-a-real-token"]) {
+      await anon.goto(path);
+      found.push(...(await violationsOf(anon, path)));
+    }
+
+    // Pre-launch mode: the banner, the opening page, a game page without booking.
+    db.prepare("INSERT INTO app_state (key, value) VALUES ('prelaunch', '1') ON CONFLICT(key) DO UPDATE SET value = '1'").run();
+    for (const path of ["/opening", `/games/${slug}`]) {
+      await anon.goto(path);
+      await expect(anon.getByTestId("prelaunch-banner")).toBeVisible();
+      found.push(...(await violationsOf(anon, `${path} (pre-launch)`)));
+    }
+    await expect(anon.getByRole("link", { name: "Bookings open soon" }).first()).toBeVisible();
+    await expect(anon.getByRole("link", { name: "Book", exact: true })).toHaveCount(0);
+
+    // The admin's pages: the pre-launch card, the pulse table, the invite list.
+    const admin = await (await browser.newContext()).newPage();
+    await login(admin, "admin@questboard.test");
+    for (const path of ["/admin", "/admin/gms"]) {
+      await admin.goto(path);
+      found.push(...(await violationsOf(admin, `${path} (pre-launch, invites)`)));
+    }
+  } finally {
+    db.prepare("UPDATE app_state SET value = '0' WHERE key = 'prelaunch'").run();
+    db.close();
+  }
+  expect(found).toEqual([]);
+});

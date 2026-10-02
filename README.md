@@ -34,12 +34,14 @@ Inspired by [StartPlaying](https://startplaying.games) and rebuilt for Indonesia
 - **Table chat** with the GM and other players. **Reviews** after the session.
 - **Reminders** by notification and email 24 hours and 1 hour before each session, plus a **personal calendar feed** for Google Calendar, Apple Calendar or Outlook.
 - **Save** games and **follow** GMs to hear about their next table.
+- See each GM's **cancellation & refund terms** before booking; with a seat, see how to pay them (bank, e-wallet or their **QRIS code**) and, for online games, the **link to join**.
 
 **For Game Masters**
 - List games with cover art, categories (up to 3 genres and 3 styles), safety tools and content warnings. Schedule single sessions or a **weekly series**, and **duplicate** a game to run it again.
 - A roster per session with a **"paid ✓"** tick, and an **Earnings** page (marked paid vs expected, seats to follow up, CSV download).
 - **Cancel with a message** that reaches players in the app and by email.
 - Answer **player questions** from an inbox, and take private groups through **Hire a GM** (requests, offers and a private chat).
+- Upload your own **cover art and portrait**; add your **QRIS code**, **refund terms** and an **online table link** that only booked players see.
 
 **Community**
 - The **Tavern Notice Board**: pin a note to find a group, or players for your table.
@@ -47,7 +49,13 @@ Inspired by [StartPlaying](https://startplaying.games) and rebuilt for Indonesia
 
 **Trust & safety**
 - Reports on games, reviews, messages, notices and members, handled in an **admin console**: remove, suspend, dismiss, and verify GMs.
-- Email verification, rate limits, security headers, an anti-scam note next to payment details, and **download my data / delete my account** (UU PDP, Indonesia's data protection law).
+- Email verification, **two-step login** (required for admins and verified GMs), a list of where you're logged in, rate limits, a strict script policy, automatic **scam-wording flags**, and warnings when a GM's payment details changed recently.
+- **Download my data / delete my account** (UU PDP, Indonesia's data protection law); one-click unsubscribe from optional emails; change your login email.
+
+**For the people running it**
+- A **pre-launch mode** (GMs list games first; visitors leave their email to be told when it opens) and **founding-GM invite links** that verify GMs on the spot.
+- An admin console with a **launch pulse**, a **setup check** that says what to fix before launch, server errors, and a daily summary email.
+- A deployment kit for one small server (Oracle's free tier works), nightly and **off-site backups**, a one-command **update with automatic rollback**, and a second email provider for when the first is full.
 
 | Browse by categories | Game page |
 |---|---|
@@ -132,17 +140,20 @@ Quest Board/
 
 ## Deploying
 
-Quest Board runs as **one Node.js process with SQLite on a persistent disk**: a small server in Jakarta or Singapore behind an HTTPS reverse proxy is enough to start. In short:
+Quest Board runs as **one Node.js process with SQLite on a persistent disk**. The deployment kit in
+[`deploy/`](deploy/README.md) runs it on one small server with Docker — the app, a scheduler (reminders,
+emails, nightly and off-site backups) and Caddy for HTTPS — from a ready-made image for x86 and ARM.
+Oracle Cloud's Always Free server is enough ([deploy/ORACLE-FREE.md](deploy/ORACLE-FREE.md)).
 
-- Run with `QUESTBOARD_SEED=false`, then create your admin with `npm run admin`.
-- Set `QUESTBOARD_BASE_URL` and Resend keys (for email), and call `/api/cron/reminders` every few minutes.
-- Back up nightly with `npm run db:backup`.
+- Fill in `deploy/.env` from `deploy/.env.example` (every setting is listed there), then `docker compose up -d`.
+- Create your admin: `docker compose exec app node scripts/admin.mjs create you@example.com "Your Name"`.
+- **Admin → Setup** says what's still missing; `sh deploy/update.sh` updates (and rolls back by itself if needed).
 
-Every setting and step is in [docs/11](docs/11-operations-and-deployment.md) and the [launch checklist](docs/12-launch-checklist.md).
+The steps before going live are in the [launch checklist](docs/12-launch-checklist.md).
 
 ## Status
 
-A feature-complete **pre-launch MVP**. What's left before launch are the owner's decisions and accounts (legal review, domain, hosting, email), listed in the [launch checklist](docs/12-launch-checklist.md). The remaining ideas, such as Postgres, photo uploads, WhatsApp reminders and a Discord bot, are in [IMPROVEMENTS.md](IMPROVEMENTS.md).
+A feature-complete **pre-launch MVP**. What's left before launch are the owner's decisions and accounts (legal review, domain, hosting, email), listed in the [launch checklist](docs/12-launch-checklist.md). Each pre-launch round (31 so far) is recorded in [IMPROVEMENTS.md](IMPROVEMENTS.md), with the ideas for later (Postgres, WhatsApp reminders, a Discord bot).
 
 ## Contributing
 

@@ -2,6 +2,31 @@
 
 What changed in each version of Quest Board, newest first. The current feature overview is in the [README](README.md).
 
+## v0.13: the pre-launch rounds (2026-09-26 to 2026-10-02)
+Thirty rounds of fixing, hardening and launch preparation, each one checked end to end (unit tests, the
+full end-to-end and accessibility suite, and a production rehearsal of the real server setup) before it
+was committed. Round by round: IMPROVEMENTS.md.
+
+- **Paying the GM:** cancellation & refund terms shown before booking; a GM's **QRIS code**, the online
+  table's **link** and payment details shown only to players with a seat; a warning (and an email to the
+  GM) whenever payment details change, since that's what a scammer does first.
+- **Trust & safety:** two-step login (required for admins and verified GMs), where-you're-logged-in with
+  remote log-out, new-device emails, automatic scam-wording flags for moderators, a strict script policy
+  with violation reports, verify-your-email-first sign-up, one-click unsubscribe, changing your login email.
+- **Pictures:** upload your own game covers and portraits (re-encoded, with hidden location data removed).
+- **For GMs:** a getting-started checklist, moving and releasing seats, replies to reviews, founding-GM
+  invitations.
+- **Email that arrives:** reminders and notices in each person's own time zone (WIB, WITA, WIT…), a
+  second email provider and daily limits that keep sign-ups and password resets going on busy days,
+  bounce and spam handling, and a branded HTML version of every email.
+- **Launch tools:** a "GMs first" pre-launch mode with an "opening soon" list, a launch pulse, and a
+  setup check that tells the owner what to fix before real users arrive.
+- **Running the server:** a Docker deployment kit with HTTPS, nightly and off-site backups (and a tested
+  way back after losing the server), a database copy before every upgrade, a one-command update that rolls
+  back by itself, a small ready-made image for x86 and ARM, memory caps, and a guide to Oracle's free tier.
+- **Proof:** a load test of a busy evening (about 55 requests a second with no errors on the smallest
+  setup), accessibility checks on every new screen, and a weekly hunt for tests that fail only sometimes.
+
 ## v0.12: launch readiness and GM tools (2026-09-26)
 Every step was checked (typecheck, lint, unit tests, the full end-to-end suite with accessibility checks) and committed separately; see `git log` for details.
 

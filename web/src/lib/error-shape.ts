@@ -9,6 +9,18 @@ export function isControlFlow(err: unknown): boolean {
   return /^NEXT_(REDIRECT|NOT_FOUND|HTTP_ERROR_FALLBACK)/.test(digest);
 }
 
+/**
+ * A path that's safe to log: no query string, and no secret path segment — an invite link's token,
+ * a private calendar feed's token (both work as passwords for whoever has them).
+ */
+export function redactPath(path: string): string {
+  return path
+    .split("?")[0]
+    .replace(/^\/invite\/[^/]+/, "/invite/…")
+    .replace(/^\/api\/calendar\/[^/]+/, "/api/calendar/…")
+    .slice(0, 300);
+}
+
 export function shapeError(
   err: unknown,
   request: { path?: string; method?: string },
@@ -20,7 +32,7 @@ export function shapeError(
     message,
     digest,
     method: String(request.method ?? "").slice(0, 10),
-    path: String(request.path ?? "").split("?")[0].slice(0, 300),
+    path: redactPath(String(request.path ?? "")),
     route_path: String(context.routePath ?? "").slice(0, 300),
     route_type: String(context.routeType ?? "").slice(0, 20),
   };
