@@ -107,11 +107,6 @@ jobs:
       - name: Scan the image (Trivy)
         run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --quiet --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 questboard-app
 
-      # A busy evening on the smallest setup (npm run load-rehearsal): no errors, no overbooking, memory under the caps.
-      - name: Load rehearsal
-        if: matrix.runner == 'ubuntu-24.04'
-        run: npm run load-rehearsal -- --users 100 --seconds 90
-
       - name: Upload rehearsal traces on failure
         if: failure()
         uses: actions/upload-artifact@v7

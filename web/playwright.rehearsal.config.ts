@@ -7,7 +7,8 @@ export default defineConfig({
   workers: 1,
   timeout: 180_000,
   expect: { timeout: 15_000 },
-  reporter: [["list"]],
+  // On CI, failures also become GitHub annotations: those are public, unlike the raw job log.
+  reporter: process.env.CI ? [["list"], ["github"]] : [["list"]],
   use: {
     baseURL: "https://localhost:8443",
     ignoreHTTPSErrors: true, // Caddy's local certificate

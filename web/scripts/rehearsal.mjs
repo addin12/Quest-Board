@@ -3,6 +3,7 @@
 // tests/rehearsal, then removes everything again. --keep leaves it running to look around.
 import { execFileSync, spawnSync } from "node:child_process";
 import { resolve } from "node:path";
+import { annotateError } from "./ci-annotate.mjs";
 
 const DEPLOY = resolve(import.meta.dirname, "../../deploy");
 const env = { ...process.env, QUESTBOARD_ENV_FILE: "rehearsal/rehearsal.env" };
@@ -11,6 +12,8 @@ const compose = (...args) =>
 
 const keep = process.argv.includes("--keep");
 let code = 1;
+// The app's last log lines, for an annotation (a failed start is otherwise only in the private job log).
+const appLogs = () => { try { return execFileSync("docker", ["compose", "-p", "qb-rehearsal", "-f", "docker-compose.yml", "-f", "rehearsal/docker-compose.rehearsal.yml", "logs", "--no-color", "--tail", "40", "app"], { cwd: DEPLOY, env, encoding: "utf8" }); } catch { return ""; } };
 try {
   compose("down", "-v", "--remove-orphans"); // start from nothing, like a new server
   compose("up", "-d", "--build");
@@ -31,6 +34,10 @@ try {
   const run = spawnSync("npx", ["playwright", "test", "--config", "playwright.rehearsal.config.ts"], { cwd: resolve(import.meta.dirname, ".."), stdio: "inherit", shell: true });
   code = run.status ?? 1;
   if (code !== 0) compose("logs", "--tail", "80", "app", "scheduler");
+} catch (err) {
+  // Building or starting the stack failed (e.g. a base image could not be downloaded).
+  annotateError("Rehearsal", err instanceof Error ? err.message : String(err), appLogs());
+  code = 1;
 } finally {
   if (!keep) compose("down", "-v", "--remove-orphans");
   else console.log("Left running: https://localhost:8443 (npm run rehearsal again, or docker compose -p qb-rehearsal down -v, to remove it)");

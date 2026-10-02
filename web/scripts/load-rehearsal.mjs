@@ -9,6 +9,7 @@
 // roughly a 1,000-member community on its busiest evening, with room to spare.
 import { execFileSync, spawn } from "node:child_process";
 import { resolve } from "node:path";
+import { annotateError } from "./ci-annotate.mjs";
 
 const arg = (name, def) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -72,9 +73,13 @@ console.log(JSON.stringify(d.prepare("SELECT s.id, g.seats_total, COUNT(b.id) AS
     peak.scheduler > CAPS.scheduler * 0.9 && "the scheduler came within 10% of its memory cap",
   ].filter(Boolean);
   for (const p of problems) console.log(`[load] ! ${p}`);
+  if (problems.length) annotateError("Load rehearsal", problems.join("; "));
   if (!problems.length) console.log("[load] OK: no errors, no overbooking, memory well under the caps.");
   code = problems.length ? 1 : 0;
   if (code) compose(["logs", "--tail", "60", "app"], { stdio: "inherit" });
+} catch (err) {
+  annotateError("Load rehearsal", err instanceof Error ? err.message : String(err));
+  code = 1;
 } finally {
   if (!keep) compose(["down", "-v", "--remove-orphans"], { stdio: "inherit" });
 }
