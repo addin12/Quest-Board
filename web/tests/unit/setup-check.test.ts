@@ -66,6 +66,8 @@ test("production problems are marked for fixing", () => {
   assert.equal(level(stored(9 * GB), "offsite-space"), "warn");
   assert.equal(setupChecks(stored(1024, 0)).find((c) => c.id === "offsite-space")!.detail, "setup.offsiteSpaceKeepAll");
   assert.equal(setupChecks(good).find((c) => c.id === "offsite-space"), undefined); // not measured yet
+  assert.equal(level({ ...good, prelaunch: { on: true, waiting: 12 } }, "prelaunch"), "warn"); // players can't book yet
+  assert.equal(setupChecks({ ...good, prelaunch: { on: false, waiting: 0 } }).find((c) => c.id === "prelaunch"), undefined);
 });
 
 test("a development machine gets reminders, not alarms", () => {

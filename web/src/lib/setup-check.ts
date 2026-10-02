@@ -12,6 +12,8 @@ export type SetupFacts = {
   cronLastRun: string | null;
   /** When the newest backup file was written, or null when there is none. */
   lastBackupAt: string | null;
+  /** Pre-launch mode (lib/prelaunch.ts), and how many people wait for the opening email. */
+  prelaunch?: { on: boolean; waiting: number };
   /** Emails each provider accepted in the last 24 hours (lib/mailer.ts sentLast24h). */
   emailSent24h?: Partial<Record<string, number>>;
   /** Free space where the database lives, in bytes (null when unknown). */
@@ -115,6 +117,7 @@ export function setupChecks(f: SetupFacts): SetupCheck[] {
       ? { id: "offsite-space", level: "warn", title: "setup.offsiteSpace", detail: "setup.offsiteSpaceHigh", vars: { size, days } }
       : { id: "offsite-space", level: "ok", title: "setup.offsiteSpace", detail: days ? "setup.offsiteSpaceOk" : "setup.offsiteSpaceKeepAll", vars: { size, days } });
   }
+  if (f.prelaunch?.on) checks.push({ id: "prelaunch", level: "warn", title: "setup.prelaunch", detail: "setup.prelaunchOn", vars: { n: f.prelaunch.waiting } });
   checks.push(f.legalVersion.endsWith("-draft")
     ? { id: "legal", level: production ? "warn" : "ok", title: "setup.legal", detail: "setup.legalDraft", vars: { version: f.legalVersion } }
     : { id: "legal", level: "ok", title: "setup.legal", detail: "setup.legalFinal", vars: { version: f.legalVersion } });

@@ -78,15 +78,18 @@ async function get(path, cookie) {
 }
 
 /** Load `path`, fill the form containing `marker` like a browser without JavaScript, and submit it. */
-async function submit(path, marker, fields, cookie) {
+/** `sendLabel`: also time the POST alone under that name — what a person waits for after pressing the button. */
+async function submit(path, marker, fields, cookie, sendLabel) {
   const { body } = await get(path, cookie);
   const form = formAround(body, marker);
   if (!form) return { status: 0, body: "", location: "", setCookie: [], noForm: true };
   const fd = new FormData();
   for (const [k, v] of hiddenFields(form)) fd.append(k, v);
   for (const [k, v] of Object.entries(fields)) fd.set(k, v);
+  const t0 = performance.now();
   const res = await fetch(BASE + path, { method: "POST", body: fd, headers: cookie ? { cookie } : {}, redirect: "manual" });
   const text = await res.text();
+  if (sendLabel) stat(sendLabel).ms.push(performance.now() - t0);
   if (res.status >= 500 || /database is locked/i.test(text)) throw new Error(`POST ${path} → ${res.status}`);
   return { status: res.status, body: text, location: res.headers.get("location") ?? "", setCookie: res.headers.getSetCookie() };
 }
@@ -130,14 +133,14 @@ async function main() {
       else if (r < 0.9 && sessions.length) {
         const s = pick(sessions);
         const out = await timed("reserve", async () => {
-          const res = await submit(`/book/${s.id}`, 'name="agree"', { agree: "on" }, u.cookie);
+          const res = await submit(`/book/${s.id}`, 'name="agree"', { agree: "on" }, u.cookie, "reserve: send");
           return res;
         });
         if (out?.location.includes("booked=")) u.booked.add(s.slug);
         else if (out) stat("reserve").rejected++; // full, already booked, … — refused, not an error
       } else if (u.booked.size) {
         const slug = pick([...u.booked]);
-        const out = await timed("chat", () => submit(`/games/${slug}`, 'id="msg"', { body: `Hello from load test ${Date.now()}` }, u.cookie));
+        const out = await timed("chat", () => submit(`/games/${slug}`, 'id="msg"', { body: `Hello from load test ${Date.now()}` }, u.cookie, "chat: send"));
         if (out?.noForm) stat("chat").rejected++;
       }
     }

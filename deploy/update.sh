@@ -48,7 +48,7 @@ current=$(dc ps -q app 2>/dev/null || true)
 [ -n "$current" ] || { say "Quest Board isn't running here: start it first (README, First start)."; exit 2; }
 docker tag "$(docker inspect -f '{{.Image}}' "$current")" questboard-app:previous
 say "The running version is saved as questboard-app:previous."
-dc exec -T scheduler npm run --silent db:backup || dc run --rm --no-deps scheduler npm run --silent db:backup || {
+dc exec -T scheduler node scripts/db-backup.mjs backup || dc run --rm --no-deps scheduler node scripts/db-backup.mjs backup || {
   say "The backup failed, so nothing was changed. See: $COMPOSE logs scheduler"; exit 2; }
 
 # ── 2. The new version ──

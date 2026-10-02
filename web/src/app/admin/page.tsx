@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
-import { adminStats, launchMetrics, listAdminLog } from "@/lib/moderation";
+import { adminStats, launchMetrics, listAdminLog, verifiedGmCount } from "@/lib/moderation";
 import { LocalTime } from "@/components/local-time";
 import { shownName } from "@/lib/i18n/dict";
 import { countRecentErrors } from "@/lib/error-log";
 import { Icon } from "@/components/icon";
+import type { RegularIcon } from "@/lib/icons";
 import { AdminNav } from "./admin-nav";
 import { currentSetupChecks } from "@/lib/setup-facts";
+import { isPrelaunch, launchNotifyCount } from "@/lib/prelaunch";
+import { setPrelaunchAction } from "@/app/actions";
+import { ConfirmButton, SubmitButton } from "@/components/submit-button";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -19,18 +23,24 @@ export default async function AdminHomePage() {
   await requireAdmin();
   const { t } = await getI18n();
   const s = adminStats();
-  const m = launchMetrics(7);
+  const periods = [launchMetrics(7), launchMetrics(30), launchMetrics(null)] as const;
+  const verified = verifiedGmCount();
+  const prelaunch = isPrelaunch();
+  const waiting = launchNotifyCount();
   const errors = countRecentErrors(7);
   const setupProblems = currentSetupChecks().filter((c) => c.level === "danger").length;
   const log = listAdminLog(15);
-  const pulse = [
-    ["users", m.signups, t("admin.pulseSignups")],
-    ["dice-d20", m.gamesPublished, t("admin.pulseGames")],
-    ["ticket", m.seatsBooked, t("admin.pulseSeats")],
-    ["comment-dots", m.questions, t("admin.pulseQuestions")],
-    ["thumbtack", m.notices, t("admin.pulseNotices")],
-    ["briefcase", m.gmRequests, t("admin.pulseRequests")],
-  ] as const;
+  type Metrics = (typeof periods)[number];
+  const pulse: [RegularIcon, (m: Metrics) => number, string][] = [
+    ["users", (m) => m.signups, t("admin.pulseSignups")],
+    ["hat-wizard", (m) => m.newGms, t("admin.pulseNewGms")],
+    ["dice-d20", (m) => m.gamesPublished, t("admin.pulseGames")],
+    ["ticket", (m) => m.seatsBooked, t("admin.pulseSeats")],
+    ["calendar-clock", (m) => m.sessionsPlayed, t("admin.pulseSessions")],
+    ["comment-dots", (m) => m.questions, t("admin.pulseQuestions")],
+    ["thumbtack", (m) => m.notices, t("admin.pulseNotices")],
+    ["briefcase", (m) => m.gmRequests, t("admin.pulseRequests")],
+  ];
   const tiles = [
     { href: "/admin/reports", icon: "flag", n: s.openReports, label: t("admin.statOpenReports"), urgent: s.openReports > 0 },
     { href: "/admin/gms", icon: "user-check", n: s.unverifiedGms, label: t("admin.statUnverified"), urgent: false },
@@ -48,6 +58,18 @@ export default async function AdminHomePage() {
           <Link href="/admin/setup" className="font-semibold text-accent hover:underline">{t("setup.bannerLink")}</Link>
         </p>
       )}
+      <section className="card mb-6 flex flex-wrap items-center gap-3 p-4" aria-labelledby="prelaunch-h" data-testid="prelaunch-card">
+        <div className="min-w-0 flex-1">
+          <h2 id="prelaunch-h" className="flex items-center gap-2 font-bold"><Icon name="hat-wizard" className="text-accent" /> {t("admin.prelaunchTitle")}</h2>
+          <p className="text-sm text-muted">{prelaunch ? t("admin.prelaunchOnText", { n: waiting }) : t("admin.prelaunchOffText")}</p>
+        </div>
+        <form action={setPrelaunchAction}>
+          <input type="hidden" name="on" value={prelaunch ? "0" : "1"} />
+          {prelaunch
+            ? <ConfirmButton className="btn-primary" message={t("admin.prelaunchOpenConfirm", { n: waiting })}>{t("admin.prelaunchOpen")}</ConfirmButton>
+            : <SubmitButton className="btn-secondary">{t("admin.prelaunchTurnOn")}</SubmitButton>}
+        </form>
+      </section>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tiles.map((tile) => (
           <Link key={tile.label} href={tile.href} className={`card p-5 hover:border-accent ${tile.urgent ? "border-danger/50!" : ""}`}>
@@ -61,14 +83,32 @@ export default async function AdminHomePage() {
       <section className="mt-10" aria-labelledby="pulse-h">
         <h2 id="pulse-h" className="text-xl font-bold">{t("admin.pulseTitle")}</h2>
         <p className="mt-1 text-sm text-muted">{t("admin.pulseLead")}</p>
-        <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {pulse.map(([icon, n, label]) => (
-            <div key={label} className="card p-4">
-              <dt className="flex items-center gap-1.5 text-xs text-muted"><Icon name={icon} /> {label}</dt>
-              <dd className="mt-1 text-2xl font-bold">{n}</dd>
-            </div>
-          ))}
-        </dl>
+        <div className="card mt-4 overflow-x-auto">
+          <table className="w-full text-sm" data-testid="launch-pulse">
+            <thead>
+              <tr className="border-b border-border text-left text-xs text-muted">
+                <th scope="col" className="p-3 font-semibold"><span className="sr-only">{t("admin.pulseWhat")}</span></th>
+                <th scope="col" className="p-3 text-right font-semibold">{t("admin.pulse7")}</th>
+                <th scope="col" className="p-3 text-right font-semibold">{t("admin.pulse30")}</th>
+                <th scope="col" className="p-3 text-right font-semibold">{t("admin.pulseAll")}</th>
+              </tr>
+            </thead>
+            <tbody className="tabular-nums">
+              {pulse.map(([icon, get, label]) => (
+                <tr key={label} className="border-b border-border/60 last:border-0">
+                  <th scope="row" className="p-3 text-left font-normal"><span className="inline-flex items-center gap-1.5"><Icon name={icon} className="text-muted" /> {label}</span></th>
+                  {periods.map((m, i) => <td key={i} className={`p-3 text-right ${i === 2 ? "font-bold" : ""}`}>{get(m)}</td>)}
+                </tr>
+              ))}
+              <tr>
+                <th scope="row" className="p-3 text-left font-normal"><span className="inline-flex items-center gap-1.5"><Icon name="user-check" className="text-muted" /> {t("admin.pulseVerifiedGms")}</span></th>
+                <td className="p-3 text-right text-muted">–</td>
+                <td className="p-3 text-right text-muted">–</td>
+                <td className="p-3 text-right font-bold">{verified}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <p className="mt-4 text-sm">
           <Link href="/admin/errors" className={`inline-flex items-center gap-1.5 hover:underline ${errors > 0 ? "font-semibold text-danger" : "text-muted"}`}>
             <Icon name="triangle-warning" /> {t("admin.pulseErrors", { n: errors })}

@@ -139,7 +139,7 @@ export function listReports(status: "open" | "resolved" | "dismissed", limit = 1
     .all(status, limit) as ReportRow[];
 }
 
-export type AdminAction = "suspend" | "unsuspend" | "verify" | "unverify" | "report_remove" | "report_suspend" | "report_dismiss" | "reset_portrait";
+export type AdminAction = "suspend" | "unsuspend" | "verify" | "unverify" | "report_remove" | "report_suspend" | "report_dismiss" | "reset_portrait" | "gm_invite" | "gm_invite_accepted" | "prelaunch_on" | "prelaunch_off";
 
 /** Record a moderator action (shown on the admin home). */
 export function logAdminAction(adminId: number, action: AdminAction, targetUserId: number | null, detail = "", c: DatabaseSync = db()): void {
@@ -257,11 +257,19 @@ export function adminStats() {
 }
 
 /** Launch pulse: activity in the last `days` days. */
-export function launchMetrics(days = 7) {
-  const since = new Date(Date.now() - days * 86_400_000).toISOString();
-  const n = (sql: string) => (db().prepare(sql).get(since) as { n: number }).n;
+/** New activity in the last `days` (null = all time), counted from the database: no tracking scripts. */
+export function launchMetrics(days: number | null = 7) {
+  const now = new Date().toISOString();
+  const since = days === null ? "0000" : new Date(Date.now() - days * 86_400_000).toISOString();
+  const n = (sql: string, ...more: string[]) => (db().prepare(sql).get(since, ...more) as { n: number }).n;
   return {
     signups: n("SELECT COUNT(*) AS n FROM users WHERE created_at >= ? AND deleted_at IS NULL"),
+    // GMs who joined in the period and filled in their GM profile.
+    newGms: n("SELECT COUNT(*) AS n FROM users u JOIN gm_profiles p ON p.user_id = u.id WHERE u.created_at >= ? AND u.deleted_at IS NULL AND p.headline <> ''"),
+    // Sessions that took place (started, not cancelled) with at least one booked player.
+    sessionsPlayed: n(
+      `SELECT COUNT(*) AS n FROM game_sessions s WHERE s.starts_at >= ? AND s.starts_at <= ? AND s.status <> 'cancelled'
+         AND EXISTS (SELECT 1 FROM bookings b WHERE b.session_id = s.id AND b.status = 'confirmed')`, now),
     gamesPublished: n("SELECT COUNT(*) AS n FROM games WHERE status = 'published' AND COALESCE(announced_at, created_at) >= ?"),
     seatsBooked: n("SELECT COUNT(*) AS n FROM bookings WHERE status = 'confirmed' AND created_at >= ?"),
     questions: n("SELECT COUNT(*) AS n FROM game_questions WHERE created_at >= ?"),
@@ -269,6 +277,10 @@ export function launchMetrics(days = 7) {
     gmRequests: n("SELECT COUNT(*) AS n FROM gm_requests WHERE created_at >= ?"),
   };
 }
+
+/** Verified GMs right now (no history of when they were verified). */
+export const verifiedGmCount = () =>
+  (db().prepare("SELECT COUNT(*) AS n FROM gm_profiles p JOIN users u ON u.id = p.user_id WHERE p.verified = 1 AND u.deleted_at IS NULL").get() as { n: number }).n;
 
 export type AdminGmRow = { id: number; name: string; email: string; headline: string; verified: number; games: number; open_reports: number; suspended: number; created_at: string; payment_changes: number };
 

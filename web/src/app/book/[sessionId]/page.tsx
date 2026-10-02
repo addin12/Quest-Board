@@ -11,6 +11,7 @@ import { Cover, Notice, priceLabel } from "@/components/ui";
 import { LocalTime } from "@/components/local-time";
 import { ReserveForm } from "@/components/reserve-form";
 import { Icon } from "@/components/icon";
+import { isPrelaunch } from "@/lib/prelaunch";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -47,7 +48,9 @@ export default async function BookPage(props: PageProps<"/book/[sessionId]">) {
           {verdict.ok && offer?.expires_at && (
             <div className="mb-4"><Notice tone="success">{t("wait.offerNotice")} <LocalTime iso={offer.expires_at} /></Notice></div>
           )}
-          {verdict.ok ? (
+          {isPrelaunch() ? (
+            <Notice tone="info">{t("err.prelaunch")} <Link href="/opening" className="font-semibold text-accent hover:underline">{t("prelaunch.notifyLink")}</Link></Notice>
+          ) : verdict.ok ? (
             <ReserveForm sessionId={s.id} priceText={price} isFree={s.price_idr === 0} startsAt={s.starts_at} price={s.price_idr} />
           ) : (
             <Notice tone="danger">{t(verdict.reason)}</Notice>

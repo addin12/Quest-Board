@@ -45,7 +45,7 @@ export default defineConfig({
     { name: "webkit", testMatch: /cross-browser.spec.ts/, workers: 1, metadata: { db: "data/e2e.db" }, use: { browserName: "webkit" } },
   ],
   webServer: [{
-    command: `node scripts/reset-db.mjs data/e2e.db data/e2e-uploads && npx next start -p ${PORT}`,
+    command: `node scripts/reset-db.mjs data/e2e.db data/e2e-uploads && npx next start --keepAliveTimeout 130000 -p ${PORT}`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: false,
     timeout: 120_000,
@@ -53,13 +53,13 @@ export default defineConfig({
     // sign-up and login; P1-9 still proves the login limiter works at the raised value (E2E_LOGIN_LIMIT).
     env: { QUESTBOARD_DB: "data/e2e.db", QUESTBOARD_UPLOAD_DIR: "data/e2e-uploads", ...SEEDED_ENV },
   }, {
-    command: `node scripts/reset-db.mjs data/e2e-2.db data/e2e-2-uploads && npx next start -p ${PORT_2}`,
+    command: `node scripts/reset-db.mjs data/e2e-2.db data/e2e-2-uploads && npx next start --keepAliveTimeout 130000 -p ${PORT_2}`,
     url: `http://localhost:${PORT_2}`,
     reuseExistingServer: false,
     timeout: 120_000,
     env: { QUESTBOARD_DB: "data/e2e-2.db", QUESTBOARD_UPLOAD_DIR: "data/e2e-2-uploads", ...SEEDED_ENV },
   }, {
-    command: `node scripts/reset-db.mjs data/e2e-empty.db data/e2e-empty-uploads && npx next start -p ${EMPTY_PORT}`,
+    command: `node scripts/reset-db.mjs data/e2e-empty.db data/e2e-empty-uploads && npx next start --keepAliveTimeout 130000 -p ${EMPTY_PORT}`,
     url: `http://localhost:${EMPTY_PORT}`,
     reuseExistingServer: false,
     timeout: 120_000,

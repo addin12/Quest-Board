@@ -34,6 +34,7 @@ export default async function DevEmailsPage(props: PageProps<"/dev/emails">) {
     { id: "email-taken", about: "Change login email: the address already has an account", subject: "mail.emailTakenSubject", body: "mail.emailTakenBody", vars: { name: "Budi", when: now, login: `${site}/login` } },
     { id: "app-down", about: "Admins: the site is down (sent by the scheduler)", subject: "mail.appDownSubject", body: "mail.appDownBody", vars: { name: "Andi", minutes: 10, since: now, detail: "fetch failed: connect ECONNREFUSED" } },
     { id: "app-up", about: "Admins: the site is back", subject: "mail.appUpSubject", body: "mail.appUpBody", vars: { name: "Andi", minutes: 14, since: now } },
+    { id: "opening", about: "Pre-launch list: we're open", subject: "mail.openingSubject", body: "mail.openingBody", vars: { link: `${site}/games` } },
     { id: "password-changed", about: "Password changed", subject: "mail.passwordChangedSubject", body: "mail.passwordChangedBody", vars: { name: "Andi", when: now, link: `${site}/forgot-password` } },
     { id: "payment-changed", about: "GM payment details changed", subject: "mail.paymentChangedSubject", body: "mail.paymentChangedBody", vars: { name: "Dewi", when: now, details: "BCA 123-456-7890 a.n. Dewi Lestari", link: `${site}/forgot-password` } },
     { id: "two-step-on", about: "Two-step login turned on", subject: "mail.twoStepOnSubject", body: "mail.twoStepOnBody", vars: { name: "Andi", when: now, link: `${site}/forgot-password` } },

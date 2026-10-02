@@ -5,7 +5,10 @@ import { getI18n } from "@/lib/i18n/server";
 import { adminStats, listGmsForAdmin } from "@/lib/moderation";
 import { VerifiedBadge } from "@/components/ui";
 import { Icon } from "@/components/icon";
-import { setGmVerifiedAction } from "@/app/actions";
+import { revokeGmInviteAction, setGmVerifiedAction } from "@/app/actions";
+import { listGmInvites } from "@/lib/gm-invites";
+import { GmInviteForm } from "@/components/gm-invite-form";
+import { LocalTime } from "@/components/local-time";
 import { AdminNav } from "../admin-nav";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -18,11 +21,38 @@ export default async function AdminGmsPage(props: PageProps<"/admin/gms">) {
   const { t } = await getI18n();
   const q = String((await props.searchParams).q ?? "").slice(0, 80);
   const rows = listGmsForAdmin(q);
+  const invites = listGmInvites();
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       <h1 className="text-3xl font-bold">{t("admin.gms")}</h1>
       <p className="mt-1 mb-6 text-muted">{t("admin.gmsLead")}</p>
       <AdminNav t={t} current="gms" openReports={adminStats().openReports} />
+      <section className="card mb-8 p-5" aria-labelledby="invites-h">
+        <h2 id="invites-h" className="flex items-center gap-2 text-lg font-bold"><Icon name="hat-wizard" className="text-accent" /> {t("admin.invites")}</h2>
+        <p className="mt-1 mb-4 text-sm text-muted">{t("admin.invitesLead")}</p>
+        <GmInviteForm />
+        {invites.length === 0 ? (
+          <p className="mt-4 text-sm text-muted">{t("admin.invitesEmpty")}</p>
+        ) : (
+          <ul className="mt-4 divide-y divide-border text-sm" data-testid="invites">
+            {invites.map((i) => (
+              <li key={i.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+                <span className="font-semibold">{i.note || "—"}</span>
+                <span className="text-muted">
+                  {i.status === "used" ? t("admin.inviteUsed", { name: i.used_by_name ?? "?" }) : i.status === "expired" ? t("admin.inviteExpired") : <>{t("admin.inviteOpenUntil")} <LocalTime iso={i.expires_at} mode="date" /></>}
+                </span>
+                {i.status === "open" && (
+                  <form action={revokeGmInviteAction} className="ml-auto">
+                    <input type="hidden" name="id" value={i.id} />
+                    <button className="text-xs font-semibold text-danger hover:underline">{t("admin.inviteRevoke")}</button>
+                  </form>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <form className="mb-5 flex max-w-md gap-2" role="search">
         <label htmlFor="q" className="sr-only">{t("admin.search")}</label>
         <input id="q" name="q" defaultValue={q} className="input" placeholder={t("admin.searchPh")} />

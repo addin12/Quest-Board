@@ -33,6 +33,8 @@ export const LIMITS = {
   upload: { limit: 30, windowMs: 60 * 60_000 },  // pictures per user (each one is decoded and re-encoded: CPU)
   twoStep: { limit: 200, windowMs: 10 * 60_000 }, // two-step codes per IP (each login step allows only 5; a password comes first)
   newDevice: { limit: 10, windowMs: 60 * 60_000 }, // "new device logged in" emails per user
+  launchNotify: { limit: 100, windowMs: 60 * 60_000 }, // "tell me when it opens" per IP (pre-launch)
+  cspReport: { limit: 100, windowMs: 60 * 60_000 }, // script-policy reports per IP (a broken page sends one per view)
   changes: { limit: 2000, windowMs: 60_000 }, // /api/changes polls per IP (one per open page every 15 s; stops hammering only)
 } as const;
 

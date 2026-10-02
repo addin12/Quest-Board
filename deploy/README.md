@@ -27,8 +27,12 @@ docker compose logs app        # "setup PROBLEM: …" lines mean something in .e
 Then create your admin account (production has no demo admin) — it prints a one-time password:
 
 ```sh
-docker compose exec app npm run admin -- create you@example.com "Your Name"
+docker compose exec app node scripts/admin.mjs create you@example.com "Your Name"
 ```
+
+Before opening to players you can turn on **pre-launch mode** on the admin home (GMs list games, players
+see "opening soon" and can leave their email) and invite your first GMs with links from **Admin → GMs**
+(they're verified as soon as they accept) — see docs/12-launch-checklist.md.
 
 Log in at `https://<your domain>/login`, change the password in Settings, and turn on **two-step login**
 (the admin console requires it). Open **Admin → Setup**: every line should say OK. The scheduled job
@@ -62,8 +66,8 @@ Set these up before launch: they are what saves the site if the server's disk di
 4. Fill in `QUESTBOARD_OFFSITE_*` in `.env`, then `docker compose up -d` and make the first copy now:
 
    ```sh
-   docker compose exec scheduler npm run db:backup
-   docker compose exec scheduler npm run db:offsite
+   docker compose exec scheduler node scripts/db-backup.mjs backup
+   docker compose exec scheduler node scripts/offsite.mjs
    ```
 
 **Admin → Setup** shows "Off-site copy of backups: OK" with the time of the last copy, and "Fix" if a
@@ -164,7 +168,7 @@ first fetch the newest off-site copy and every picture, then restore the file it
 
 ```sh
 docker compose up -d --build && docker compose stop app scheduler
-docker compose run --rm app npm run db:fetch-offsite      # prints the restore command to run next
+docker compose run --rm app node scripts/offsite.mjs fetch      # prints the restore command to run next
 docker compose run --rm app node scripts/db-backup.mjs restore /data/backups/<file>.db --yes
 docker compose start app scheduler
 ```

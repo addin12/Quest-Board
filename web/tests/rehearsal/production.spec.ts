@@ -32,6 +32,8 @@ async function logIn(page: Page) {
 }
 
 test("HTTPS only: http redirects, HSTS and the script policy are on, developer pages don't exist", async ({ request }) => {
+  // The image carries no npm (web/Dockerfile): the server's commands are node scripts/….
+  expect(compose("exec", "-T", "app", "sh", "-c", "command -v npm npx corepack || echo none").trim()).toBe("none");
   const plain = await request.get("http://localhost:8080/games", { maxRedirects: 0 });
   expect([301, 302, 307, 308]).toContain(plain.status());
   expect(plain.headers()["location"]).toMatch(/^https:\/\/localhost/);
@@ -54,7 +56,7 @@ test("the scheduler container runs the job", async ({ request }) => {
 });
 
 test("the first admin: CLI account, Secure cookie, two-step login required, then the setup check", async ({ page, context }) => {
-  const out = compose("exec", "-T", "app", "npm", "run", "admin", "--", "create", ADMIN, "Rehearsal Owner");
+  const out = compose("exec", "-T", "app", "node", "scripts/admin.mjs", "create", ADMIN, "Rehearsal Owner");
   password = /\n\s*(\S{12,})\s*$/.exec(out.trim().split("One-time password")[1] ?? "")?.[1] ?? "";
   expect(password, out).not.toBe("");
 
@@ -103,8 +105,8 @@ test("the first admin: CLI account, Secure cookie, two-step login required, then
   for (const [stamp, daysAgo] of [["20000103-200000", 20], ["20000102-200000", 90], ["20000101-200000", 100]] as const)
     await fakes("/seed-object", { key: `rehearsal-bucket/questboard/db/questboard-${stamp}.db.gz`, daysAgo });
   // A real backup and its off-site copy (what the scheduler does every night), then both turn OK.
-  compose("exec", "-T", "scheduler", "npm", "run", "db:backup");
-  compose("exec", "-T", "scheduler", "npm", "run", "db:offsite");
+  compose("exec", "-T", "scheduler", "node", "scripts/db-backup.mjs", "backup");
+  compose("exec", "-T", "scheduler", "node", "scripts/offsite.mjs");
   await page.reload();
   expect(await level("Backups")).toBe("ok");
   expect(await level("Off-site copy of backups")).toBe("ok");
@@ -122,7 +124,7 @@ test("recovery after losing the server's data: fetch the off-site copy and resto
   // The disaster: the database, the local backups and the pictures are gone.
   compose("run", "--rm", "--no-deps", "app", "sh", "-c", "rm -rf /data/questboard.db /data/questboard.db-wal /data/questboard.db-shm /data/backups /data/uploads");
   // The README's recovery steps, word for word.
-  const fetched = compose("run", "--rm", "--no-deps", "app", "npm", "run", "db:fetch-offsite");
+  const fetched = compose("run", "--rm", "--no-deps", "app", "node", "scripts/offsite.mjs", "fetch");
   const file = /restore (\S+\.db) --yes/.exec(fetched)?.[1];
   expect(file, fetched).toMatch(/^\/data\/backups\/questboard-.+\.db$/);
   compose("run", "--rm", "--no-deps", "app", "node", "scripts/db-backup.mjs", "restore", file!, "--yes");

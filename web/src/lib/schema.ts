@@ -40,7 +40,8 @@
 // v35: email_outbox.provider / optional / expires_at / deferred (a second provider, daily limits),
 //      email_changes (changing the login email: a link to the new address).
 // v36: email_suppressions (bounced / spam-reported addresses) + email_outbox.suppressed.
-export const SCHEMA_VERSION = 36;
+// v37: gm_invites (founding-GM invitation links) + launch_notify (pre-launch "tell me when it opens").
+export const SCHEMA_VERSION = 37;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -358,6 +359,22 @@ CREATE TABLE IF NOT EXISTS email_outbox (
   expires_at  TEXT,                        -- v35: not worth sending after this, or NULL
   deferred    INTEGER NOT NULL DEFAULT 0,  -- v35: 1 = waiting for room under the daily limit (not a failure)
   suppressed  INTEGER NOT NULL DEFAULT 0   -- v36: 1 = not sent: optional, and the address bounced or reported spam
+);
+
+CREATE TABLE IF NOT EXISTS gm_invites (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  token_hash  TEXT NOT NULL UNIQUE,     -- SHA-256 of the link's token
+  note        TEXT NOT NULL DEFAULT '', -- who it's for (admins only)
+  created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  expires_at  TEXT NOT NULL,
+  used_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  used_at     TEXT
+);
+CREATE TABLE IF NOT EXISTS launch_notify (
+  email       TEXT PRIMARY KEY COLLATE NOCASE, -- asked to be told when Quest Board opens (deleted once told)
+  lang        TEXT NOT NULL DEFAULT 'en' CHECK (lang IN ('en','id')),
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
 CREATE TABLE IF NOT EXISTS email_suppressions (

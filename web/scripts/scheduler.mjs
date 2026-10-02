@@ -1,7 +1,7 @@
 // The deployment's clock (deploy/docker-compose.yml runs it next to the app):
 //   • every QUESTBOARD_CRON_MINUTES (default 5): POST the app's /api/cron/reminders with QUESTBOARD_CRON_SECRET
 //     (reminders, notification emails, retries, waitlists, digest, clean-up);
-//   • once a day at QUESTBOARD_BACKUP_HOUR_UTC (default 20, i.e. 03:00 WIB): npm run db:backup into
+//   • once a day at QUESTBOARD_BACKUP_HOUR_UTC (default 20, i.e. 03:00 WIB): scripts/db-backup.mjs into
 //     QUESTBOARD_BACKUP_DIR on the shared data volume (the database and uploaded pictures), then a copy
 //     to off-site storage when QUESTBOARD_OFFSITE_* is set (scripts/offsite.mjs);
 //   • every minute: the app's /api/health — after QUESTBOARD_DOWN_ALERT_MINUTES (default 10) without an

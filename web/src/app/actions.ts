@@ -14,6 +14,8 @@ import { isEmail, parseGame, parseGmRequest, parseOffer, parseProfile, parseRepe
 import { cancelEmailChanges, consumeEmailChange, requestEmailChange } from "@/lib/email-change";
 import { isCommonPassword } from "@/lib/common-passwords";
 import { clearSuppression } from "@/lib/email-suppression";
+import { acceptGmInvite, createGmInvite, revokeGmInvite } from "@/lib/gm-invites";
+import { addLaunchNotify, isPrelaunch, setPrelaunch } from "@/lib/prelaunch";
 import { normalizeCategories } from "@/lib/categories";
 import { canReview, getGameById, getGmRequest, getGmSettings, getSessionWithGame, isGameMember, maxSeatsTakenUpcoming, removedFromSession } from "@/lib/queries";
 import { LANG_COOKIE, type MsgKey } from "@/lib/i18n/dict";
@@ -104,7 +106,8 @@ async function signupActionImpl(_: FormState, form: FormData): Promise<FormState
   if (!parsed.ok) return { fieldErrors: parsed.errors };
   const { name, email, password, role } = parsed.value;
   if (!hit("signup", await clientIp())) return { error: "err.rateLimited" };
-  const after = role === "gm" ? "/gm" : safeNext(form.get("next"));
+  // An explicit next (e.g. a founding-GM invite) wins; otherwise new GMs land on their dashboard.
+  const after = form.get("next") ? safeNext(form.get("next")) : role === "gm" ? "/gm" : safeNext(null);
 
   // Never reveal whether an address is registered: an existing account gets the same "check your
   // email" page as a new one, and its owner a heads-up (at most twice an hour) instead of a link.
@@ -568,6 +571,7 @@ export async function duplicateGameAction(form: FormData) {
 async function reserveSeatActionImpl(_: FormState, form: FormData): Promise<FormState> {
   const sessionId = Number(form.get("sessionId"));
   const user = await requireUser(`/book/${sessionId}`);
+  if (isPrelaunch()) return { error: "err.prelaunch" }; // GMs first: bookings open soon
   if (form.get("agree") !== "on") return { error: "err.mustAgree" };
   if (!hit("reserve", String(user.id))) return { error: "err.rateLimited" };
 
@@ -1071,6 +1075,7 @@ async function deleteAccountActionImpl(_: FormState, form: FormData): Promise<Fo
 export async function joinWaitlistAction(form: FormData) {
   const sessionId = Number(form.get("sessionId"));
   const user = await requireUser(`/games/${String(form.get("slug") ?? "")}`);
+  if (isPrelaunch()) return revalidatePath("/", "layout"); // GMs first: nothing to wait for yet
   if (removedFromSession(sessionId, user.id)) return revalidatePath("/", "layout"); // the GM released their seat here
   const joined = joinWaitlist(sessionId, user.id); // "notFull" etc. just re-render the page with the right button
   if (joined === "ok") await toast("toast.waitJoined");
@@ -1300,6 +1305,48 @@ export async function resetPortraitAction(form: FormData) {
   logAdminAction(admin.id, "reset_portrait", userId);
   await toast("toast.portraitReset");
   revalidatePath("/", "layout");
+}
+
+/** /opening: one email when bookings open (pre-launch mode). */
+export async function joinLaunchListAction(_: FormState, form: FormData): Promise<FormState> {
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
+  if (!isEmail(email)) return { fieldErrors: { email: "v.email" }, values: { email } };
+  if (!hit("launchNotify", await clientIp())) return { error: "err.rateLimited" };
+  const { lang } = await getI18n();
+  if (isPrelaunch()) addLaunchNotify(email, lang === "id" ? "id" : "en");
+  return { ok: true, values: { email } };
+}
+
+/** Admin home: turn pre-launch mode on, or open to players. */
+export async function setPrelaunchAction(form: FormData) {
+  const admin = await requireAdmin();
+  setPrelaunch(form.get("on") === "1", admin.id);
+  revalidatePath("/", "layout");
+}
+
+/** Admin → GMs: a founding-GM invitation link (shown once). */
+export async function createGmInviteAction(_: FormState, form: FormData): Promise<FormState> {
+  const admin = await requireAdmin();
+  const raw = createGmInvite(admin.id, String(form.get("note") ?? ""));
+  revalidatePath("/admin/gms");
+  return { ok: true, values: { link: `${await siteOrigin()}/invite/${raw}` } };
+}
+
+export async function revokeGmInviteAction(form: FormData) {
+  await requireAdmin();
+  revokeGmInvite(Number(form.get("id")));
+  revalidatePath("/admin/gms");
+}
+
+/** The invite page's button: signed in, email confirmed → a verified GM. */
+export async function acceptGmInviteAction(form: FormData) {
+  const token = String(form.get("token") ?? "");
+  const user = await requireUser(`/invite/${encodeURIComponent(token)}`);
+  if (!user.email_verified) redirect(`/invite/${encodeURIComponent(token)}`);
+  if (!acceptGmInvite(token, user.id)) redirect(`/invite/${encodeURIComponent(token)}`);
+  await toast("toast.inviteAccepted");
+  revalidatePath("/", "layout");
+  redirect("/become-a-gm");
 }
 
 export async function setGmVerifiedAction(form: FormData) {

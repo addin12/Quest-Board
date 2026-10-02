@@ -472,6 +472,23 @@ export const MIGRATIONS: Record<number, string> = {
     );
     CREATE INDEX IF NOT EXISTS idx_email_changes_user ON email_changes(user_id);
   `,
+  37: `
+    CREATE TABLE IF NOT EXISTS gm_invites (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      token_hash  TEXT NOT NULL UNIQUE,     -- SHA-256 of the link's token
+      note        TEXT NOT NULL DEFAULT '', -- who it's for (admins only)
+      created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+      expires_at  TEXT NOT NULL,
+      used_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      used_at     TEXT
+    );
+    CREATE TABLE IF NOT EXISTS launch_notify (
+      email       TEXT PRIMARY KEY COLLATE NOCASE, -- asked to be told when Quest Board opens (deleted once told)
+      lang        TEXT NOT NULL DEFAULT 'en' CHECK (lang IN ('en','id')),
+      created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );
+  `,
   36: `
     ALTER TABLE email_outbox ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0;
     CREATE TABLE IF NOT EXISTS email_suppressions (

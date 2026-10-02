@@ -4,7 +4,8 @@
 // runs unless the server wrote it (no 'unsafe-inline' for scripts). Everything else (API routes,
 // files) runs no scripts at all. Dev additionally needs 'unsafe-eval' (React Refresh) and
 // websockets (HMR). Styles stay 'unsafe-inline': React style attributes need it.
-// Set QUESTBOARD_ENFORCE_HTTPS=true behind TLS to also upgrade insecure requests.
+// Set QUESTBOARD_ENFORCE_HTTPS=true behind TLS to also upgrade insecure requests. Browsers report what
+// the policy blocks to /api/csp-report (Admin → Server errors).
 
 // Read at call time, so the proxy and the config agree (tests run both a dev and a production server).
 const isDev = () => process.env.NODE_ENV === "development";
@@ -21,6 +22,7 @@ export function contentSecurityPolicy(nonce?: string): string {
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
+    "report-uri /api/csp-report",
     ...(process.env.QUESTBOARD_ENFORCE_HTTPS === "true" ? ["upgrade-insecure-requests"] : []),
   ].join("; ");
 }

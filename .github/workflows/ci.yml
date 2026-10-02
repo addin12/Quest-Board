@@ -102,12 +102,10 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run rehearsal
 
-      # The image the rehearsal built, scanned for known security problems: all high and critical ones are
-      # listed; a critical one that already has a fix fails the job (rebuild on a newer base image).
+      # The image the rehearsal built, scanned for known security problems: a high or critical one that
+      # already has a fix fails the job (rebuild on a newer base image, or update the package).
       - name: Scan the image (Trivy)
-        run: |
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --quiet --severity HIGH,CRITICAL --exit-code 0 questboard-app
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --quiet --severity CRITICAL --ignore-unfixed --exit-code 1 questboard-app
+        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --quiet --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 questboard-app
 
       # A busy evening on the smallest setup (npm run load-rehearsal): no errors, no overbooking, memory under the caps.
       - name: Load rehearsal
@@ -122,12 +120,32 @@ jobs:
           path: web/test-results/
           retention-days: 7
 
+  # A busy evening on the smallest setup (npm run load-rehearsal): no errors, no overbooking, memory
+  # under the caps. Its own job, so it runs alongside the rehearsals instead of after one.
+  load:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+      - run: npm run load-rehearsal -- --users 100 --seconds 90
+
   # The ready-made image (deploy/README.md, "Small servers"): after every green push to main, the
   # production image is built on both processors and published as one multi-platform image, so a small
   # server downloads it instead of building (a Next.js build needs more memory than a 1 GB server has).
   image:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [test, e2e, rehearsal]
+    needs: [test, e2e, rehearsal, load]
     strategy:
       matrix:
         include:

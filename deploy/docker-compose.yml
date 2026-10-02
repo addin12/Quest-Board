@@ -3,7 +3,7 @@
 #   With QUESTBOARD_IMAGE set (small servers: the ready-made image from GitHub), instead:
 #   docker compose pull app scheduler && docker compose up -d --no-build
 #   docker compose logs -f app        watch the app (setup problems are logged at start)
-#   docker compose exec app npm run admin -- create you@example.com "Your Name"
+#   docker compose exec app node scripts/admin.mjs create you@example.com "Your Name"
 
 # Logs rotate (10 MB × 5 per service) so they can't fill a small server's disk.
 x-logging: &logging

@@ -148,7 +148,7 @@ test("the dev email gallery shows every email in both languages, with every plac
   for (const lang of ["en", "id"] as const) {
     await page.goto(`/dev/emails?lang=${lang}`);
     const mails = page.getByTestId("gallery-mail");
-    await expect(mails).toHaveCount(22);
+    await expect(mails).toHaveCount(23);
     const texts = [...(await page.getByTestId("gallery-subject").allInnerTexts()), ...(await page.getByTestId("gallery-body").allInnerTexts())];
     for (const text of texts) expect(text, `[${lang}] ${text.slice(0, 60)}`).not.toMatch(/\{\w+\}/);
   }
