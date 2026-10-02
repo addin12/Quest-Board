@@ -129,6 +129,9 @@ test("admins can turn on two-step login, then need a code from their app to log 
     await third.getByLabel("6-digit code").fill("000000");
     await third.getByRole("button", { name: "Log in" }).click();
     await expect.poll(attempts).toBe(i); // the same message stays up, so wait for each answer to count
+    // …and for the reply to be handled ("Checking…" back to "Log in"): it resets the form, which would
+    // otherwise wipe the next code as it's typed and send an empty one (seen once on CI).
+    await expect(third.getByRole("button", { name: "Log in" })).toBeEnabled();
     await expect(third.getByText("That code didn't work.")).toBeVisible();
   }
   await third.getByLabel("6-digit code").fill("000000");

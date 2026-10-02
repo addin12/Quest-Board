@@ -6,7 +6,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 /** Set by Node, Next.js or the test tools — not something an owner configures. */
-const NOT_SETTINGS = new Set(["NODE_ENV", "NEXT_RUNTIME", "PORT", "CI", "NEXT_TELEMETRY_DISABLED", "TZ", "PW_CHANNEL", "E2E_WORKERS"]);
+const NOT_SETTINGS = new Set(["NODE_ENV", "NEXT_RUNTIME", "PORT", "CI", "GITHUB_ACTIONS", "NEXT_TELEMETRY_DISABLED", "TZ", "PW_CHANNEL", "E2E_WORKERS"]);
 
 function files(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
