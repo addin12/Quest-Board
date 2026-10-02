@@ -1,9 +1,8 @@
 import "server-only";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { db } from "./db";
 import { hashToken, newSessionToken } from "./password";
 import { SESSION_COOKIE, secureCookies } from "./auth";
-import { deviceLabel } from "./device";
 import { sendEmail } from "./mailer";
 import { hit } from "./rate-limit";
 import { siteOrigin } from "./site";
@@ -16,10 +15,6 @@ import { formatMoment } from "./time-zones";
 
 export const DEVICE_COOKIE = "qb_device";
 const DEVICE_COOKIE_DAYS = 730;
-
-export async function currentDevice(): Promise<string> {
-  return deviceLabel((await headers()).get("user-agent"));
-}
 
 /** Records this browser for the account. True when it's new for an account that had used others. */
 export async function noteDevice(userId: number, device: string): Promise<boolean> {

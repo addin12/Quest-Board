@@ -105,7 +105,6 @@ export const mechanicsForSystem = (system: string) => MECHANICS.filter((m) => (m
 
 export type GenreKey = (typeof GENRES)[number]["key"];
 export type StyleKey = (typeof STYLES)[number]["key"];
-export type CategoryType = "genre" | "style" | "system" | "mechanic";
 
 /** Each game may carry at most this many genres and this many styles. */
 export const MAX_PER_GAME = 3;
