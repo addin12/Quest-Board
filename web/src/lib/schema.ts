@@ -41,7 +41,8 @@
 //      email_changes (changing the login email: a link to the new address).
 // v36: email_suppressions (bounced / spam-reported addresses) + email_outbox.suppressed.
 // v37: gm_invites (founding-GM invitation links) + launch_notify (pre-launch "tell me when it opens").
-export const SCHEMA_VERSION = 37;
+// v38: gm_profiles.refund_terms / payment_qr (QRIS picture), games.table_link, uploads kind 'qris'.
+export const SCHEMA_VERSION = 38;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -80,7 +81,9 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
   years_experience INTEGER NOT NULL DEFAULT 0,
   location         TEXT NOT NULL DEFAULT 'Online', -- GM's city (e.g. Jakarta) or 'Online'
   verified         INTEGER NOT NULL DEFAULT 0,
-  payment_info     TEXT NOT NULL DEFAULT ''     -- how players pay the GM directly; shown to booked players only
+  payment_info     TEXT NOT NULL DEFAULT '',    -- how players pay the GM directly; shown to booked players only
+  refund_terms     TEXT NOT NULL DEFAULT '',    -- v38: cancellation & refund terms, shown to everyone before booking
+  payment_qr       TEXT NOT NULL DEFAULT ''     -- v38: their QRIS code (/uploads/… of kind 'qris'), served to booked players only
 );
 
 CREATE TABLE IF NOT EXISTS auth_sessions (
@@ -123,6 +126,7 @@ CREATE TABLE IF NOT EXISTS games (
   location_type      TEXT NOT NULL CHECK (location_type IN ('online','in_person')),
   language           TEXT NOT NULL DEFAULT 'id' CHECK (language IN ('id','en','both')),
   platform           TEXT NOT NULL DEFAULT '',
+  table_link         TEXT NOT NULL DEFAULT '',   -- v38: Discord/Meet link for online games, booked players only
   city               TEXT NOT NULL DEFAULT '',
   price_idr          INTEGER NOT NULL CHECK (price_idr >= 0),   -- whole Rupiah, paid to the GM directly
   seats_total        INTEGER NOT NULL CHECK (seats_total BETWEEN 1 AND 12),
@@ -472,7 +476,7 @@ CREATE INDEX IF NOT EXISTS idx_admin_log_created ON admin_log(created_at);
 CREATE TABLE IF NOT EXISTS uploads (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  kind       TEXT NOT NULL CHECK (kind IN ('cover','portrait')),
+  kind       TEXT NOT NULL CHECK (kind IN ('cover','portrait','qris')),
   file       TEXT NOT NULL UNIQUE,   -- random name, served at /uploads/<file>
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );

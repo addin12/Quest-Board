@@ -237,6 +237,11 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
               </p>
               <p className="text-sm text-muted">{t("game.seatsPerSession", { n: game.seats_total })}</p>
               {game.price_idr > 0 && <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted"><Icon name="percentage" /> {t("game.paidToGm")}</p>}
+              {/* Payments go straight to the GM, so their refund terms come before anyone books. */}
+              <div className="mt-3 border-t border-border pt-3 text-sm" data-testid="refund-terms">
+                <p className="font-semibold">{t("game.refundTitle")}</p>
+                <p className="mt-1 whitespace-pre-line text-muted">{game.gm_refund_terms || t("game.refundNone")}</p>
+              </div>
               <h2 className="eyebrow mt-5 flex items-center gap-1.5"><Icon name="calendar" /> {t("game.upcoming")}</h2>
               {sessions.length === 0 ? (
                 <p className="mt-2 text-sm text-muted">{t("game.noSessions")}</p>
@@ -294,12 +299,23 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
               )}
             </div>
 
+            {member && game.location_type === "online" && game.table_link && (
+              <div className="card p-5" data-testid="table-link">
+                <h2 className="eyebrow flex items-center gap-1.5 text-accent!"><Icon name="link-alt" /> {t("game.tableLinkTitle")}</h2>
+                <a href={game.table_link} target="_blank" rel="noopener noreferrer nofollow" className="mt-2 block break-all text-sm font-semibold text-accent hover:underline">{game.table_link}</a>
+                <p className="mt-1 text-xs text-muted">{t("game.tableLinkHint")}</p>
+              </div>
+            )}
             {member && user?.id !== game.gm_id && (
               <div className="card border-accent/40! p-5">
                 <h2 className="eyebrow flex items-center gap-1.5 text-accent!"><Icon name="wallet" /> {t("game.howToPay")}</h2>
-                <p className="mt-2 whitespace-pre-line text-sm">{game.gm_payment_info || t("game.howToPayEmpty")}</p>
-                {game.gm_payment_info && <PaymentChangedNote gmId={game.gm_id} />}
-                {game.gm_payment_info && <ReportButton targetType="user" targetId={game.gm_id} label={t("report.paymentDetails")} defaultReason="scam" className="mt-2" />}
+                <p className="mt-2 whitespace-pre-line text-sm">{game.gm_payment_info || (game.gm_has_qr ? "" : t("game.howToPayEmpty"))}</p>
+                {game.gm_has_qr ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- a private picture behind a permission check, not for next/image
+                  <img src={`/payment-qr/${game.gm_id}`} alt={t("game.qrisAlt")} className="mt-3 w-full max-w-56 rounded-md border border-border bg-white p-2" data-testid="payment-qr" />
+                ) : null}
+                {(game.gm_payment_info || game.gm_has_qr) ? <PaymentChangedNote gmId={game.gm_id} /> : null}
+                {(game.gm_payment_info || game.gm_has_qr) ? <ReportButton targetType="user" targetId={game.gm_id} label={t("report.paymentDetails")} defaultReason="scam" className="mt-2" /> : null}
                 <p className="mt-3 flex items-start gap-1.5 border-t border-border pt-3 text-xs text-muted">
                   <Icon name="shield-check" className="mt-0.5 shrink-0 text-accent" /> {t("game.scamWarning")}
                 </p>

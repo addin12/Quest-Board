@@ -1,6 +1,6 @@
 // Pure: what an uploaded picture may be, and where it lives. (lib/uploads.ts does the work.)
 
-export type UploadKind = "cover" | "portrait";
+export type UploadKind = "cover" | "portrait" | "qris";
 
 /** Biggest file accepted from a phone camera; it's re-encoded much smaller. */
 export const UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
@@ -9,6 +9,7 @@ export const UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 export const UPLOAD_SIZES: Record<UploadKind, { width: number; height: number }> = {
   cover: { width: 1600, height: 800 },
   portrait: { width: 512, height: 512 },
+  qris: { width: 900, height: 900 }, // the most it's scaled down to; never cropped (lib/uploads.ts)
 };
 
 export const UPLOAD_ACCEPT = "image/jpeg,image/png,image/webp";

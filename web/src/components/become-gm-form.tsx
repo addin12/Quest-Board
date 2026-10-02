@@ -13,6 +13,7 @@ const LOCATION_SUGGESTIONS = ["Online", "Jakarta", "Bandung", "Surabaya", "Yogya
 
 type Defaults = {
   headline: string; systems: string; years: number; location: string; bio: string; paymentInfo: string;
+  refundTerms: string; hasQr: boolean;
   /** "" = initials avatar; otherwise a library portrait or the GM's current one. */
   avatarImage: string; name: string; hue: number;
 };
@@ -68,6 +69,23 @@ export function BecomeGmForm({ defaults }: { defaults: Defaults }) {
         <label htmlFor="paymentInfo" className="label flex items-center gap-1.5"><Icon name="wallet" className="text-accent" /> {t("becomeGm.payment")}</label>
         <textarea id="paymentInfo" name="paymentInfo" rows={3} maxLength={500} defaultValue={val("paymentInfo", defaults.paymentInfo)} className="input" placeholder={t("becomeGm.paymentPh")} />
         <p className="mt-1 text-xs text-muted">{t("becomeGm.paymentHint")}</p>
+      </div>
+      <div>
+        <label htmlFor="qrisUpload" className="label flex items-center gap-1.5"><Icon name="wallet" className="text-accent" /> {t("becomeGm.qris")}</label>
+        {defaults.hasQr && (
+          <div className="mb-2 flex flex-wrap items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element -- a private picture behind a permission check, not for next/image */}
+            <img src="/payment-qr/me" alt={t("game.qrisAlt")} className="h-28 w-28 rounded border border-border bg-white object-contain p-1" />
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="removeQris" value="1" /> {t("becomeGm.qrisRemove")}</label>
+          </div>
+        )}
+        <input id="qrisUpload" name="qrisUpload" type="file" accept="image/png,image/jpeg,image/webp" className="input" {...errAttrs("qris", fe.qris)} />
+        {fe.qris ? <FieldError id="qris" msg={t(fe.qris)} /> : <p className="mt-1 text-xs text-muted">{t("becomeGm.qrisHint")}</p>}
+      </div>
+      <div>
+        <label htmlFor="refundTerms" className="label">{t("becomeGm.refund")}</label>
+        <textarea id="refundTerms" name="refundTerms" rows={3} maxLength={500} defaultValue={val("refundTerms", defaults.refundTerms)} className="input" placeholder={t("becomeGm.refundPh")} />
+        <p className="mt-1 text-xs text-muted">{t("becomeGm.refundHint")}</p>
       </div>
       {state?.error && <Notice tone="danger">{t(state.error)}</Notice>}
       <SubmitButton className="btn-primary w-full" pendingText={t("common.saving")}>{t("becomeGm.save")}</SubmitButton>

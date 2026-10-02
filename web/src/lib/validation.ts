@@ -148,6 +148,8 @@ export type GameInput = {
   locationType: "online" | "in_person";
   language: GameLanguage;
   platform: string;
+  /** Online only: the Discord/Meet/… link booked players use to join ("" when not set). */
+  tableLink: string;
   city: string;
   priceIdr: number;
   seatsTotal: number;
@@ -177,6 +179,7 @@ export function parseGame(raw: Record<string, unknown>): Parsed<GameInput> {
   const locationType = raw.locationType === "in_person" ? "in_person" : "online";
   const language: GameLanguage = raw.language === "en" ? "en" : raw.language === "both" ? "both" : "id";
   const platform = str(raw.platform);
+  const tableLink = locationType === "online" ? str(raw.tableLink) : "";
   const city = str(raw.city);
   const priceIdr = parsePrice(raw.price);
   const seatsTotal = Number(str(raw.seatsTotal) || "0");
@@ -193,6 +196,8 @@ export function parseGame(raw: Record<string, unknown>): Parsed<GameInput> {
   if (!Number.isInteger(seatsTotal) || seatsTotal < 1 || seatsTotal > 12) errors.seatsTotal = "v.seats";
   if (!Number.isInteger(minAge) || minAge < 0 || minAge > 99) errors.minAge = "v.minAge";
   if (locationType === "online" && !platform) errors.platform = "v.platform";
+  // An https link and nothing else (it's shown as a link to players).
+  if (tableLink && (tableLink.length > 300 || !/^https:\/\/[^\s<>"']+\.[^\s<>"']+$/.test(tableLink))) errors.tableLink = "v.tableLink";
   if (locationType === "in_person" && !city) errors.city = "v.city";
 
   if (Object.keys(errors).length) return { ok: false, errors };
@@ -207,6 +212,7 @@ export function parseGame(raw: Record<string, unknown>): Parsed<GameInput> {
       locationType,
       language,
       platform,
+      tableLink,
       city,
       priceIdr,
       seatsTotal,

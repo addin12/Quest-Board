@@ -51,7 +51,13 @@ export default async function BookPage(props: PageProps<"/book/[sessionId]">) {
           {isPrelaunch() ? (
             <Notice tone="info">{t("err.prelaunch")} <Link href="/opening" className="font-semibold text-accent hover:underline">{t("prelaunch.notifyLink")}</Link></Notice>
           ) : verdict.ok ? (
-            <ReserveForm sessionId={s.id} priceText={price} isFree={s.price_idr === 0} startsAt={s.starts_at} price={s.price_idr} />
+            <>
+              <div className="mb-4 rounded-md border border-border bg-surface-2 p-3 text-sm" data-testid="refund-terms">
+                <p className="font-semibold">{t("game.refundTitle")}</p>
+                <p className="mt-1 whitespace-pre-line text-muted">{s.gm_refund_terms || t("game.refundNone")}</p>
+              </div>
+              <ReserveForm sessionId={s.id} priceText={price} isFree={s.price_idr === 0} startsAt={s.starts_at} price={s.price_idr} />
+            </>
           ) : (
             <Notice tone="danger">{t(verdict.reason)}</Notice>
           )}

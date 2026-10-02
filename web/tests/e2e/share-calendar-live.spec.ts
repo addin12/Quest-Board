@@ -72,6 +72,7 @@ test("right after booking, the confirmation offers Add to calendar", async ({ pa
   let title = "";
   for (const slug of ["signal-from-tartarus-station", "doskvol-setelah-gelap", "panen-harapan", "mahkota-yang-terbelah", "abomination-vaults"]) {
     await page.goto(`/games/${slug}`);
+    await page.getByRole("heading", { level: 1 }).waitFor(); // the page is there before counting (count() doesn't wait)
     if (await page.getByRole("link", { name: "Book" }).count()) {
       title = (await page.getByRole("heading", { level: 1 }).textContent()) ?? "";
       break;

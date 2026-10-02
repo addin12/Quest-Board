@@ -146,6 +146,7 @@ test("signed-in people can download their data; anonymous requests are refused",
 async function bookFirstOpenSeat(page: Page, slugs: string[]): Promise<string> {
   for (const slug of slugs) {
     await page.goto(`/games/${slug}`);
+    await page.getByRole("heading", { level: 1 }).waitFor(); // the page is there before counting (count() doesn't wait)
     if (await page.getByRole("link", { name: "Book" }).count()) {
       const title = ((await page.getByRole("heading", { level: 1 }).textContent()) ?? "").trim();
       await page.getByRole("link", { name: "Book" }).first().click();

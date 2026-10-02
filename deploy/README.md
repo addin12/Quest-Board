@@ -121,6 +121,21 @@ The kit already does the rest: the app runs as an unprivileged user on a read-on
 extra Linux capabilities, logs rotate so they can't fill the disk, and only Caddy is exposed. Keep
 `deploy/.env` readable only by you (`chmod 600 .env`): it holds your email and cron secrets.
 
+## Changing a secret
+
+If a secret leaked (or Admin → Setup says one is too short), make a new one and restart:
+
+```sh
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"   # a new random value
+nano .env                    # replace QUESTBOARD_CRON_SECRET (or QUESTBOARD_BREVO_WEBHOOK_TOKEN)
+docker compose up -d         # the app and the scheduler pick it up together
+```
+
+- **QUESTBOARD_BREVO_WEBHOOK_TOKEN**: also change the `?token=…` at the end of the webhook URL in Brevo.
+- **RESEND_WEBHOOK_SECRET**: in Resend, roll the endpoint's signing secret, then paste the new `whsec_…` here.
+- **RESEND_API_KEY / BREVO_API_KEY**: make a new key at the provider, put it here, then delete the old one there.
+- People's sessions, two-step codes and unsubscribe links don't depend on these, so nobody is logged out.
+
 ## Updating
 
 ```sh

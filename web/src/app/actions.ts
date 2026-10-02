@@ -18,7 +18,7 @@ import { acceptGmInvite, createGmInvite, revokeGmInvite } from "@/lib/gm-invites
 import { addLaunchNotify, isPrelaunch, setPrelaunch } from "@/lib/prelaunch";
 import { normalizeCategories } from "@/lib/categories";
 import { canReview, getGameById, getGmRequest, getGmSettings, getSessionWithGame, isGameMember, maxSeatsTakenUpcoming, removedFromSession } from "@/lib/queries";
-import { LANG_COOKIE, type MsgKey } from "@/lib/i18n/dict";
+import { LANG_COOKIE, makeT, type MsgKey } from "@/lib/i18n/dict";
 import { markAllRead, notify } from "@/lib/notifications";
 import { sendEmail } from "@/lib/mailer";
 import { movedEmail, seatRemovedEmail } from "@/lib/session-mail";
@@ -273,6 +273,7 @@ async function becomeGmActionImpl(_: FormState, form: FormData): Promise<FormSta
   const location = normalizeLocation(String(form.get("location") ?? ""));
   const bio = String(form.get("bio") ?? "").trim().slice(0, 2000);
   const paymentInfo = String(form.get("paymentInfo") ?? "").trim().slice(0, 500);
+  const refundTerms = String(form.get("refundTerms") ?? "").trim().slice(0, 500);
   let avatarImage = String(form.get("avatarImage") ?? "");
   const currentAvatar = (db().prepare("SELECT avatar_image FROM users WHERE id = ?").get(user.id) as { avatar_image: string }).avatar_image;
   const fieldErrors: FieldErrors = {};
@@ -288,23 +289,41 @@ async function becomeGmActionImpl(_: FormState, form: FormData): Promise<FormSta
     if (!up.ok) return { fieldErrors: { avatarImage: up.error } };
     avatarImage = up.path;
   }
-  const before = db().prepare("SELECT payment_info FROM gm_profiles WHERE user_id = ?").get(user.id) as { payment_info: string } | undefined;
+  const before = db().prepare("SELECT payment_info, payment_qr FROM gm_profiles WHERE user_id = ?").get(user.id) as { payment_info: string; payment_qr: string } | undefined;
+  // The QRIS code: a new picture, "remove", or the one they had.
+  let paymentQr = before?.payment_qr ?? "";
+  const qrFile = form.get("qrisUpload");
+  if (qrFile instanceof File && qrFile.size > 0) {
+    if (!hit("upload", String(user.id))) return { fieldErrors: { qris: "err.rateLimited" } };
+    const up = await saveUpload(user.id, "qris", qrFile);
+    if (!up.ok) return { fieldErrors: { qris: up.error } };
+    paymentQr = up.path;
+  } else if (form.get("removeQris") === "1") {
+    paymentQr = "";
+  }
 
   tx((c) => {
     c.prepare("UPDATE users SET bio = ?, avatar_image = ?, role = CASE WHEN role = 'admin' THEN role ELSE 'gm' END WHERE id = ?").run(bio, avatarImage, user.id);
     c.prepare(
-      `INSERT INTO gm_profiles (user_id, headline, systems, years_experience, location, payment_info) VALUES (?, ?, ?, ?, ?, ?)
+      `INSERT INTO gm_profiles (user_id, headline, systems, years_experience, location, payment_info, refund_terms, payment_qr) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(user_id) DO UPDATE SET headline = excluded.headline, systems = excluded.systems,
-         years_experience = excluded.years_experience, location = excluded.location, payment_info = excluded.payment_info`,
-    ).run(user.id, headline, systems, years, location, paymentInfo);
+         years_experience = excluded.years_experience, location = excluded.location, payment_info = excluded.payment_info,
+         refund_terms = excluded.refund_terms, payment_qr = excluded.payment_qr`,
+    ).run(user.id, headline, systems, years, location, paymentInfo, refundTerms, paymentQr);
   });
   if (currentAvatar !== avatarImage) discardUpload(currentAvatar);
+  if (before?.payment_qr && before.payment_qr !== paymentQr) discardUpload(before.payment_qr);
   if (user.role === "player") await rotateSession(user.id); // role changed: issue a fresh session token
   // Players pay the GM directly, so new payment details are what a hijacked account would change: tell the owner.
-  if (before?.payment_info && before.payment_info !== paymentInfo) {
+  // A swapped QRIS code is the same move as swapped account numbers, so it counts as a change too.
+  const hadDetails = !!(before?.payment_info || before?.payment_qr);
+  const qrChanged = (before?.payment_qr ?? "") !== paymentQr;
+  if (hadDetails && (before!.payment_info !== paymentInfo || qrChanged)) {
     // Players see "changed recently" for a while (PaymentChangedNote); admins see frequent changers.
     db().prepare("INSERT INTO payment_changes (user_id) VALUES (?)").run(user.id);
-    await sendPaymentDetailsChangedEmail(user.email, user.name, paymentInfo);
+    const { t } = await getI18n();
+    const qrLine = qrChanged ? `\n${t(paymentQr ? "mail.paymentQrNew" : "mail.paymentQrRemoved")}` : "";
+    await sendPaymentDetailsChangedEmail(user.email, user.name, `${paymentInfo}${qrLine}`.trim());
   }
   revalidatePath("/", "layout");
   redirect("/gm");
@@ -363,15 +382,15 @@ async function saveGameActionImpl(_: FormState, form: FormData): Promise<FormSta
     }
     // Once published, the address never changes: it's in shared links, emails and calendars.
     const slug = existing.status === "draft" && !existing.announced_at ? uniqueSlug(g.title, idRaw) : existing.slug;
-    const placeChanged = existing.location_type !== g.locationType || existing.city !== g.city || existing.platform !== g.platform;
+    const placeChanged = existing.location_type !== g.locationType || existing.city !== g.city || existing.platform !== g.platform || existing.table_link !== g.tableLink;
     db()
       .prepare(
-        `UPDATE games SET slug = ?, title = ?, system = ?, summary = ?, description = ?, format = ?, location_type = ?, language = ?, platform = ?, city = ?,
+        `UPDATE games SET slug = ?, title = ?, system = ?, summary = ?, description = ?, format = ?, location_type = ?, language = ?, platform = ?, table_link = ?, city = ?,
            price_idr = ?, seats_total = ?, experience_level = ?, min_age = ?, content_warnings = ?, safety_tools = ?, tags = ?, cover_hue = ?, cover_image = ?, genres = ?, styles = ?, status = ?
          WHERE id = ?`,
       )
       .run(
-        slug, g.title, g.system, g.summary, g.description, g.format, g.locationType, g.language, g.platform, g.city,
+        slug, g.title, g.system, g.summary, g.description, g.format, g.locationType, g.language, g.platform, g.tableLink, g.city,
         g.priceIdr, g.seatsTotal, g.experienceLevel, g.minAge, g.contentWarnings, g.safetyTools, g.tags, hue, coverImage, genres, styles, g.status, idRaw,
       );
     gameId = idRaw;
@@ -393,12 +412,12 @@ async function saveGameActionImpl(_: FormState, form: FormData): Promise<FormSta
     gameId = Number(
       db()
         .prepare(
-          `INSERT INTO games (gm_id, slug, title, system, summary, description, format, location_type, language, platform, city,
+          `INSERT INTO games (gm_id, slug, title, system, summary, description, format, location_type, language, platform, table_link, city,
              price_idr, seats_total, experience_level, min_age, content_warnings, safety_tools, tags, cover_hue, cover_image, genres, styles, status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
-          gm.id, uniqueSlug(g.title), g.title, g.system, g.summary, g.description, g.format, g.locationType, g.language, g.platform, g.city,
+          gm.id, uniqueSlug(g.title), g.title, g.system, g.summary, g.description, g.format, g.locationType, g.language, g.platform, g.tableLink, g.city,
           g.priceIdr, g.seatsTotal, g.experienceLevel, g.minAge, g.contentWarnings, g.safetyTools, g.tags, hue, coverImage, genres, styles, g.status,
         ).lastInsertRowid,
     );
@@ -552,9 +571,9 @@ export async function duplicateGameAction(form: FormData) {
   const id = Number(
     db()
       .prepare(
-        `INSERT INTO games (gm_id, slug, title, system, summary, description, format, location_type, language, platform, city,
+        `INSERT INTO games (gm_id, slug, title, system, summary, description, format, location_type, language, platform, table_link, city,
            price_idr, seats_total, experience_level, min_age, content_warnings, safety_tools, tags, cover_hue, cover_image, genres, styles, status)
-         SELECT ?, ?, ?, system, summary, description, format, location_type, language, platform, city,
+         SELECT ?, ?, ?, system, summary, description, format, location_type, language, platform, table_link, city,
            price_idr, seats_total, experience_level, min_age, content_warnings, safety_tools, tags, cover_hue, cover_image, genres, styles, 'draft'
            FROM games WHERE id = ?`,
       )
@@ -1327,9 +1346,22 @@ export async function setPrelaunchAction(form: FormData) {
 /** Admin → GMs: a founding-GM invitation link (shown once). */
 export async function createGmInviteAction(_: FormState, form: FormData): Promise<FormState> {
   const admin = await requireAdmin();
-  const raw = createGmInvite(admin.id, String(form.get("note") ?? ""));
+  const to = String(form.get("email") ?? "").trim().toLowerCase();
+  if (to && !isEmail(to)) return { fieldErrors: { inviteEmail: "v.email" } };
+  const raw = createGmInvite(admin.id, String(form.get("note") ?? "") || to);
+  const link = `${await siteOrigin()}/invite/${raw}`;
+  if (to) {
+    // We don't know their language yet: one email in both. The link is a one-time secret (kept out of the outbox).
+    const en = makeT("en"), id = makeT("id");
+    await sendEmail({
+      to,
+      subject: `${en("mail.gmInviteSubject")} / ${id("mail.gmInviteSubject")}`,
+      text: `${en("mail.gmInviteBody", { admin: admin.name, link })}\n\n———\n\n${id("mail.gmInviteBody", { admin: admin.name, link })}`,
+      secret: link,
+    });
+  }
   revalidatePath("/admin/gms");
-  return { ok: true, values: { link: `${await siteOrigin()}/invite/${raw}` } };
+  return { ok: true, values: { link, emailed: to } };
 }
 
 export async function revokeGmInviteAction(form: FormData) {

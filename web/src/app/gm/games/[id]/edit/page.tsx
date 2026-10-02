@@ -37,6 +37,7 @@ export default async function EditGamePage(props: PageProps<"/gm/games/[id]/edit
           locationType: g.location_type,
           language: g.language,
           platform: g.platform,
+          tableLink: g.table_link,
           city: g.city,
           price: formatIdr(g.price_idr).replace(/^Rp\s*/, ""),
           seatsTotal: String(g.seats_total),

@@ -63,6 +63,8 @@ export default async function BecomeGmPage() {
                 location: profile?.location ?? "Online",
                 bio: profile?.bio ?? "",
                 paymentInfo: profile?.payment_info ?? "",
+                refundTerms: profile?.refund_terms ?? "",
+                hasQr: !!profile?.payment_qr,
                 avatarImage: profile?.avatar_image ?? "",
                 name: profile?.name ?? user.name,
                 hue: profile?.avatar_hue ?? user.avatar_hue,

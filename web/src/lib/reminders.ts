@@ -12,7 +12,7 @@ import { unsubscribeHeaders } from "./unsubscribe";
 // scheduler) and, as a fallback, at most once a minute while people use the site.
 
 type Recipient = { name: string; email: string; locale: Lang; time_zone: string; email_reminders: number; email_verified_at: string | null };
-type SessionInfo = { title: string; slug: string; location_type: "online" | "in_person"; city: string; starts_at: string; booked: number };
+type SessionInfo = { title: string; slug: string; location_type: "online" | "in_person"; city: string; table_link: string; starts_at: string; booked: number };
 
 /** Send every reminder that is due. Returns how many went out. Safe to call concurrently. */
 export async function processReminders(origin: string, now = new Date()): Promise<number> {
@@ -42,7 +42,7 @@ export async function processReminders(origin: string, now = new Date()): Promis
     const claim = c.prepare("INSERT OR IGNORE INTO session_reminders (session_id, user_id, kind) VALUES (?, ?, ?)");
     const who = c.prepare("SELECT name, email, locale, time_zone, email_reminders, email_verified_at FROM users WHERE id = ?");
     const session = c.prepare(
-      `SELECT g.title, g.slug, g.location_type, g.city, s.starts_at,
+      `SELECT g.title, g.slug, g.location_type, g.city, g.table_link, s.starts_at,
               (SELECT COUNT(*) FROM bookings b WHERE b.session_id = s.id AND b.status = 'confirmed') AS booked
          FROM game_sessions s JOIN games g ON g.id = s.game_id WHERE s.id = ?`,
     );
@@ -63,7 +63,9 @@ export async function processReminders(origin: string, now = new Date()): Promis
 function reminderEmail(u: Recipient, userId: number, s: SessionInfo, kind: "24h" | "1h", isGm: boolean, origin: string): Email {
   const t = makeT(u.locale);
   const when = formatWhen(s.starts_at, u.locale, u.time_zone);
-  const where = s.location_type === "online" ? t("mail.reminderOnline") : t("mail.reminderInPerson", { city: s.city });
+  const where = s.location_type === "online"
+    ? (s.table_link ? t("mail.reminderOnlineLink", { link: s.table_link }) : t("mail.reminderOnline"))
+    : t("mail.reminderInPerson", { city: s.city });
   const vars = { name: u.name, title: s.title, when, where, link: `${origin}/games/${s.slug}`, n: s.booked };
   return {
     to: u.email,

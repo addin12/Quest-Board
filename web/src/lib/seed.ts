@@ -167,6 +167,12 @@ export function seedDatabase(conn: DatabaseSync) {
       insGm.run(id, g.headline, g.systems, g.years, g.location, g.verified ? 1 : 0, g.payment);
       return id;
     });
+    // Demo refund terms (GMs write their own).
+    const terms = [
+      "Batal minimal 24 jam sebelum session: uang kembali penuh. Kurang dari 24 jam: tidak bisa refund, tapi kursimu bisa dipindah ke session lain.",
+      "Full refund if you cancel 48 hours before. After that, I'll move you to another session instead.",
+    ];
+    gmIds.forEach((id, i) => conn.prepare("UPDATE gm_profiles SET refund_terms = ? WHERE user_id = ?").run(terms[i % terms.length], id));
     const playerIds = PLAYERS.map((p) =>
       Number(insUser.run(p.email, pw, p.name, "player", p.hue, "", "").lastInsertRowid),
     );
@@ -195,6 +201,8 @@ export function seedDatabase(conn: DatabaseSync) {
           ...(SEED_CATEGORIES[slugify(g.title)] ?? ["", ""]),
         ).lastInsertRowid,
       );
+
+      if (g.location === "online") conn.prepare("UPDATE games SET table_link = ? WHERE id = ?").run(`https://discord.gg/questboard-${slugify(g.title).slice(0, 20)}`, gameId);
 
       g.sessions.forEach((offset, si) => {
         const start = new Date(now + offset * day);

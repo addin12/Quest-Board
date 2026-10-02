@@ -472,6 +472,23 @@ export const MIGRATIONS: Record<number, string> = {
     );
     CREATE INDEX IF NOT EXISTS idx_email_changes_user ON email_changes(user_id);
   `,
+  38: `
+    ALTER TABLE gm_profiles ADD COLUMN refund_terms TEXT NOT NULL DEFAULT '';
+    ALTER TABLE gm_profiles ADD COLUMN payment_qr TEXT NOT NULL DEFAULT '';
+    ALTER TABLE games ADD COLUMN table_link TEXT NOT NULL DEFAULT '';
+    -- uploads may now be a QRIS code: SQLite can't change a CHECK, so the table is rebuilt.
+    CREATE TABLE uploads_v38 (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind       TEXT NOT NULL CHECK (kind IN ('cover','portrait','qris')),
+      file       TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );
+    INSERT INTO uploads_v38 (id, user_id, kind, file, created_at) SELECT id, user_id, kind, file, created_at FROM uploads;
+    DROP TABLE uploads;
+    ALTER TABLE uploads_v38 RENAME TO uploads;
+    CREATE INDEX IF NOT EXISTS idx_uploads_user ON uploads(user_id);
+  `,
   37: `
     CREATE TABLE IF NOT EXISTS gm_invites (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,

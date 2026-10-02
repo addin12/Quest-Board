@@ -102,6 +102,7 @@ export async function createGmWithGame(page: Page, name: string, email: string, 
 export async function bookFirstOpenSeat(page: Page, slugs: string[]): Promise<string> {
   for (const slug of slugs) {
     await page.goto(`/games/${slug}`);
+    await page.getByRole("heading", { level: 1 }).waitFor(); // the page is there before counting (count() doesn't wait)
     if (await page.getByRole("link", { name: "Book" }).count()) {
       const title = ((await page.getByRole("heading", { level: 1 }).textContent()) ?? "").trim();
       await page.getByRole("link", { name: "Book" }).first().click();

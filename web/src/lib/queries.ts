@@ -244,14 +244,20 @@ export type GameDetail = GameCard & {
   gm_headline: string;
   gm_bio: string;
   gm_payment_info: string;
+  /** 1 when the GM has a QRIS code (served by /payment-qr/<gm id> to members only). */
+  gm_has_qr: number;
+  gm_refund_terms: string;
+  /** Members only (the online table's link). */
+  table_link: string;
 };
 
 /** Includes the GM's payment details — only render them to members (see isGameMember). */
 export function getGameBySlug(slug: string): GameDetail | undefined {
   return db()
     .prepare(
-      `SELECT c.*, g.description, g.platform, g.min_age, g.content_warnings, g.safety_tools, g.status,
-              COALESCE(p.headline, '') AS gm_headline, u.bio AS gm_bio, COALESCE(p.payment_info, '') AS gm_payment_info
+      `SELECT c.*, g.description, g.platform, g.table_link, g.min_age, g.content_warnings, g.safety_tools, g.status,
+              COALESCE(p.headline, '') AS gm_headline, u.bio AS gm_bio, COALESCE(p.payment_info, '') AS gm_payment_info,
+              (COALESCE(p.payment_qr, '') <> '') AS gm_has_qr, COALESCE(p.refund_terms, '') AS gm_refund_terms
          FROM (${CARD_SELECT} WHERE g.slug = ?) c
          JOIN games g ON g.id = c.id
          JOIN users u ON u.id = g.gm_id
@@ -262,7 +268,7 @@ export function getGameBySlug(slug: string): GameDetail | undefined {
 
 export type GameRow = {
   id: number; gm_id: number; slug: string; title: string; system: string; summary: string; description: string;
-  format: "one_shot" | "campaign"; location_type: "online" | "in_person"; language: GameLanguage; platform: string; city: string;
+  format: "one_shot" | "campaign"; location_type: "online" | "in_person"; language: GameLanguage; platform: string; table_link: string; city: string;
   price_idr: number; seats_total: number; experience_level: "any" | "beginner" | "experienced"; min_age: number;
   content_warnings: string; safety_tools: string; tags: string; cover_hue: number; cover_image: string; genres: string; styles: string;
   status: "draft" | "published" | "archived"; created_at: string;
@@ -303,7 +309,8 @@ export function getSessionWithGame(sessionId: number) {
               (SELECT COUNT(*) FROM bookings b WHERE b.session_id = s.id AND b.status = 'confirmed') AS seats_taken,
               g.id AS game_id, g.slug, g.title, g.system, g.price_idr, g.seats_total, g.status AS game_status,
               g.gm_id, g.cover_hue, g.cover_image, u.name AS gm_name, u.avatar_image AS gm_image,
-              g.summary, g.location_type, g.platform, g.city
+              g.summary, g.location_type, g.platform, g.city,
+              (SELECT COALESCE(p.refund_terms, '') FROM gm_profiles p WHERE p.user_id = g.gm_id) AS gm_refund_terms
          FROM game_sessions s JOIN games g ON g.id = s.game_id JOIN users u ON u.id = g.gm_id
         WHERE s.id = ?`,
     )
@@ -312,7 +319,7 @@ export function getSessionWithGame(sessionId: number) {
         id: number; starts_at: string; duration_minutes: number; status: string; seats_taken: number;
         game_id: number; slug: string; title: string; system: string; price_idr: number; seats_total: number;
         game_status: string; gm_id: number; cover_hue: number; cover_image: string; gm_name: string; gm_image: string;
-        summary: string; location_type: "online" | "in_person"; platform: string; city: string;
+        summary: string; location_type: "online" | "in_person"; platform: string; city: string; gm_refund_terms: string | null;
       }
     | undefined;
 }
@@ -545,10 +552,10 @@ export function gameRosterRows(gameId: number): RosterRow[] {
 export function getGmSettings(userId: number) {
   return db()
     .prepare(
-      "SELECT p.headline, p.systems, p.years_experience, p.location, p.payment_info, u.bio, u.name, u.avatar_hue, u.avatar_image FROM users u LEFT JOIN gm_profiles p ON p.user_id = u.id WHERE u.id = ?",
+      "SELECT p.headline, p.systems, p.years_experience, p.location, p.payment_info, p.refund_terms, p.payment_qr, u.bio, u.name, u.avatar_hue, u.avatar_image FROM users u LEFT JOIN gm_profiles p ON p.user_id = u.id WHERE u.id = ?",
     )
     .get(userId) as
-    | { headline: string | null; systems: string | null; years_experience: number | null; location: string | null; payment_info: string | null; bio: string; name: string; avatar_hue: number; avatar_image: string }
+    | { headline: string | null; systems: string | null; years_experience: number | null; location: string | null; payment_info: string | null; refund_terms: string | null; payment_qr: string | null; bio: string; name: string; avatar_hue: number; avatar_image: string }
     | undefined;
 }
 
@@ -713,6 +720,30 @@ export function paymentChangedRecently(gmId: number, now = Date.now()): string |
 }
 
 /** A GM's payment details — never for a suspended or deleted account (moderators may have stopped a scam). */
+/** Whether the GM has a QRIS code (for the hire-a-GM page). */
+export function hasPaymentQr(gmId: number): boolean {
+  return !!db().prepare("SELECT 1 FROM gm_profiles p JOIN users u ON u.id = p.user_id WHERE p.user_id = ? AND p.payment_qr <> '' AND u.suspended_at IS NULL AND u.deleted_at IS NULL").get(gmId);
+}
+
+/**
+ * The GM's QRIS picture, if `viewerId` may see their payment details: the GM, an admin, someone with a
+ * confirmed seat at one of their games, or the requester who picked their offer (hire a GM).
+ */
+export function paymentQrFor(viewerId: number, gmId: number): string | null {
+  const row = db()
+    .prepare("SELECT p.payment_qr FROM gm_profiles p JOIN users u ON u.id = p.user_id WHERE p.user_id = ? AND p.payment_qr <> '' AND u.suspended_at IS NULL AND u.deleted_at IS NULL")
+    .get(gmId) as { payment_qr: string } | undefined;
+  if (!row) return null;
+  const allowed = viewerId === gmId
+    || !!db().prepare("SELECT 1 FROM users WHERE id = ? AND role = 'admin'").get(viewerId)
+    || !!db().prepare(
+      `SELECT 1 FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id
+        WHERE b.player_id = ? AND b.status = 'confirmed' AND g.gm_id = ? LIMIT 1`).get(viewerId, gmId)
+    || !!db().prepare(
+      "SELECT 1 FROM gm_requests WHERE requester_id = ? AND matched_gm_id = ? LIMIT 1").get(viewerId, gmId);
+  return allowed ? row.payment_qr : null;
+}
+
 export function getPaymentInfo(gmId: number): string {
   const row = db()
     .prepare("SELECT p.payment_info FROM gm_profiles p JOIN users u ON u.id = p.user_id WHERE p.user_id = ? AND u.suspended_at IS NULL AND u.deleted_at IS NULL")

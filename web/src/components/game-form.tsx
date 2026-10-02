@@ -23,6 +23,7 @@ export type GameFormDefaults = {
   locationType: string;
   language: string;
   platform: string;
+  tableLink: string;
   city: string;
   price: string;
   seatsTotal: string;
@@ -41,7 +42,7 @@ export type GameFormDefaults = {
 };
 
 export const EMPTY_GAME: GameFormDefaults = {
-  title: "", system: "", summary: "", description: "", format: "one_shot", locationType: "online", language: "id", platform: "", city: "",
+  title: "", system: "", summary: "", description: "", format: "one_shot", locationType: "online", language: "id", platform: "", tableLink: "", city: "",
   price: "50.000", seatsTotal: "5", experienceLevel: "any", minAge: "18", contentWarnings: "", safetyTools: "Session zero, lines & veils, X-card",
   tags: "", coverHue: 260, coverImage: "", genres: "", styles: "", status: "published",
 };
@@ -115,6 +116,11 @@ export function GameForm({ defaults: initial, systems }: { defaults: GameFormDef
           {location === "online" ? (
             <Field id="platform" label={t("gameForm.platform")} error={err("platform")}>
               <input id="platform" {...errAttrs("platform", err("platform"))} name="platform" defaultValue={defaults.platform} className="input" placeholder="Discord + Foundry VTT" />
+            </Field>
+          ) : null}
+          {location === "online" ? (
+            <Field id="tableLink" label={t("gameForm.tableLink")} error={err("tableLink")} hint={t("gameForm.tableLinkHint")}>
+              <input id="tableLink" {...errAttrs("tableLink", err("tableLink"))} name="tableLink" type="url" inputMode="url" maxLength={300} defaultValue={defaults.tableLink} className="input" placeholder="https://discord.gg/…" />
             </Field>
           ) : (
             <Field id="city" label={t("gameForm.city")} error={err("city")}>

@@ -19,7 +19,7 @@ delete process.env.QUESTBOARD_BACKUP_DIR; // next to the database: <dir>/backups
 {
   const old = new DatabaseSync(file);
   old.exec(SCHEMA_SQL);
-  old.exec(`DROP TABLE gm_invites; DROP TABLE launch_notify; PRAGMA user_version = ${SCHEMA_VERSION - 1};`);
+  old.exec(`ALTER TABLE gm_profiles DROP COLUMN refund_terms; ALTER TABLE gm_profiles DROP COLUMN payment_qr; ALTER TABLE games DROP COLUMN table_link; PRAGMA user_version = ${SCHEMA_VERSION - 1};`);
   old.prepare("INSERT INTO app_state (key, value) VALUES ('marker', 'from before the upgrade')").run();
   old.close();
 }

@@ -28,6 +28,10 @@ export type SetupFacts = {
 export const TEST_ONLY_SWITCHES = ["QUESTBOARD_DEV_OUTBOX", "QUESTBOARD_ALLOW_RESET", "QUESTBOARD_INSECURE_COOKIES", "QUESTBOARD_ADMIN_TWO_STEP", "QUESTBOARD_RATE_LIMIT", "QUESTBOARD_RATE_LIMIT_OVERRIDES"] as const;
 
 const HOUR = 3_600_000;
+
+/** Example values from deploy/.env.example and other obvious placeholders: never real secrets. */
+const PLACEHOLDERS = new Set(["change-me-to-a-long-random-string", "changeme", "change-me", "secret", "password", "token", "xxx"]);
+const weakSecret = (v: string) => v.length < 24 || PLACEHOLDERS.has(v.toLowerCase()) || /^(.)\1+$/.test(v);
 const ago = (iso: string | null, now: number) => (iso ? Math.round((now - Date.parse(iso)) / HOUR) : null);
 
 export function setupChecks(f: SetupFacts): SetupCheck[] {
@@ -81,6 +85,15 @@ export function setupChecks(f: SetupFacts): SetupCheck[] {
     : cronHours === null || f.now - Date.parse(f.cronLastRun!) > 30 * 60_000
       ? { id: "cron", level: "danger", title: "setup.cron", detail: cronHours === null ? "setup.cronNever" : "setup.cronStale", vars: { hours: cronHours ?? 0 } }
       : { id: "cron", level: "ok", title: "setup.cron", detail: "setup.cronOk" });
+  // Secrets the owner makes up themselves must be long and random; Resend's is generated (whsec_…).
+  const own: [string, string | undefined][] = [["QUESTBOARD_CRON_SECRET", e.QUESTBOARD_CRON_SECRET], ["QUESTBOARD_BREVO_WEBHOOK_TOKEN", e.QUESTBOARD_BREVO_WEBHOOK_TOKEN]];
+  const weak = own.filter(([, v]) => v && weakSecret(v)).map(([k]) => k);
+  if (e.RESEND_WEBHOOK_SECRET && !/^whsec_[A-Za-z0-9+/=]{16,}$/.test(e.RESEND_WEBHOOK_SECRET)) weak.push("RESEND_WEBHOOK_SECRET");
+  if (own.some(([, v]) => v) || e.RESEND_WEBHOOK_SECRET) {
+    checks.push(weak.length
+      ? { id: "secrets", level: production ? "danger" : "warn", title: "setup.secrets", detail: "setup.secretsWeak", vars: { names: weak.join(", ") } }
+      : { id: "secrets", level: "ok", title: "setup.secrets", detail: "setup.secretsOk" });
+  }
   const backupHours = ago(f.lastBackupAt, f.now);
   checks.push(backupHours === null
     ? { id: "backup", level: production ? "danger" : "warn", title: "setup.backup", detail: "setup.backupNone" }

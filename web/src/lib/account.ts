@@ -70,7 +70,7 @@ export function deleteAccount(userId: number): void {
                         role = CASE WHEN role = 'admin' THEN 'player' ELSE role END
         WHERE id = ?`,
     ).run(`deleted-${userId}@deleted.invalid`, DELETED_NAME, now, userId);
-    c.prepare("UPDATE gm_profiles SET headline = '', systems = '', location = '', payment_info = '', verified = 0 WHERE user_id = ?").run(userId);
+    c.prepare("UPDATE gm_profiles SET headline = '', systems = '', location = '', payment_info = '', refund_terms = '', payment_qr = '', verified = 0 WHERE user_id = ?").run(userId);
     c.prepare("DELETE FROM auth_sessions WHERE user_id = ?").run(userId);
     c.prepare("DELETE FROM auth_tokens WHERE user_id = ?").run(userId);
     c.prepare("DELETE FROM email_changes WHERE user_id = ?").run(userId);
@@ -93,7 +93,7 @@ export function exportAccount(userId: number) {
          JOIN games g ON g.id = gq.game_id WHERE m.user_id = ? ORDER BY m.created_at`, userId),
     exported_at: new Date().toISOString(),
     account: one("SELECT id, email, name, role, bio, avatar_image, email_verified_at, locale, email_reminders, email_notifications, time_zone, terms_accepted_at, terms_version, created_at FROM users WHERE id = ?", userId),
-    gm_profile: one("SELECT headline, systems, years_experience, location, verified, payment_info FROM gm_profiles WHERE user_id = ?", userId) ?? null,
+    gm_profile: one("SELECT headline, systems, years_experience, location, verified, payment_info, refund_terms, payment_qr FROM gm_profiles WHERE user_id = ?", userId) ?? null,
     bookings: q(
       `SELECT b.id, g.title AS game, s.starts_at, b.status, b.cancelled_by, b.price_idr, b.created_at
          FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id WHERE b.player_id = ? ORDER BY s.starts_at`,

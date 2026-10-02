@@ -1,0 +1,59 @@
+name: Flake hunt
+
+# Once a week (and on demand from the Actions tab): the whole end-to-end suite twice in a row, each time
+# on freshly started servers, so a test that only fails now and then shows up here before it fails a
+# real push. Failures are GitHub annotations (public). A test that passes once and fails once is a
+# timing race in the test or the app: fix it, don't retry it.
+on:
+  schedule:
+    - cron: "0 20 * * 6" # Sunday 03:00 WIB
+  workflow_dispatch:
+
+jobs:
+  e2e-twice:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - half: a
+            projects: --project=seeded --project=empty --project=firefox --project=webkit
+            browsers: chromium firefox webkit
+          - half: b
+            projects: --project=seeded-2
+            browsers: chromium
+    name: e2e twice (${{ matrix.half }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.browsers }}
+      - run: npm run build
+
+      - name: First run
+        id: first
+        continue-on-error: true
+        run: npx playwright test ${{ matrix.projects }}
+
+      - name: Second run (fresh servers)
+        id: second
+        continue-on-error: true
+        run: npx playwright test ${{ matrix.projects }}
+
+      - name: Result
+        run: |
+          echo "first: ${{ steps.first.outcome }}, second: ${{ steps.second.outcome }}"
+          if [ "${{ steps.first.outcome }}" != "success" ] || [ "${{ steps.second.outcome }}" != "success" ]; then
+            echo "::error title=Flake hunt::A test failed in at least one of the two runs (see the annotations above)."
+            exit 1
+          fi

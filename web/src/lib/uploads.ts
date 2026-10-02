@@ -23,11 +23,11 @@ export async function saveUpload(userId: number, kind: UploadKind, file: File): 
   let output: Buffer;
   try {
     const { width, height } = UPLOAD_SIZES[kind];
-    output = await sharp(input, { limitInputPixels: 40_000_000, failOn: "error" })
-      .rotate() // honour the camera's orientation, then forget it
-      .resize(width, height, { fit: "cover", position: "attention" })
-      .webp({ quality: 82 })
-      .toBuffer();
+    const image = sharp(input, { limitInputPixels: 40_000_000, failOn: "error" }).rotate(); // honour the camera's orientation, then forget it
+    output = kind === "qris"
+      // A QRIS code must still scan: never cropped, only made smaller, on white, without lossy blur.
+      ? await image.resize(width, height, { fit: "inside", withoutEnlargement: true }).flatten({ background: "#ffffff" }).webp({ lossless: true }).toBuffer()
+      : await image.resize(width, height, { fit: "cover", position: "attention" }).webp({ quality: 82 }).toBuffer();
   } catch {
     return { ok: false, error: "v.uploadType" }; // not decodable as the picture it claims to be
   }
@@ -49,8 +49,8 @@ export function discardUpload(value: string | null | undefined): void {
   const name = value ? parseUploadPath(value) : null;
   if (!name) return;
   const inUse = db()
-    .prepare("SELECT 1 FROM games WHERE cover_image = ? UNION ALL SELECT 1 FROM users WHERE avatar_image = ? LIMIT 1")
-    .get(uploadPath(name), uploadPath(name));
+    .prepare("SELECT 1 FROM games WHERE cover_image = ? UNION ALL SELECT 1 FROM users WHERE avatar_image = ? UNION ALL SELECT 1 FROM gm_profiles WHERE payment_qr = ? LIMIT 1")
+    .get(uploadPath(name), uploadPath(name), uploadPath(name));
   if (inUse) return;
   rmSync(/* turbopackIgnore: true */ path.join(/* turbopackIgnore: true */ uploadDir(), name), { force: true });
   db().prepare("DELETE FROM uploads WHERE file = ?").run(name);
@@ -67,7 +67,8 @@ export function pruneOrphanUploads(olderThanMs = 86_400_000, now = Date.now()): 
       `SELECT u.file FROM uploads u
         WHERE u.created_at < ?
           AND NOT EXISTS (SELECT 1 FROM games g WHERE g.cover_image = '/uploads/' || u.file)
-          AND NOT EXISTS (SELECT 1 FROM users x WHERE x.avatar_image = '/uploads/' || u.file)`,
+          AND NOT EXISTS (SELECT 1 FROM users x WHERE x.avatar_image = '/uploads/' || u.file)
+          AND NOT EXISTS (SELECT 1 FROM gm_profiles p WHERE p.payment_qr = '/uploads/' || u.file)`,
     )
     .all(cutoff) as { file: string }[];
   for (const o of orphans) {
@@ -83,6 +84,11 @@ export function deleteUserUploads(userId: number): void {
   for (const r of rows) rmSync(/* turbopackIgnore: true */ path.join(/* turbopackIgnore: true */ uploadDir(), r.file), { force: true });
   db().prepare("DELETE FROM uploads WHERE user_id = ?").run(userId);
   db().prepare("UPDATE games SET cover_image = '' WHERE gm_id = ? AND cover_image LIKE '/uploads/%'").run(userId);
+}
+
+/** An upload's kind (a QRIS code is only served through /payment-qr, to booked players). */
+export function uploadKind(name: string): UploadKind | null {
+  return (db().prepare("SELECT kind FROM uploads WHERE file = ?").get(name) as { kind: UploadKind } | undefined)?.kind ?? null;
 }
 
 /** The bytes of a stored picture, or null. */

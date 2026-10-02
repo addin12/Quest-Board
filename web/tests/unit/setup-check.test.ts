@@ -12,8 +12,8 @@ const good: SetupFacts = {
   offsiteLast: { at: new Date(now - 10 * 3_600_000).toISOString(), ok: true, detail: "questboard-x.db + 3 picture(s)" },
   env: {
     QUESTBOARD_OFFSITE_ENDPOINT: "https://x.r2.cloudflarestorage.com", QUESTBOARD_OFFSITE_BUCKET: "qb", QUESTBOARD_OFFSITE_KEY_ID: "k", QUESTBOARD_OFFSITE_SECRET: "s",
-    NODE_ENV: "production", QUESTBOARD_SEED: "false", RESEND_API_KEY: "re_x", BREVO_API_KEY: "xkeysib-x", RESEND_WEBHOOK_SECRET: "whsec_x", QUESTBOARD_BREVO_WEBHOOK_TOKEN: "t", QUESTBOARD_MAIL_FROM: "Quest Board <halo@questboard.id>",
-    QUESTBOARD_BASE_URL: "https://questboard.id", QUESTBOARD_ENFORCE_HTTPS: "true", QUESTBOARD_CONTACT_EMAIL: "halo@questboard.id", QUESTBOARD_CRON_SECRET: "s",
+    NODE_ENV: "production", QUESTBOARD_SEED: "false", RESEND_API_KEY: "re_x", BREVO_API_KEY: "xkeysib-x", RESEND_WEBHOOK_SECRET: "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw", QUESTBOARD_BREVO_WEBHOOK_TOKEN: "Zk3v9QpR7tYw2LmN8xBc4HdJ", QUESTBOARD_MAIL_FROM: "Quest Board <halo@questboard.id>",
+    QUESTBOARD_BASE_URL: "https://questboard.id", QUESTBOARD_ENFORCE_HTTPS: "true", QUESTBOARD_CONTACT_EMAIL: "halo@questboard.id", QUESTBOARD_CRON_SECRET: "q7H2mX9vL4pR8sT1wY6zB3nC",
   },
 };
 const level = (f: SetupFacts, id: string) => setupChecks(f).find((c) => c.id === id)!.level;
@@ -67,6 +67,11 @@ test("production problems are marked for fixing", () => {
   assert.equal(setupChecks(stored(1024, 0)).find((c) => c.id === "offsite-space")!.detail, "setup.offsiteSpaceKeepAll");
   assert.equal(setupChecks(good).find((c) => c.id === "offsite-space"), undefined); // not measured yet
   assert.equal(level({ ...good, prelaunch: { on: true, waiting: 12 } }, "prelaunch"), "warn"); // players can't book yet
+  // Secrets: short, the example, or not Resend's format.
+  assert.equal(level({ ...good, env: { ...good.env, QUESTBOARD_CRON_SECRET: "change-me-to-a-long-random-string" } }, "secrets"), "danger");
+  assert.equal(level({ ...good, env: { ...good.env, QUESTBOARD_BREVO_WEBHOOK_TOKEN: "short" } }, "secrets"), "danger");
+  assert.equal(level({ ...good, env: { ...good.env, QUESTBOARD_CRON_SECRET: "aaaaaaaaaaaaaaaaaaaaaaaaaaaa" } }, "secrets"), "danger");
+  assert.equal(setupChecks({ ...good, env: { ...good.env, RESEND_WEBHOOK_SECRET: "my-secret" } }).find((c) => c.id === "secrets")!.vars?.names, "RESEND_WEBHOOK_SECRET");
   assert.equal(setupChecks({ ...good, prelaunch: { on: false, waiting: 0 } }).find((c) => c.id === "prelaunch"), undefined);
 });
 
