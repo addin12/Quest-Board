@@ -25,7 +25,7 @@
     "db:fetch-offsite": "node scripts/offsite.mjs fetch"
   },
   "dependencies": {
-    "next": "16.3.7",
+    "next": "16.3.8",
     "qrcode": "^1.5.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -37,12 +37,12 @@
     "@flaticon/flaticon-uicons": "^3.3.1",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^24.19.0",
+    "@types/node": "^24.19.1",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.7",
+    "eslint-config-next": "16.3.8",
     "subset-font": "^2.9.0",
     "tailwindcss": "^4",
     "typescript": "^5"
