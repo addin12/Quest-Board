@@ -107,7 +107,7 @@ Rules:
 - Always state the consequence of an action. For example: "Lepaskan kursimu? Kalau sudah membayar, atur pengembalian dana dengan GM."
 - Never imply that the platform holds money. Say "dibayar langsung ke GM", never "bayar di Quest Board".
 - Keep strings short enough for 360 px screens. Indonesian runs about 10–20% longer than English, so layouts wrap rather than truncate.
-- Add new strings to `dict.ts` in **both** languages (the compiler enforces this).
+- Add new strings in **both** languages: `lib/i18n/en.ts` and `lib/i18n/id.ts` (the compiler enforces this).
 
 ## 6. Accessibility
 - `<html lang>` follows the active language, so screen readers use the correct voice.

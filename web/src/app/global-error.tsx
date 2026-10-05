@@ -1,10 +1,11 @@
 "use client"; // Error boundaries must be Client Components
 
-import { makeT, DEFAULT_LANG } from "@/lib/i18n/dict";
+import { DEFAULT_LANG, translator } from "@/lib/i18n/core";
+import { en } from "@/lib/i18n/en";
 
 // Replaces the root layout when the layout itself fails, so there is no
 // I18nProvider or global CSS here: keep it self-contained, in the default language.
-const t = makeT(DEFAULT_LANG);
+const t = translator(en); // DEFAULT_LANG: only English is bundled here
 
 export default function GlobalError({ retry }: { error: Error & { digest?: string }; retry: () => void }) {
   return (

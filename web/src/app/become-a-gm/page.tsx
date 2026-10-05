@@ -52,9 +52,15 @@ export default async function BecomeGmPage() {
           <>
             <h2 className="text-xl font-bold">{user.role === "gm" ? t("becomeGm.editTitle") : t("becomeGm.createTitle")}</h2>
             <p className="mb-5 text-sm text-muted">{t("becomeGm.formLead")}</p>
-            {needsTwoStep && (
-              <div className="mb-5"><Notice tone="danger">{t("gm.twoStepRequired")} <Link href="/settings#two-step" className="font-semibold underline">{t("gm.twoStepRequiredLink")}</Link></Notice></div>
-            )}
+            {needsTwoStep ? (
+              // First things first: saving needs two-step login, so don't let them fill in a form (and pick a
+              // QRIS picture) only to be refused. Settings brings them straight back here afterwards.
+              <div className="space-y-4" data-testid="two-step-first">
+                <Notice tone="danger">{t("gm.twoStepRequired")}</Notice>
+                <Link href={`/settings?next=${encodeURIComponent("/become-a-gm")}#two-step`} className="btn-primary"><Icon name="shield-check" /> {t("gm.twoStepRequiredLink")}</Link>
+                <p className="text-sm text-muted">{t("gm.twoStepThen")}</p>
+              </div>
+            ) : (
             <BecomeGmForm
               defaults={{
                 headline: profile?.headline ?? "",
@@ -70,6 +76,7 @@ export default async function BecomeGmPage() {
                 hue: profile?.avatar_hue ?? user.avatar_hue,
               }}
             />
+            )}
           </>
         ) : (
           <div className="flex h-full flex-col justify-center gap-4 text-center">

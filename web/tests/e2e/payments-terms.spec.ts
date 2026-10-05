@@ -62,6 +62,60 @@ test("refund terms show before booking; the table link and the QRIS code only to
   db.close();
 });
 
+// Round 32: a GM sees their own game the way players will, before anyone books.
+test("'See it as a player': the GM previews their page as a visitor and as a player with a seat; nothing in it acts", async ({ page }) => {
+  test.setTimeout(150_000);
+  const gmEmail = unique("preview-gm");
+  const slug = await createGmWithGame(page, "Pram Preview", gmEmail, "Preview Table");
+  const db = e2eDb();
+  const gameId = (db.prepare("SELECT id FROM games WHERE slug = ?").get(slug) as { id: number }).id;
+  await page.goto("/become-a-gm");
+  const qr = await sharp({ create: { width: 300, height: 300, channels: 3, background: "#000000" } }).png().toBuffer();
+  await page.getByLabel("QRIS code (optional)").setInputFiles({ name: "qris.png", mimeType: "image/png", buffer: qr });
+  await page.getByRole("button", { name: /Save & go to GM dashboard/ }).click();
+  await page.waitForURL("**/gm");
+  await page.goto(`/gm/games/${gameId}/edit`);
+  await page.getByLabel("Link to the table (optional)").fill("https://discord.gg/preview-table");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await page.waitForURL(/\/gm\/games\/\d+$/);
+
+  // From the manage page: as a player with a seat — how to pay (bank and QRIS), the table link, "Booked".
+  await page.getByRole("link", { name: "See it as a player" }).click();
+  await page.waitForURL(`**/games/${slug}?preview=player`);
+  await expect(page.getByTestId("preview-banner")).toContainText("as a player with a seat sees it");
+  await expect(page.getByText("BCA 000-111-222")).toBeVisible();
+  await expect(page.getByTestId("payment-qr")).toBeVisible();
+  expect(await page.getByTestId("payment-qr").evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+  await expect(page.getByTestId("table-link").getByRole("link", { name: "https://discord.gg/preview-table" })).toBeVisible();
+  await expect(page.locator("#sessions").getByText("Booked")).toBeVisible();
+  // Not the GM's own tools, not the real chat, no report buttons.
+  await expect(page.getByRole("link", { name: "Manage game" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Table chat" })).toHaveCount(0);
+  await expect(page.locator("summary", { hasText: "Report" })).toHaveCount(0);
+
+  // As a visitor: no payment details or link; Book is shown but does nothing.
+  await page.getByTestId("preview-banner").getByRole("link", { name: "As a visitor" }).click();
+  await page.waitForURL(`**/games/${slug}?preview=visitor`);
+  await expect(page.getByText("BCA 000-111-222")).toHaveCount(0);
+  await expect(page.getByTestId("table-link")).toHaveCount(0);
+  await expect(page.getByTestId("payment-qr")).toHaveCount(0);
+  const book = page.locator("#sessions").getByText("Book", { exact: true });
+  await expect(book).toHaveAttribute("aria-disabled", "true");
+  await expect(page.locator("#sessions").getByRole("link", { name: "Book" })).toHaveCount(0);
+
+  // Back to the GM's own view.
+  await page.getByTestId("preview-banner").getByRole("link", { name: "Back to my view" }).click();
+  await expect(page.getByRole("link", { name: "Manage game" })).toBeVisible();
+  await expect(page.getByTestId("preview-banner")).toHaveCount(0);
+
+  // Only the GM: anyone else adding ?preview gets the ordinary page.
+  await page.context().clearCookies();
+  await page.goto(`/games/${slug}?preview=player`);
+  await expect(page.getByTestId("preview-banner")).toHaveCount(0);
+  await expect(page.getByText("BCA 000-111-222")).toHaveCount(0);
+  db.close();
+});
+
 test("an invite can be emailed: one email, in both languages, with the link", async ({ page }) => {
   await login(page, "admin@questboard.test");
   await page.goto("/admin/gms");

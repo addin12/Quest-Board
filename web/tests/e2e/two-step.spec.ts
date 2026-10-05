@@ -37,21 +37,20 @@ test("verified GMs need two-step login to change their profile or payment detail
   db.prepare("UPDATE gm_profiles SET verified = 1 WHERE user_id = (SELECT id FROM users WHERE email = ?)").run(email);
   await page.goto("/gm");
   await expect(page.getByText(/You're a verified GM, so players trust your payment details/)).toBeVisible();
+  // The profile form waits until two-step login is on (no filling it in only to be refused)…
   await page.goto("/become-a-gm");
-  await page.getByLabel(/How players pay you/).fill("BRI 111-222 a.n. Someone Else");
-  await page.getByRole("button", { name: /Save & go to GM dashboard/ }).click();
-  await expect(page.getByText("Verified GMs need two-step login to change their profile or payment details.")).toBeVisible();
-  expect((db.prepare("SELECT payment_info FROM gm_profiles WHERE user_id = (SELECT id FROM users WHERE email = ?)").get(email) as { payment_info: string }).payment_info).toBe("BCA 000-111-222"); // unchanged
+  await expect(page.getByTestId("two-step-first")).toBeVisible();
+  await expect(page.getByLabel(/How players pay you/)).toHaveCount(0);
+  // (The save action still refuses on its own: err.verifiedGmTwoStep in actions.ts.)
 
-  // With two-step login on, saving works again.
-  await page.getByRole("link", { name: "Turn on two-step login" }).first().click();
+  // Turning it on brings them straight back to the form, and saving works.
+  await page.getByTestId("two-step-first").getByRole("link", { name: "Turn on two-step login" }).click();
   await expect(page.getByText(/Needed for verified GMs/)).toBeVisible();
   await page.getByRole("button", { name: "Set up two-step login" }).click();
   const key = (await page.getByTestId("totp-key").innerText()).replace(/\s/g, "");
   await page.getByLabel("6-digit code").fill(code(key, -1));
   await page.getByRole("button", { name: "Turn on" }).click();
-  await expect(page.getByText(/Two-step login is on \(since/)).toBeVisible();
-  await page.goto("/become-a-gm");
+  await page.waitForURL("**/become-a-gm");
   await page.getByLabel(/How players pay you/).fill("BRI 111-222 a.n. Vera Verified");
   await page.getByRole("button", { name: /Save & go to GM dashboard/ }).click();
   await page.waitForURL("**/gm");

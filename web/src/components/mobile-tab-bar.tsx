@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Icon } from "./icon";
 import { useI18n } from "./i18n-provider";
 import type { RegularIcon } from "@/lib/icons";
-import type { MsgKey } from "@/lib/i18n/dict";
+import type { MsgKey } from "@/lib/i18n/core";
 
 /** Bottom tab bar below `sm`: the header's page links live here on phones. */
 export function MobileTabBar({ signedIn, isGm }: { signedIn: boolean; isGm: boolean }) {

@@ -16,7 +16,9 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // The production image (Dockerfile) builds with QUESTBOARD_STANDALONE=1: only the files the server
   // really uses. Local, e2e and CI servers keep `next start`.
-  ...(process.env.QUESTBOARD_STANDALONE === "1" ? { output: "standalone" as const } : {}),
+  // That image always runs behind Caddy, which compresses responses itself (deploy/Caddyfile: zstd, then
+  // gzip), so the app doesn't gzip them first: no CPU spent twice on a small server.
+  ...(process.env.QUESTBOARD_STANDALONE === "1" ? { output: "standalone" as const, compress: false } : {}),
   // Forms may carry an uploaded picture (≤ 5 MB, lib/upload-rules.ts) plus the other fields.
   experimental: { serverActions: { bodySizeLimit: "6mb" } },
   async headers() {

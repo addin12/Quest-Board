@@ -92,7 +92,7 @@ upgrade the app keeps a copy of the database as it was (`backups/questboard-befo
 - Buying a Flaticon Premium subscription would remove the attribution requirement. Keep the credit unless that is purchased.
 
 ## 6. Localisation operations
-- All UI strings live in `web/src/lib/i18n/dict.ts`. Add a key to `en` and to `id`. Typecheck and `npm test` fail if either side is missing or placeholders differ.
+- All UI strings live in `web/src/lib/i18n/en.ts` and `id.ts` (`dict.ts` combines them for the server). Add a key to both. Typecheck and `npm test` fail if either side is missing or placeholders differ.
 - Copy changes to Indonesian should be reviewed by a native speaker before release (see the [QA checklist](09-testing-and-qa.md#4-manual-qa-checklist-per-release)).
 - The default language is **English** (`DEFAULT_LANG` in `lib/i18n/dict.ts`). Visitors switch to Indonesian with the header switcher; browser language is deliberately ignored.
 

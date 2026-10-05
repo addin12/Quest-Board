@@ -55,23 +55,29 @@ export async function generateMetadata(props: PageProps<"/games/[slug]">): Promi
 
 export default async function GamePage(props: PageProps<"/games/[slug]">) {
   const { slug } = await props.params;
-  const allChat = (await props.searchParams).chat === "all";
+  const sp = await props.searchParams;
+  const allChat = sp.chat === "all";
   const { t } = await getI18n();
   const game = getGameBySlug(slug);
   const user = await getCurrentUser();
   const isOwner = !!user && (user.id === game?.gm_id || user.admin);
   if (!game || (game.status !== "published" && !isOwner)) notFound();
+  // "See it as a player" (the GM only, ?preview=visitor|player): the page as a visitor sees it, or as a player
+  // with a seat — how to pay, the QRIS code and the table link included. Nothing in it acts as the GM.
+  const preview = user && user.id === game.gm_id && (sp.preview === "visitor" || sp.preview === "player") ? sp.preview : null;
+  const viewer = preview ? null : user;
+  const ownerView = isOwner && !preview;
 
   // Bring waitlists up to date (expired offers pass to the next person) before showing seats.
   refreshWaitlists(listSessions(game.id, { upcomingOnly: true }).map((s) => s.id));
   const sessions = listSessions(game.id, { upcomingOnly: true });
-  const waits = user ? myWaitlist(user.id, game.id) : [];
+  const waits = viewer ? myWaitlist(viewer.id, game.id) : [];
   const reviews = listGameReviews(game.id);
-  const booked = user ? playerBookedSessionIds(game.id, user.id) : [];
+  const booked = preview === "player" ? sessions.slice(0, 1).map((x) => x.id) : viewer ? playerBookedSessionIds(game.id, viewer.id) : [];
   const soon = isPrelaunch();
-  const removed = user ? playerRemovedSessionIds(game.id, user.id) : [];
-  const member = user ? isGameMember(game.id, user.id) : false;
-  const reviewable = user ? canReview(game.id, user.id) : false;
+  const removed = viewer ? playerRemovedSessionIds(game.id, viewer.id) : [];
+  const member = preview === "player" || (viewer ? isGameMember(game.id, viewer.id) : false);
+  const reviewable = viewer ? canReview(game.id, viewer.id) : false;
   // The newest CHAT_PAGE messages (one more tells us there are earlier ones), or up to CHAT_MAX.
   const fetched = member ? listMessages(game.id, allChat ? CHAT_MAX : CHAT_PAGE + 1) : [];
   const moreChat = !allChat && fetched.length > CHAT_PAGE;
@@ -88,6 +94,15 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
       {events.length > 0 && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(events) }} />}
       <Cover hue={game.cover_hue} system={game.system} image={game.cover_image} className="h-48 sm:h-72" wide />
       <div className="mx-auto max-w-6xl px-4">
+        {preview && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-accent/40 bg-accent-soft px-4 py-3 text-sm" role="status" data-testid="preview-banner">
+            <p className="flex items-start gap-2"><Icon name="eye" className="mt-0.5 shrink-0 text-accent" /> {t(preview === "player" ? "preview.asPlayer" : "preview.asVisitor")}</p>
+            <div className="flex flex-wrap gap-2">
+              <Link href={`/games/${game.slug}?preview=${preview === "player" ? "visitor" : "player"}`} className="btn-secondary py-1!">{t(preview === "player" ? "preview.switchVisitor" : "preview.switchPlayer")}</Link>
+              <Link href={`/games/${game.slug}`} className="btn-ghost py-1!">{t("preview.exit")}</Link>
+            </div>
+          </div>
+        )}
         {game.status !== "published" && (
           <div className="mt-4"><Notice>{t("game.hiddenNotice", { status: t(game.status === "draft" ? "status.draft" : "status.archived") })}</Notice></div>
         )}
@@ -104,16 +119,17 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
             <p className="mt-2 text-lg text-muted">{game.summary}</p>
             <div className="mt-3 flex items-center gap-3 text-sm">
               <Stars rating={game.avg_rating} count={game.review_count} t={t} size="lg" />
-              {isOwner && <Link href={`/gm/games/${game.id}`} className="btn-secondary py-1!"><Icon name="pencil" /> {t("game.manage")}</Link>}
+              {ownerView && <Link href={`/gm/games/${game.id}`} className="btn-secondary py-1!"><Icon name="pencil" /> {t("game.manage")}</Link>}
+              {ownerView && viewer?.id === game.gm_id && <Link href={`/games/${game.slug}?preview=player`} className="btn-ghost py-1!"><Icon name="eye" /> {t("preview.open")}</Link>}
             </div>
             {game.status === "published" && (
               <div className="mt-4 flex flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <ShareButtons url={gameUrl} text={t("share.gameText", { title: game.title, system: game.system })} />
-                  {user && user.id !== game.gm_id && <SaveGameButton gameId={game.id} slug={game.slug} saved={isSaved(user.id, game.id)} t={t} />}
+                  {viewer && viewer.id !== game.gm_id && <SaveGameButton gameId={game.id} slug={game.slug} saved={isSaved(viewer.id, game.id)} t={t} />}
                 </div>
-                {user && user.id !== game.gm_id && <ReportButton targetType="game" targetId={game.id} />}
-                {user?.admin && game.status === "published" && <ModRemoveButton targetType="game" targetId={game.id} />}
+                {viewer && viewer.id !== game.gm_id && <ReportButton targetType="game" targetId={game.id} />}
+                {viewer?.admin && game.status === "published" && <ModRemoveButton targetType="game" targetId={game.id} />}
               </div>
             )}
 
@@ -152,10 +168,10 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
               <InfoBlock icon="handshake" title={t("game.paymentTitle")}>{t("game.paymentBody")}</InfoBlock>
             </section>
 
-            {member && (
+            {member && !preview && (
               <section className="mt-10" aria-labelledby="chat-h">
-                <AutoRefresh watch="chat" id={game.id} version={changeVersion("chat", game.id, user?.id ?? null)} />
-                <NewMessageAnnouncer lastId={messages.at(-1)?.id ?? 0} author={messages.length ? shownName(messages[messages.length - 1].name, t) : ""} fromMe={messages.at(-1)?.user_id === user?.id} />
+                <AutoRefresh watch="chat" id={game.id} version={changeVersion("chat", game.id, viewer?.id ?? null)} />
+                <NewMessageAnnouncer lastId={messages.at(-1)?.id ?? 0} author={messages.length ? shownName(messages[messages.length - 1].name, t) : ""} fromMe={messages.at(-1)?.user_id === viewer?.id} />
                 <h2 id="chat-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="comments" className="text-accent" /> {t("chat.title")}</h2>
                 <p className="text-sm text-muted">{t("chat.visibility")}</p>
                 {moreChat && (
@@ -172,8 +188,8 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                           <span className="ml-2 text-xs text-muted"><LocalTime iso={m.created_at} /></span>
                         </p>
                         <p className="whitespace-pre-line text-sm">{m.body}</p>
-                        {user && m.user_id !== user.id && <ReportButton targetType="message" targetId={m.id} className="mt-1" />}
-                        {user?.admin && <ModRemoveButton targetType="message" targetId={m.id} className="mt-1" />}
+                        {viewer && m.user_id !== viewer.id && <ReportButton targetType="message" targetId={m.id} className="mt-1" />}
+                        {viewer?.admin && <ModRemoveButton targetType="message" targetId={m.id} className="mt-1" />}
                       </div>
                     </li>
                   ))}
@@ -185,7 +201,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
             <section className="mt-10" aria-labelledby="reviews-h">
               <h2 id="reviews-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="star" className="text-gold" /> {t("reviews.title")}</h2>
               {reviewable && <div className="mt-4"><ReviewForm gameId={game.id} /></div>}
-              {user && reviews.some((r) => r.player_id === user.id) && (
+              {viewer && reviews.some((r) => r.player_id === viewer.id) && (
                 <div className="mt-4"><Notice tone="success">{t("reviews.thanks")}</Notice></div>
               )}
               {reviews.length === 0 ? (
@@ -206,11 +222,11 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                           <div className="mt-2 rounded-lg border-l-2 border-accent bg-surface-2 px-3 py-2 text-sm">
                             <p className="text-xs font-semibold">{t("reviews.gmReply", { name: shownName(game.gm_name, t) })}</p>
                             <p className="mt-0.5 whitespace-pre-line">{r.gm_reply}</p>
-                            {user && user.id !== game.gm_id && <ReportButton targetType="review_reply" targetId={r.id} className="mt-1" />}
-                            {user?.admin && <ModRemoveButton targetType="review_reply" targetId={r.id} className="mt-1" />}
+                            {viewer && viewer.id !== game.gm_id && <ReportButton targetType="review_reply" targetId={r.id} className="mt-1" />}
+                            {viewer?.admin && <ModRemoveButton targetType="review_reply" targetId={r.id} className="mt-1" />}
                           </div>
                         )}
-                        {user?.id === r.player_id && (
+                        {viewer?.id === r.player_id && (
                           <details className="mt-2">
                             <summary className="btn-ghost inline-flex cursor-pointer list-none px-2! py-1! text-xs [&::-webkit-details-marker]:hidden"><Icon name="pencil" /> {t("reviews.editTitle")}</summary>
                             <ReviewForm gameId={game.id} existing={{ id: r.id, rating: r.rating, body: r.body }} />
@@ -220,9 +236,9 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                             </form>
                           </details>
                         )}
-                        {user?.id === game.gm_id && <ReviewReplyForm reviewId={r.id} current={r.gm_reply} />}
-                        {user && r.player_id !== user.id && <ReportButton targetType="review" targetId={r.id} className="mt-1" />}
-                        {user?.admin && <ModRemoveButton targetType="review" targetId={r.id} className="mt-1" />}
+                        {viewer?.id === game.gm_id && <ReviewReplyForm reviewId={r.id} current={r.gm_reply} />}
+                        {viewer && r.player_id !== viewer.id && <ReportButton targetType="review" targetId={r.id} className="mt-1" />}
+                        {viewer?.admin && <ModRemoveButton targetType="review" targetId={r.id} className="mt-1" />}
                       </div>
                     </li>
                   ))}
@@ -258,7 +274,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                     const left = game.seats_total - s.seats_taken - s.seats_held;
                     const verdict = canBook({
                       sessionStatus: s.status, gameStatus: game.status, startsAt: new Date(s.starts_at), now,
-                      seatsTotal: game.seats_total, seatsTaken: s.seats_taken + heldForOthers, isGm: user?.id === game.gm_id, alreadyBooked: mine,
+                      seatsTotal: game.seats_total, seatsTaken: s.seats_taken + heldForOthers, isGm: viewer?.id === game.gm_id, alreadyBooked: mine,
                       removedByGm: removed.includes(s.id),
                     });
                     const full = !verdict.ok && verdict.reason === "err.full" && !removed.includes(s.id);
@@ -288,13 +304,17 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                           <Link href="/opening" className="text-xs font-semibold text-accent hover:underline">{t("prelaunch.bookSoon")}</Link>
                         ) : verdict.ok && offered ? (
                           <WaitlistOffer sessionId={s.id} expiresAt={wait?.expires_at ?? null} t={t} />
+                        ) : verdict.ok && preview ? (
+                          <span className="btn-primary gap-1.5! px-3! py-1.5! opacity-70" aria-disabled="true" title={t("preview.inert")}><Icon name="ticket" /> {t("game.book")}</span>
                         ) : verdict.ok ? (
                           <Link href={`/book/${s.id}`} className="btn-primary gap-1.5! px-3! py-1.5!"><Icon name="ticket" /> {t("game.book")}</Link>
+                        ) : full && preview ? (
+                          <span className="text-xs text-danger">{t("common.full")}</span>
                         ) : full ? (
-                          <WaitlistControls sessionId={s.id} slug={game.slug} wait={wait} signedIn={!!user} t={t} />
+                          <WaitlistControls sessionId={s.id} slug={game.slug} wait={wait} signedIn={!!viewer} t={t} />
                         ) : (
                           <span className="text-xs text-muted" title={t(verdict.reason)}>
-                            {user?.id === game.gm_id ? t("game.yourTable") : verdict.reason === "err.removedByGm" ? t("game.seatReleased") : left <= 0 ? t("common.full") : t("game.unavailable")}
+                            {viewer?.id === game.gm_id ? t("game.yourTable") : verdict.reason === "err.removedByGm" ? t("game.seatReleased") : left <= 0 ? t("common.full") : t("game.unavailable")}
                           </span>
                         )}
                       </li>
@@ -311,7 +331,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                 <p className="mt-1 text-xs text-muted">{t("game.tableLinkHint")}</p>
               </div>
             )}
-            {member && user?.id !== game.gm_id && (
+            {member && viewer?.id !== game.gm_id && (
               <div className="card border-accent/40! p-5">
                 <h2 className="eyebrow flex items-center gap-1.5 text-accent!"><Icon name="wallet" /> {t("game.howToPay")}</h2>
                 <p className="mt-2 whitespace-pre-line text-sm">{game.gm_payment_info || (game.gm_has_qr ? "" : t("game.howToPayEmpty"))}</p>
@@ -320,7 +340,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                   <img src={`/payment-qr/${game.gm_id}`} alt={t("game.qrisAlt")} className="mt-3 w-full max-w-56 rounded-md border border-border bg-white p-2" data-testid="payment-qr" />
                 ) : null}
                 {(game.gm_payment_info || game.gm_has_qr) ? <PaymentChangedNote gmId={game.gm_id} /> : null}
-                {(game.gm_payment_info || game.gm_has_qr) ? <ReportButton targetType="user" targetId={game.gm_id} label={t("report.paymentDetails")} defaultReason="scam" className="mt-2" /> : null}
+                {!preview && (game.gm_payment_info || game.gm_has_qr) ? <ReportButton targetType="user" targetId={game.gm_id} label={t("report.paymentDetails")} defaultReason="scam" className="mt-2" /> : null}
                 <p className="mt-3 flex items-start gap-1.5 border-t border-border pt-3 text-xs text-muted">
                   <Icon name="shield-check" className="mt-0.5 shrink-0 text-accent" /> {t("game.scamWarning")}
                 </p>
@@ -340,15 +360,17 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
               </Link>
               {game.gm_new ? <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted"><NewGmBadge t={t} /> {t("common.newGmHint")}</p> : null}
               <p className="mt-3 line-clamp-4 text-sm text-muted">{game.gm_bio}</p>
-              {user?.id !== game.gm_id && game.status === "published" && (
+              {viewer?.id !== game.gm_id && game.status === "published" && (preview ? (
+                <span className="btn-secondary mt-4 w-full opacity-70" aria-disabled="true" title={t("preview.inert")}><Icon name="comment-dots" /> {t("ask.button")}</span>
+              ) : (
                 <Link href={`/games/${game.slug}/ask`} className="btn-secondary mt-4 w-full"><Icon name="comment-dots" /> {t("ask.button")}</Link>
-              )}
+              ))}
             </div>
           </aside>
         </div>
       </div>
       {/* Phones and tablets: the booking card sits below the whole description, so keep a way to it in reach. */}
-      {sessions.length > 0 && !isOwner && (
+      {sessions.length > 0 && !ownerView && (
         <>
           <div className="h-16 lg:hidden" aria-hidden="true" />
           <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface/95 px-4 py-2.5 shadow-[0_-4px_12px_rgb(0_0_0/0.12)] backdrop-blur md:bottom-0 lg:hidden">

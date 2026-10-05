@@ -29,7 +29,9 @@ import "./icons/icons.css";
 // Tavern typography: Cinzel (inscriptions & signboards) for headings, Alegreya for
 // book-like titles, Alegreya Sans for UI text. Self-hosted by next/font at build time.
 const cinzel = Cinzel({ variable: "--font-cinzel", subsets: ["latin"] });
-const alegreya = Alegreya({ variable: "--font-alegreya", subsets: ["latin"] });
+// Alegreya is only the h3 headings (all semibold or bold): one bold file instead of the whole 400–900
+// range (round 32: 43 KB → about half on every first visit). Semibold shows in that bold.
+const alegreya = Alegreya({ variable: "--font-alegreya", subsets: ["latin"], weight: ["700"] });
 // Only the weights the UI uses (every font-extrabold is on Cinzel headings; font-medium falls back to 400):
 // each extra weight is another font file on every page, which matters on slow mobile connections.
 const alegreyaSans = Alegreya_Sans({ variable: "--font-alegreya-sans", subsets: ["latin"], weight: ["400", "700"] });

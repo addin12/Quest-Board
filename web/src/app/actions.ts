@@ -209,6 +209,8 @@ async function confirmTwoStepActionImpl(_: FormState, form: FormData): Promise<F
   await sendTwoStepEmail(user.email, user.name, "on");
   await toast("toast.twoStepOn");
   revalidatePath("/settings");
+  const next = form.get("next"); // e.g. back to the GM profile form, which needed this
+  if (isSafeNext(next)) redirect(next);
   return { ok: true };
 }
 

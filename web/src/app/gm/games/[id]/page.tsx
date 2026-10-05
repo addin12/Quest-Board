@@ -45,6 +45,7 @@ export default async function ManageGamePage(props: PageProps<"/gm/games/[id]">)
         </div>
         <div className="flex gap-2">
           <Link href={`/games/${game.slug}`} className="btn-secondary"><Icon name="eye" /> {t("manage.viewListing")}</Link>
+          {game.gm_id === gm.id && <Link href={`/games/${game.slug}?preview=player`} className="btn-ghost"><Icon name="user" /> {t("preview.open")}</Link>}
           <Link href={`/gm/games/${game.id}/edit`} className="btn-secondary"><Icon name="pencil" /> {t("manage.editDetails")}</Link>
           <a href={`/api/gm/games/${game.id}/roster`} className="btn-secondary" download><Icon name="file-download" /> {t("manage.rosterCsv")}</a>
         </div>

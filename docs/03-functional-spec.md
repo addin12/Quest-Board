@@ -6,7 +6,7 @@ This document defines how every MVP feature behaves. The source of truth is code
 |---|---|
 | `web/src/lib/policy.ts` | Business rules: bookability, cancellation, IDR formatting |
 | `web/src/lib/validation.ts` | Input rules; returns translation keys |
-| `web/src/lib/i18n/dict.ts` | Every UI string in ID and EN |
+| `web/src/lib/i18n/en.ts`, `id.ts` | Every UI string in EN and ID |
 
 > **Money principle:** Quest Board never handles money. A price is information set by the GM. Payment, refunds and receipts are arranged directly between the player and the GM. The platform takes **0% commission**.
 

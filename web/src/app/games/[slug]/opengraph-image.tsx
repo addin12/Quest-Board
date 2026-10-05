@@ -1,18 +1,11 @@
 import { getGameBySlug } from "@/lib/queries";
 import { getI18n } from "@/lib/i18n/server";
 import { formatIdr } from "@/lib/policy";
-import { OG_SIZE, ogCard } from "@/lib/og-card";
+import { OG_SIZE, clip, ogCard } from "@/lib/og-card";
 
 export const size = OG_SIZE;
 export const contentType = "image/png";
 export const alt = "Quest Board game";
-
-/** Shorten at a word boundary. */
-function clip(s: string, max: number): string {
-  if (s.length <= max) return s;
-  const cut = s.slice(0, max - 1);
-  return `${cut.slice(0, cut.lastIndexOf(" ") > max * 0.6 ? cut.lastIndexOf(" ") : cut.length).replace(/[\s,.;:—-]+$/, "")}…`;
-}
 
 /** Link preview for a game (WhatsApp, Discord, X…): title, system, GM, where, price. */
 export default async function Image({ params }: { params: Promise<{ slug: string }> }) {

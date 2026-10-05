@@ -9,7 +9,7 @@
 | Styling | Tailwind CSS v4 + CSS custom-property design tokens | Fast iteration, dark mode |
 | Icons | **Flaticon UIcons** (`@flaticon/flaticon-uicons`), subset to the glyphs we use | Consistent icon family; about 6.5 KB of fonts instead of about 690 KB |
 | Database | **SQLite via Node's built-in `node:sqlite`** | No native build or ORM. Portable SQL |
-| i18n | Custom typed dictionary (`lib/i18n/dict.ts`) + cookie-based locale | ~2 languages, ~300 strings: no library needed. Missing keys fail the type check |
+| i18n | Custom typed dictionary (`lib/i18n/en.ts`, `id.ts`; `dict.ts` combines them) + cookie-based locale | 2 languages, ~1,600 strings: no library needed. Missing keys fail the type check. The browser loads only its own language (`components/i18n-provider.tsx`) |
 | Auth | scrypt password hashes + DB-backed session tokens | No third-party dependency |
 | Payments | **None.** Players pay GMs directly | Product decision (0% commission) |
 | Tests | `node:test` (unit) + Playwright (e2e, against local Edge or Chrome) | |
@@ -54,7 +54,9 @@ src/
     icon.tsx                 # <Icon name solid? label?> — Flaticon UIcons glyph
     *-form.tsx               # client forms (translate FormState keys with t())
   lib/
-    i18n/dict.ts             # ID + EN dictionaries, MsgKey type, makeT() (pure)
+    i18n/en.ts, id.ts        # the strings, one file per language (en defines the keys)
+    i18n/core.ts             # MsgKey, translator(), shownName(): no strings (safe for client code)
+    i18n/dict.ts             # both languages + makeT(), for the server and tests (pure)
     i18n/server.ts           # getLang() / getI18n() — cookie → "en" (default)
     policy.ts                # pure rules: canBook, canCancel, formatIdr, parseIdr, slugify
     icons.ts                 # registry of Flaticon UIcons names (drives the font subset)
@@ -70,7 +72,7 @@ tests/e2e/                   # Playwright journeys (EN and ID locales)
 
 **ADR-2 · SQLite, raw parameterised SQL.** Dynamic `ORDER BY` and `WHERE` fragments come only from fixed allow-lists.
 
-**ADR-3 · Pure logic modules.** `policy.ts`, `validation.ts` and `i18n/dict.ts` have no runtime imports (only `import type`), so `node --test` runs them directly.
+**ADR-3 · Pure logic modules.** `policy.ts`, `validation.ts` and `i18n/*` have no runtime imports outside themselves (only `import type`), so `node --test` runs them directly.
 
 **ADR-4 · UTC storage, local display.** `<LocalTime>` renders WIB on the server and the viewer's zone after hydration. For Indonesian viewers these are usually identical, so nothing flickers.
 

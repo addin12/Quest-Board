@@ -1,6 +1,6 @@
 // Load test: many people browsing, booking and chatting at once, against a running server.
 //
-//   npm run load-test -- --base http://localhost:3300 --users 40 --seconds 60 [--db path/to.db]
+//   npm run load-test -- --base http://localhost:3300 --users 40 --seconds 60 [--db path/to.db] [--json out.json]
 //
 // Point it at a throwaway server with demo data and rate limits off, e.g.
 //   QUESTBOARD_DB=/tmp/load.db QUESTBOARD_RATE_LIMIT=off npx next start -p 3300
@@ -8,6 +8,7 @@
 // notifications (10%), reserving a seat (15%) and table chat (10%). Forms are submitted the way a
 // browser without JavaScript does (the hidden $ACTION_* fields), so no browser is needed.
 // With --db it also checks afterwards that no session was overbooked.
+import { writeFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 
 const arg = (name, def) => {
@@ -18,6 +19,7 @@ const BASE = arg("base", "http://localhost:3300");
 const USERS = Number(arg("users", 40));
 const SECONDS = Number(arg("seconds", 60));
 const DB = arg("db", "");
+const JSON_OUT = arg("json", ""); // also write the numbers to this file (the load rehearsal compares them)
 
 const stats = new Map(); // op -> { ms: number[], errors: number, rejected: number }
 const stat = (op) => stats.get(op) ?? (stats.set(op, { ms: [], errors: 0, rejected: 0 }), stats.get(op));
@@ -157,6 +159,10 @@ async function main() {
   const total = [...stats.values()].reduce((n, s) => n + s.ms.length, 0);
   console.log(`\n  ${total} requests in ${SECONDS}s ≈ ${(total / SECONDS).toFixed(1)} per second; ${totalErrors} errors; ${networkRetries} GET(s) retried after a dropped connection`);
   for (const e of errorSamples) console.log(`  ! ${e}`);
+  if (JSON_OUT) {
+    const ops = Object.fromEntries([...stats].map(([op, s]) => [op, { count: s.ms.length, p50: Math.round(pct(s.ms, 50)), p95: Math.round(pct(s.ms, 95)), p99: Math.round(pct(s.ms, 99)), errors: s.errors }]));
+    writeFileSync(JSON_OUT, JSON.stringify({ rps: total / SECONDS, requests: total, seconds: SECONDS, users: USERS, errors: totalErrors, ops }, null, 2));
+  }
 
   if (DB) {
     const db = new DatabaseSync(DB, { readOnly: true });

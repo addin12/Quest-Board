@@ -8,8 +8,11 @@
 // 100 virtual users clicking without pause is far busier than 100 people (who read between clicks):
 // roughly a 1,000-member community on its busiest evening, with room to spare.
 import { execFileSync, spawn } from "node:child_process";
-import { resolve } from "node:path";
-import { annotateError } from "./ci-annotate.mjs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { annotateError, annotateNotice, annotateWarning, stepSummary } from "./ci-annotate.mjs";
+import { baselineKey, compareToBaseline, summaryLine } from "./load-trend.mjs";
 
 const arg = (name, def) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -52,7 +55,8 @@ try {
   const sampler = setInterval(() => { try { sample(); } catch { /* a sample can fail while busy */ } }, 3_000);
 
   // The load test itself (Caddy's local certificate isn't trusted by Node: this one process skips the check).
-  const load = spawn(process.execPath, ["scripts/load-test.mjs", "--base", "https://localhost:8443", "--users", String(USERS), "--seconds", String(SECONDS)], {
+  const numbers = join(mkdtempSync(join(tmpdir(), "qb-load-")), "result.json");
+  const load = spawn(process.execPath, ["scripts/load-test.mjs", "--base", "https://localhost:8443", "--users", String(USERS), "--seconds", String(SECONDS), "--json", numbers], {
     cwd: resolve(import.meta.dirname, ".."), env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: "0", NODE_NO_WARNINGS: "1" }, stdio: "inherit",
   });
   const loadCode = await new Promise((ok) => load.on("exit", (c) => ok(c ?? 1)));
@@ -65,6 +69,23 @@ console.log(JSON.stringify(d.prepare("SELECT s.id, g.seats_total, COUNT(b.id) AS
 
   console.log(`\n[load] peak memory: app ${peak.app.toFixed(0)} of ${CAPS.app} MiB, scheduler ${peak.scheduler.toFixed(0)} of ${CAPS.scheduler} MiB`);
   console.log(`[load] overbooked sessions: ${over}`);
+
+  // The trend: this run against the last good one (scripts/load-baseline.json). A warning, not a failure.
+  if (existsSync(numbers)) {
+    const result = JSON.parse(readFileSync(numbers, "utf8"));
+    const key = baselineKey();
+    const baseline = JSON.parse(readFileSync(resolve(import.meta.dirname, "load-baseline.json"), "utf8"))[key];
+    const line = summaryLine(result);
+    annotateNotice("Load rehearsal", `${line}; app peak ${peak.app.toFixed(0)} MiB`);
+    const slower = compareToBaseline(result, baseline);
+    for (const w of slower) annotateWarning("Load rehearsal slower than usual", `${w} — baseline (${key}): ${baseline.measured}`);
+    stepSummary([
+      "### Load rehearsal",
+      `${line}; app peak ${peak.app.toFixed(0)} of ${CAPS.app} MiB.`,
+      baseline ? `Baseline (${key}, ${baseline.measured}): ${baseline.rps} requests a second, pages p95 ${baseline.pageP95} ms.` : "No baseline yet.",
+      ...(slower.length ? [`**Slower than usual:** ${slower.join("; ")}.`] : []),
+    ].join("\n\n"));
+  }
   const problems = [
     loadCode !== 0 && "the load test had errors (above)",
     over !== "[]" && "a session was overbooked",

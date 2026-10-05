@@ -44,6 +44,11 @@ test("HTTPS only: http redirects, HSTS and the script policy are on, developer p
   expect(h["content-security-policy"]).toMatch(/'nonce-[^']+' 'strict-dynamic'/);
   expect(h["content-security-policy"]).toContain("upgrade-insecure-requests");
   expect(h["x-powered-by"]).toBeUndefined();
+  // Caddy compresses (zstd when the browser offers it); the app itself sends pages uncompressed.
+  const page = await request.get("/browse", { headers: { "accept-encoding": "zstd, gzip" } });
+  expect(page.headers()["content-encoding"]).toBe("zstd");
+  const direct = compose("exec", "-T", "app", "node", "-e", "fetch('http://localhost:3000/browse',{headers:{'accept-encoding':'gzip'}}).then(r=>console.log(r.status, r.headers.get('content-encoding')))").trim();
+  expect(direct).toBe("200 null");
   for (const path of ["/dev/outbox", "/dev/emails"]) expect((await request.get(path)).status(), path).toBe(404);
   const health = await (await request.get("/api/health")).json();
   expect(health.ok).toBe(true);
@@ -172,6 +177,15 @@ test("no page trips the script policy over HTTPS", async ({ page }) => {
     await page.waitForLoadState("networkidle");
     expect(await page.evaluate(() => (window as unknown as { cspViolations: string[] }).cspViolations), path).toEqual([]);
   }
+});
+
+test("the launch-day smoke test (scripts/smoke.mjs) passes against the real kit", async () => {
+  // Caddy's local certificate isn't trusted by Node: this one process skips the check.
+  const run = spawnSync(process.execPath, ["scripts/smoke.mjs", "https://localhost:8443"], { encoding: "utf8", env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: "0", NODE_NO_WARNINGS: "1" } });
+  expect(run.status, run.stdout + run.stderr).toBe(0);
+  expect(run.stdout).not.toContain("✗");
+  // What's left to look at here is expected: no plain-http twin on a test port, and draft legal pages.
+  expect(run.stdout.match(/^ {2}! .*$/gm)?.map((l) => l.slice(4)).sort()).toEqual(["Terms and Privacy are final", "http:// redirects to https://"]);
 });
 
 test("memory: after all of the above, the app and the scheduler use well under their caps (small servers)", async () => {

@@ -10,7 +10,7 @@ import { Icon } from "./icon";
 import type { RegularIcon } from "@/lib/icons";
 import { GENRES, MAX_PER_GAME, STYLES, genreIcon, genreLabelKey, parseCategoryCsv, styleIcon, styleLabelKey } from "@/lib/categories";
 import { COVER_LIBRARY, libraryCoverPath } from "@/lib/placeholders";
-import type { MsgKey } from "@/lib/i18n/dict";
+import type { MsgKey } from "@/lib/i18n/core";
 import { UploadField } from "./upload-field";
 
 export type GameFormDefaults = {

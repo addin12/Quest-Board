@@ -7,7 +7,12 @@ import { LaunchNotifyForm } from "@/components/launch-notify-form";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
-  return { title: t("prelaunch.title") };
+  // The link passed around during pre-launch: its preview says what it is (the picture: opengraph-image.tsx).
+  return {
+    title: t("prelaunch.title"),
+    description: t("prelaunch.lead"),
+    openGraph: { siteName: "Quest Board", type: "website", title: t("prelaunch.title"), description: t("prelaunch.lead") },
+  };
 }
 
 /** Pre-launch: leave your email to be told once when bookings open. Afterwards: "we're open". */

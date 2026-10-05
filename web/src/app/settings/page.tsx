@@ -13,6 +13,7 @@ import { CalendarFeedLinks } from "@/components/calendar-feed";
 import { ConfirmButton, SubmitButton } from "@/components/submit-button";
 import { siteOrigin } from "@/lib/site";
 import { twoStepState, verifiedGmNeedsTwoStep } from "@/lib/two-step";
+import { isSafeNext } from "@/lib/policy";
 import { listLogins } from "@/lib/login-devices";
 import { logoutDeviceAction } from "../actions";
 import { TwoStepConfirmForm, TwoStepDisableForm } from "@/components/two-step-forms";
@@ -26,7 +27,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /** Profile & account settings for every user; GMs also get a link to their GM profile. */
-export default async function SettingsPage() {
+export default async function SettingsPage(props: PageProps<"/settings">) {
+  // Where to go once two-step login is on (e.g. back to the GM profile form, which needs it).
+  const next = (await props.searchParams).next;
+  const afterTwoStep = isSafeNext(next) ? next : undefined;
   const user = await requireUser("/settings");
   const { t, lang } = await getI18n();
   const twoStep = await twoStepState(user.id, user.email);
@@ -155,7 +159,7 @@ export default async function SettingsPage() {
               </div>
               <div>
                 <p className="mb-3 font-semibold">{t("twoStep.enterCode")}</p>
-                <TwoStepConfirmForm />
+                <TwoStepConfirmForm next={afterTwoStep} />
               </div>
               <form action={cancelTwoStepAction}><button className="text-sm font-semibold text-accent hover:underline">{t("twoStep.cancel")}</button></form>
             </div>

@@ -153,7 +153,7 @@ The steps before going live are in the [launch checklist](docs/12-launch-checkli
 
 ## Status
 
-A feature-complete **pre-launch MVP**. What's left before launch are the owner's decisions and accounts (legal review, domain, hosting, email), listed in the [launch checklist](docs/12-launch-checklist.md). Each pre-launch round (31 so far) is recorded in [IMPROVEMENTS.md](IMPROVEMENTS.md), with the ideas for later (Postgres, WhatsApp reminders, a Discord bot).
+A feature-complete **pre-launch MVP**. What's left before launch are the owner's decisions and accounts (legal review, domain, hosting, email), listed in the [launch checklist](docs/12-launch-checklist.md). Each pre-launch round (32 so far) is recorded in [IMPROVEMENTS.md](IMPROVEMENTS.md), with the ideas for later (Postgres, WhatsApp reminders, a Discord bot).
 
 ## Contributing
 

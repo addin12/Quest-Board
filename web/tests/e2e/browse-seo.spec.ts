@@ -111,3 +111,21 @@ test("searching orders by best match: a word in the title comes first", async ({
   await page.goto("/games");
   await expect(page.getByLabel("Sort by").locator('option[value="relevance"]')).toHaveCount(0); // only when searching
 });
+
+// Round 32: the links people pass around during pre-launch — a GM's profile and "opening soon" — get their own preview.
+test("GM profiles and the opening page have their own share picture (portrait, name, games so far)", async ({ page, request }) => {
+  const gmId = Number((await (await request.get("/api/games?limit=1")).json()).data[0].gm.id);
+  await page.goto(`/gms/${gmId}`);
+  const gmImage = await page.locator('meta[property="og:image"]').getAttribute("content");
+  expect(gmImage).toMatch(new RegExp(`/gms/${gmId}/opengraph-image`));
+  await page.goto("/opening");
+  const openingImage = await page.locator('meta[property="og:image"]').getAttribute("content");
+  expect(openingImage).toMatch(/\/opening\/opengraph-image/);
+  await expect(page.locator('meta[property="og:description"]')).toHaveAttribute("content", /^(Game Masters are listing|Para Game Master)/);
+  for (const url of [gmImage!, openingImage!]) {
+    const res = await request.get(new URL(url).pathname);
+    expect(res.status(), url).toBe(200);
+    expect(res.headers()["content-type"]).toBe("image/png");
+    expect((await res.body()).length).toBeGreaterThan(20_000); // a drawn card, not an empty image
+  }
+});

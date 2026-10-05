@@ -40,11 +40,12 @@ export function LoginCodeForm() {
   );
 }
 
-export function TwoStepConfirmForm() {
+export function TwoStepConfirmForm({ next }: { next?: string }) {
   const { t } = useI18n();
   const [state, action] = useActionState<FormState, FormData>(confirmTwoStepAction, undefined);
   return (
     <form action={action} className="space-y-4">
+      {next && <input type="hidden" name="next" value={next} />}
       <CodeInput error={state?.fieldErrors?.code} />
       {state?.error && <Notice tone="danger">{t(state.error)}</Notice>}
       <SubmitButton className="btn-primary" pendingText={t("common.saving")}><Icon name="shield-check" /> {t("twoStep.confirm")}</SubmitButton>
