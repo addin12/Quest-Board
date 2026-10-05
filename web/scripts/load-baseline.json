@@ -1,5 +1,15 @@
 {
   "_about": "The last good load-rehearsal numbers (scripts/load-trend.mjs warns when a run falls well behind). Update an entry when a change makes the app faster or slower on purpose. ci = GitHub's x86 runner (100 users, 90 s); local = the development laptop with Docker Desktop (100 users, 120 s).",
-  "ci": null,
-  "local": { "rps": 52, "pageP95": 3000, "users": 100, "measured": "rounds 27–29 on the dev laptop (42–59 requests a second)" }
+  "ci": {
+    "rps": 123,
+    "pageP95": 920,
+    "users": 100,
+    "measured": "2026-10-05, round 32 (11aaf0c), GitHub x86 runner, 90 s"
+  },
+  "local": {
+    "rps": 52,
+    "pageP95": 3000,
+    "users": 100,
+    "measured": "rounds 27–32 on the dev laptop with Docker Desktop, 120 s: 42–64 requests a second, page p95 2.0–4.9 s (a busy laptop runs slow)"
+  }
 }

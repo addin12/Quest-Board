@@ -30,8 +30,12 @@ COPY --from=build --chown=node:node /app/public ./public
 COPY --from=build --chown=node:node /app/scripts ./scripts
 COPY --from=build --chown=node:node /app/src ./src
 COPY --from=build --chown=node:node /app/package.json ./package.json
+# Debian's security fixes, installed at build time: the node base image is rebuilt only every few weeks,
+# and CI's scan (Trivy) refuses an image with a fixable HIGH/CRITICAL finding (round 32: libpcre2).
 # npm (and npx, corepack) aren't used at runtime: removed, with the security findings that came with them.
-RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+ && apt-get clean && rm -rf /var/lib/apt/lists/* \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
       /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
  && mkdir -p /data && chown node:node /data
 USER node
