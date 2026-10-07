@@ -49,7 +49,7 @@ export function SignupForm({ next, defaultRole }: { next?: string; defaultRole?:
             ["player", "dice-d20", "auth.rolePlay", "auth.rolePlayHint"],
             ["gm", "hat-wizard", "auth.roleRun", "auth.roleRunHint"],
           ] as const).map(([v, icon, title, hint]) => (
-            <label key={v} className="cursor-pointer">
+            <label key={v} className="relative cursor-pointer">
               <input type="radio" name="role" value={v} defaultChecked={(state?.values?.role ?? defaultRole ?? "player") === v} className="peer sr-only" />
               <span className="block rounded-lg border border-border p-3 peer-checked:border-accent peer-checked:bg-accent-soft peer-focus-visible:ring-2 peer-focus-visible:ring-accent">
                 <Icon name={icon} className="mb-1 text-xl text-accent" />

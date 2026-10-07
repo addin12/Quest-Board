@@ -2,6 +2,15 @@
 
 The full UX spec (flows, screens, sitemap) is in `docs/07-ux-ui-spec.md`. This file holds the rules to follow when touching UI.
 
+## Rules for real users (2026-10-07)
+The layout follows *Universal UI Rules for Real Users*, with an Apple/Notion calm on top of the tavern art:
+- **Readable first.** Body 17 px, labels and buttons 16 px, nothing smaller than 14 px (Tailwind's `text-xs` is 14 px here; the scale is remapped in `globals.css`). Page titles 32 px, key numbers 28 px bold. About 24 px between major blocks; group with space before adding borders.
+- **Controls.** Every button, field and tab is at least 44 px tall (`btn`, `input`). Labels sit **above** fields (`label`), with helper text under them (`hint`) and errors next to the field with an icon (`FieldError`) — never a placeholder alone. Buttons say what they do in full words; no icon-only actions except the universally understood bell.
+- **One accent.** Oxblood (amber at night) marks the one main action of a section and the current page; everything else stays calm. Semantic colours (success green, warning brass, danger red) always come with words or an icon.
+- **Calm surfaces.** Cards are flat parchment with one hairline edge (`rounded-xl`), buttons flat 8 px rectangles (`rounded-lg`) that shrink slightly when pressed. No decorative shadows or bevels on UI; depth belongs to the art (covers, the notice board's pinned notes, the hero scenes).
+- **Navigation.** Full-word links in the header from 1280 px with the current page underlined (`aria-current="page"`); below that, the bottom tab bar. The account menu (portrait + first name) holds Settings, Admin and Log out. Filters sit before results, the ones in use show as removable chips with "Clear all".
+- **Never cut off** names, dates, prices or seat counts; let them wrap.
+
 ## Personality
 **A medieval tavern where adventurers find their party.** By day it's parchment and ink; at night (dark mode) it's a candlelit room of dark oak and amber. The header, footer and phone tab bar are always dark oak planks with a brass trim, like a tavern signboard. It should feel warm and welcoming to beginners, never grim, and never generic "gamer neon".
 
@@ -22,7 +31,7 @@ The full UX spec (flows, screens, sitemap) is in `docs/07-ux-ui-spec.md`. This f
   - `.parchment` switches back to the page palette. The bell popover uses it inside the header.
   - Components never need to know which one they're in.
 - **Textures** come from `npm run tavern-art` (`public/textures/*`, script-free SVG): paper grain on the light page, faint oak grain on the dark page, and oak planks for wood areas.
-- **Shape language:** `rounded-md`/`rounded-lg` (no pills), cards with an inner burnt-edge shadow (`--card-shadow`), and primary buttons like a wax seal (inset highlight plus a dark lip).
+- **Shape language:** `rounded-lg` (8 px) buttons and fields, `rounded-xl` (12 px) cards, no pills except chips and avatars. Flat surfaces with a hairline edge (`--card-shadow` is `none`); the tavern lives in the palette, textures, wood and art, not in bevels.
 - **Ornament:** `<span aria-hidden className="ornament" />` draws the ❦ flourish (a CSS mask in brass). Use it sparingly: the hero, the footer, and big section breaks.
 - Use the tokens through Tailwind (`bg-surface`, `text-accent`…), never raw hex. The exceptions are the wood trim `#8a6a3a` and the hero wash.
 
@@ -47,7 +56,9 @@ The full UX spec (flows, screens, sitemap) is in `docs/07-ux-ui-spec.md`. This f
 - **Request status:** Open = accent, Matched = success, Closed = muted.
 
 ## Navigation & notifications
-- **Phones (< sm):** a fixed bottom tab bar (icon + 11 px label; the active tab is accent-coloured with `aria-current="page"`). The top bar keeps logo, EN|ID, bell, avatar and log out. `body` gets `pb-16` so the footer isn't covered.
+- **Below 1280 px:** a fixed bottom tab bar (icon + 14 px label, at least 56 px tall; the active tab is accent-coloured with `aria-current="page"`): Find, Browse, Hire a GM, Board, and My games / GM when signed in. The top bar keeps the logo, EN|ID, the bell and the account menu. `body` gets `pb-16` so the footer isn't covered.
+- **From 1280 px:** the header shows every page link by name (icons beside them from 1536 px), the current one with a soft highlight and an amber underline.
+- **Account menu** (`components/account-menu.tsx`): portrait + first name, opening Settings, Admin (admins) and Log out. The theme switch is in the footer, with its current setting written out.
 - **Bell:** a ghost icon button with a round `badge` (count, "9+" cap). Its accessible name includes the count ("Notifications, 3 unread").
   - Clicking it opens a **popover** (`.parchment popover`, 22 rem wide, full width under the header on phones): the title, "See all", the GM open-request strip, and the 8 latest items with unread dots.
   - Opening it marks everything read. Escape or clicking outside closes it, and focus returns to the bell.
@@ -70,12 +81,12 @@ The full UX spec (flows, screens, sitemap) is in `docs/07-ux-ui-spec.md`. This f
 ## Typography
 - **h1, h2, the wordmark and eyebrows:** **Cinzel** (`font-display`, `var(--font-heading)` in inline styles). It's an inscription face with small caps, like a tavern sign. Keep h1 ≤ 60 px, and use `font-extrabold` for heroes.
 - **h3 and titles inside cards:** **Alegreya** (`font-serif`), a book serif.
-- **UI and body:** **Alegreya Sans** (`font-sans`), a humanist sans that pairs with the serifs and stays legible at 12–14 px.
-- **Eyebrow labels:** the `eyebrow` utility (Cinzel, 12 px, 0.18em tracking, muted).
+- **UI and body:** **Alegreya Sans** (`font-sans`), a humanist sans that pairs with the serifs: 17 px body, 16 px UI, 14 px at the smallest.
+- **Eyebrow labels:** the `eyebrow` utility (Cinzel, 14 px, 0.12em tracking, muted). Use them for section labels, not for anything people must read closely.
 - All three are self-hosted by `next/font` (no requests to Google at runtime). Cinzel and Alegreya are variable fonts, so don't pass `weight` (Turbopack build bug).
 
 ## Components (reuse; don't reinvent)
-- **Utilities:** `btn-primary` · `btn-secondary` · `btn-ghost` · `btn-danger` · `card` · `input` · `label` · `chip` · `eyebrow`.
+- **Utilities:** `btn-primary` · `btn-secondary` · `btn-ghost` · `btn-danger` · `card` · `input` · `label` · `hint` · `chip` · `eyebrow`.
 - **React components:**
   - `Avatar` (`image`) · `Stars` (needs `t`) · `Cover` (`image`, `wide` for full-bleed heroes) · `Thumb` (`image`) · `GameCard` (needs `t`)
   - `Notice` (`info` \| `success` \| `danger`, with an automatic icon) · `EmptyState` · `FieldError` · `VerifiedBadge`
@@ -109,7 +120,7 @@ The full UX spec (flows, screens, sitemap) is in `docs/07-ux-ui-spec.md`. This f
 
 ## Layout
 - **Container:** `mx-auto max-w-6xl px-4`. **Grid:** cards in 1/2/3 columns. **Sidebars:** 260–360 px, sticky from `lg`.
-- **Mobile-first:** the header collapses to icon-only below `sm`, and nothing may cause horizontal scroll at 360 px.
+- **Mobile-first:** below 1280 px the page links move to the tab bar (the logo shows only the dice below 420 px), and nothing may cause horizontal scroll at 360 px.
 - **Spacing:** multiples of 4 px. **Radii:** `rounded-lg` for buttons and inputs, `rounded-xl` for cards, `rounded-full` for chips and avatars.
 
 ## Content & voice

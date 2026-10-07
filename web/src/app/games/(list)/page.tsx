@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { countGames, getGmProfile, listCitiesInUse, searchGames, listSystemsInUse, type GameFilters } from "@/lib/queries";
 import { getI18n } from "@/lib/i18n/server";
-import { parseIdr } from "@/lib/policy";
+import { formatIdr, parseIdr } from "@/lib/policy";
 import { EmptyState, GameCard, LaunchCard } from "@/components/ui";
 import { Icon } from "@/components/icon";
 import { FilterSheet } from "@/components/filter-sheet";
@@ -55,6 +55,26 @@ export default async function BrowsePage(props: PageProps<"/games">) {
   more.set("page", String(page + 1));
   const firstNew = (page - 1) * PAGE_SIZE; // the card "Load more" scrolls to
 
+  // The filters in use, as chips above the results: each one removable on its own, plus "clear all".
+  const without = (key: string) => {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) if (k !== key && k !== "page" && one(v)) p.set(k, one(v));
+    return `/games${p.size ? `?${p}` : ""}`;
+  };
+  const chips: [string, string][] = [];
+  if (filters.q) chips.push(["q", `“${filters.q}”`]);
+  if (filters.system) chips.push(["system", filters.system]);
+  if (filters.genre) chips.push(["genre", t(genreLabelKey(filters.genre as Parameters<typeof genreLabelKey>[0]))]);
+  if (filters.style) chips.push(["style", t(styleLabelKey(filters.style as Parameters<typeof styleLabelKey>[0]))]);
+  if (filters.mechanic) chips.push(["mechanic", MECHANICS.find((m) => m.key === filters.mechanic)?.name ?? filters.mechanic]);
+  if (filters.language === "id" || filters.language === "en") chips.push(["language", filters.language === "id" ? "Bahasa Indonesia" : "English"]);
+  if (filters.format === "one_shot" || filters.format === "campaign") chips.push(["format", t(filters.format === "campaign" ? "format.campaign" : "format.one_shot")]);
+  if (filters.location === "online" || filters.location === "in_person") chips.push(["location", t(filters.location === "online" ? "loc.online" : "loc.inPerson")]);
+  if (filters.city) chips.push(["city", filters.city]);
+  if (filters.level === "beginner" || filters.level === "experienced") chips.push(["level", t(filters.level === "beginner" ? "browse.imNew" : "browse.experienced")]);
+  if (filters.maxPrice != null) chips.push(["maxPrice", t("browse.upTo", { price: formatIdr(filters.maxPrice) })]);
+  if (filters.free) chips.push(["free", t("browse.freeOnly")]);
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -68,6 +88,17 @@ export default async function BrowsePage(props: PageProps<"/games">) {
             <Icon name="hat-wizard" /> {t("profile.gamesBy", { name: gmFilter.name })} <Icon name="cross-circle" label={t("browse.clear")} />
           </Link>
         </p>
+      )}
+
+      {chips.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label={t("browse.activeFilters")} data-testid="active-filters">
+          {chips.map(([key, label]) => (
+            <Link key={key} href={without(key)} className="chip min-h-10 gap-1.5 border-accent/40! bg-accent-soft! px-3! text-sm! text-accent!" aria-label={t("browse.removeFilter", { name: label })}>
+              {label} <Icon name="cross-circle" />
+            </Link>
+          ))}
+          <Link href="/games" className="btn-ghost text-accent!">{t("browse.clearAllShort")}</Link>
+        </div>
       )}
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[260px_1fr]">
@@ -204,7 +235,7 @@ function Radios({ name, value, options }: { name: string; value?: string; option
   return (
     <div className="flex flex-wrap gap-1.5">
       {options.map(([v, label]) => (
-        <label key={v} className="cursor-pointer">
+        <label key={v} className="relative cursor-pointer">
           <input type="radio" name={name} value={v} defaultChecked={(value ?? "") === v} className="peer sr-only" />
           <span className="chip peer-checked:border-accent peer-checked:bg-accent-soft peer-checked:text-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent">
             {label}

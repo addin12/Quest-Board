@@ -16,7 +16,9 @@ test("settings: a player changes their name and portrait", async ({ page }) => {
   await page.goto("/settings");
   await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
   await page.getByLabel("Display name").fill("Intan P.");
-  await page.getByRole("radio", { name: "Portrait 3", exact: true }).check({ force: true });
+  // Tap the portrait tile itself, as a person would (it waits while the sign-in toast covers it).
+  await page.getByTitle("Portrait 3", { exact: true }).click();
+  await expect(page.getByRole("radio", { name: "Portrait 3", exact: true })).toBeChecked();
   await page.getByLabel("About you").fill("Loves cozy games.");
   await page.getByRole("button", { name: "Save profile" }).click();
   await expect(page.getByText("Profile saved.")).toBeVisible();

@@ -50,7 +50,7 @@ export function ReviewForm({ gameId, existing }: { gameId: number; existing?: { 
         <legend className="sr-only">{t("reviews.rating")}</legend>
         <div className="flex flex-row-reverse justify-end gap-1">
           {[5, 4, 3, 2, 1].map((n) => (
-            <label key={n} className="cursor-pointer">
+            <label key={n} className="relative cursor-pointer">
               <input type="radio" name="rating" value={n} className="peer sr-only" required defaultChecked={rating === String(n)} />
               <span
                 className="flex text-2xl text-border peer-checked:text-gold peer-focus-visible:outline-2 peer-focus-visible:outline-accent"

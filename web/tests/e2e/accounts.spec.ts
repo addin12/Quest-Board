@@ -272,6 +272,7 @@ test("Settings lists where you're logged in; a new device is emailed, a known on
   expect(mail.body_text).toMatch(/(Chrome|Edge) · (Windows|Linux|macOS)/);
   expect(mail.body_text).toContain("/forgot-password");
   // Logging in again on that browser (it keeps its device cookie) isn't news.
+  await other.getByRole("button", { name: /Account menu/ }).click(); // logging out is in the account menu
   await other.getByRole("button", { name: "Log out", exact: true }).click();
   await other.waitForURL((u) => u.pathname === "/");
   await login(other, email);

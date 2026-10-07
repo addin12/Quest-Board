@@ -20,7 +20,7 @@ export function FeedbackForm({ signedIn, from }: { signedIn: boolean; from: stri
         <legend className="label">{t("feedback.kind")}</legend>
         <div className="flex flex-wrap gap-2">
           {(["bug", "idea", "other"] as const).map((k) => (
-            <label key={k} className="cursor-pointer">
+            <label key={k} className="relative cursor-pointer">
               <input type="radio" name="kind" value={k} defaultChecked={kind === k} className="peer sr-only" />
               <span className="chip gap-1 py-1! peer-checked:border-accent peer-checked:bg-accent-soft peer-checked:text-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent">
                 <Icon name={k === "bug" ? "exclamation" : k === "idea" ? "sparkles" : "comment"} /> {t(`feedback.kind.${k}`)}

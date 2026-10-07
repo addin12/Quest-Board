@@ -239,7 +239,7 @@ function CategoryChips({ name, legend, options, initial }: {
         {options.map((o) => {
           const on = picked.includes(o.key);
           return (
-            <label key={o.key} className={on || !full ? "cursor-pointer" : "cursor-not-allowed opacity-50"}>
+            <label key={o.key} className={`relative ${on || !full ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}>
               <input
                 type="checkbox"
                 name={name}

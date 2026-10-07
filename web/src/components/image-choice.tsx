@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { Icon } from "./icon";
+import { FieldError } from "./ui";
 
 export type ImageOption = { value: string; label: string };
 
@@ -40,7 +41,7 @@ export function ImageChoiceGrid({
           <label
             key={o.value || "none"}
             title={o.label}
-            className="group cursor-pointer rounded-lg border border-border bg-surface p-1.5 transition-colors hover:border-accent has-[:checked]:border-accent has-[:checked]:ring-2 has-[:checked]:ring-accent/40 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent"
+            className="group relative cursor-pointer rounded-lg border border-border bg-surface p-1.5 transition-colors hover:border-accent has-[:checked]:border-accent has-[:checked]:ring-2 has-[:checked]:ring-accent/40 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent"
           >
             <input type="radio" name={name} value={o.value} checked={value === o.value} onChange={() => onChange(o.value)} className="sr-only" aria-label={o.label} />
             <span className={`relative block overflow-hidden ${round ? "mx-auto aspect-square w-full max-w-20 rounded-full" : "aspect-[2/1] rounded-md"}`}>
@@ -55,7 +56,7 @@ export function ImageChoiceGrid({
           </label>
         ))}
       </div>
-      {error && <p id={`${name}-error`} className="mt-1 text-xs text-danger">{error}</p>}
+      <FieldError id={name} msg={error} />
     </fieldset>
   );
 }

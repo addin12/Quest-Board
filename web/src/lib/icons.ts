@@ -5,7 +5,7 @@
 
 /** Regular-rounded style (`fi-rr-*`). */
 export const REGULAR_ICONS = [
-  "sun", "candle-holder", "circle-half-stroke",
+  "sun", "candle-holder", "circle-half-stroke", "angle-small-down", "angle-small-up",
   "thumbtack", "bookmark", "heart", "megaphone", "note", "comment",
   "flag", "ban", "shield", "badge-check", "chart-histogram", "user-check", "user-slash", "gavel", "list-check",
   "trash", "envelope", "envelope-open", "file-download", "scale", "user-lock",

@@ -373,7 +373,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
       {sessions.length > 0 && !ownerView && (
         <>
           <div className="h-16 lg:hidden" aria-hidden="true" />
-          <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface/95 px-4 py-2.5 shadow-[0_-4px_12px_rgb(0_0_0/0.12)] backdrop-blur md:bottom-0 lg:hidden">
+          <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface/95 px-4 py-2.5 shadow-[0_-4px_12px_rgb(0_0_0/0.12)] backdrop-blur lg:hidden">
             <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
               <p className="min-w-0 text-sm">
                 <span className="font-bold">{priceLabel(game.price_idr, t)}</span>

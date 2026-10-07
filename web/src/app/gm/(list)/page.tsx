@@ -88,13 +88,14 @@ export default async function GmDashboardPage() {
       )}
 
       <dl className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Stat icon="dice-d20" label={t("gmDash.liveGames")} value={String(stats.live_games)} />
-        <Stat icon="calendar-clock" label={t("gmDash.upcomingSessions")} value={String(stats.upcoming_sessions)} />
-        <Stat icon="users" label={t("gmDash.playersBooked")} value={String(stats.upcoming_players)} />
-        <Stat icon="wallet" label={t("gmDash.expectedIncome")} value={formatIdr(stats.expected_income_idr)} hint={t("gmDash.expectedHint")} />
+        {/* Each number opens its details: the games list (sessions and seats are on each row), or earnings. */}
+        <Stat href="#your-games" icon="dice-d20" label={t("gmDash.liveGames")} value={String(stats.live_games)} />
+        <Stat href="#your-games" icon="calendar-clock" label={t("gmDash.upcomingSessions")} value={String(stats.upcoming_sessions)} />
+        <Stat href="#your-games" icon="users" label={t("gmDash.playersBooked")} value={String(stats.upcoming_players)} />
+        <Stat href="/gm/earnings" icon="wallet" label={t("gmDash.expectedIncome")} value={formatIdr(stats.expected_income_idr)} hint={t("gmDash.expectedHint")} />
       </dl>
 
-      <h2 className="mt-12 mb-4 text-xl font-bold">{t("gmDash.yourGames")}</h2>
+      <h2 id="your-games" className="mt-12 mb-4 scroll-mt-24 text-xl font-bold">{t("gmDash.yourGames")}</h2>
       {games.length === 0 ? (
         <EmptyState title={t("gmDash.emptyTitle")}>
           <p>{t("gmDash.emptyBody")}</p>
@@ -132,15 +133,18 @@ export default async function GmDashboardPage() {
   );
 }
 
-function Stat({ icon, label, value, hint }: { icon: RegularIcon; label: string; value: string; hint?: string }) {
+/** A summary number (28px) that opens the details behind it. */
+function Stat({ href, icon, label, value, hint }: { href: string; icon: RegularIcon; label: string; value: string; hint?: string }) {
   return (
-    <div className="card p-4">
-      <dt className="eyebrow flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-soft text-accent"><Icon name={icon} /></span>
+    <div className="card relative p-5 transition-colors hover:border-accent/50">
+      <dt className="flex items-center gap-2 text-sm font-semibold text-muted">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft text-accent"><Icon name={icon} /></span>
         {label}
       </dt>
-      <dd className="mt-1 text-2xl font-bold">{value}</dd>
-      {hint && <dd className="text-xs text-muted">{hint}</dd>}
+      <dd className="mt-2 text-2xl font-bold tabular-nums">
+        <Link href={href} className="after:absolute after:inset-0 after:rounded-xl hover:text-accent">{value}</Link>
+      </dd>
+      {hint && <dd className="mt-1 text-xs text-muted">{hint}</dd>}
     </div>
   );
 }

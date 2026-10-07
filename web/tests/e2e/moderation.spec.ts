@@ -49,6 +49,7 @@ test("reporting a review: validation, no self-reports, no duplicates; the admin 
   await login(admin, "admin@questboard.test");
   await admin.getByRole("button", { name: /^Notifications/ }).click();
   await expect(admin.getByRole("region", { name: "Notifications" }).getByText("Andi Wijaya sent a new report").first()).toBeVisible(); // other specs may have reported too
+  await admin.getByRole("button", { name: /Account menu/ }).click(); // the admin console is in the account menu
   await admin.getByRole("link", { name: "Admin" }).click();
   await admin.getByRole("link", { name: /^Reports/ }).click();
   const card = admin.getByRole("listitem").filter({ hasText: "Spam or advertising" }).first();

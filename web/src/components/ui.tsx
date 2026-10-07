@@ -114,10 +114,10 @@ export function GameCard({ game, t }: { game: GameCardData; t: T }) {
   return (
     <Link
       href={`/games/${game.slug}`}
-      className="card group flex flex-col overflow-hidden transition-shadow hover:shadow-lg hover:shadow-black/5 focus-visible:outline-2 focus-visible:outline-accent"
+      className="card group flex flex-col overflow-hidden transition-colors hover:border-accent/50 focus-visible:outline-2 focus-visible:outline-accent"
     >
       <Cover hue={game.cover_hue} system={game.system} image={game.cover_image} className="h-32" />
-      <div className="flex flex-1 flex-col gap-2 p-4">
+      <div className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-lg font-semibold leading-snug group-hover:text-accent">{game.title}</h3>
           <span className="shrink-0 text-right">
@@ -136,10 +136,10 @@ export function GameCard({ game, t }: { game: GameCardData; t: T }) {
             genre ? <span className="chip gap-1"><Icon name={genreIcon(genre)} />{t(genreLabelKey(genre))}</span> : tags[0] && <span className="chip">#{tags[0]}</span>
           )}
         </div>
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-3 text-sm">
-          <span className="flex min-w-0 items-center gap-2">
-            <Avatar name={game.gm_name} hue={game.gm_hue} image={game.gm_image} size={26} />
-            <span className="truncate">{game.gm_name}</span>
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-border pt-3 text-sm">
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <Avatar name={game.gm_name} hue={game.gm_hue} image={game.gm_image} size={28} />
+            <span className="font-medium">{game.gm_name}</span>
             {game.gm_verified ? <VerifiedBadge label={t("common.verifiedGm")} /> : null}
             {game.gm_new ? <NewGmBadge t={t} /> : null}
           </span>
@@ -166,7 +166,12 @@ export function GameCard({ game, t }: { game: GameCardData; t: T }) {
 /** Error text under a field. Pass the field's `id` so errAttrs() can point the control at it. */
 export function FieldError({ msg, id }: { msg?: string; id?: string }) {
   if (!msg) return null;
-  return <p id={id ? `${id}-error` : undefined} className="mt-1 text-xs text-danger">{msg}</p>;
+  // Next to the field, with an icon as well as the colour (never colour alone).
+  return (
+    <p id={id ? `${id}-error` : undefined} className="mt-1.5 flex items-start gap-1.5 text-xs font-semibold text-danger">
+      <Icon name="triangle-warning" className="mt-0.5 shrink-0" /> <span>{msg}</span>
+    </p>
+  );
 }
 
 /** aria-invalid + aria-describedby for a control whose <FieldError id={id}> is showing `msg`. */

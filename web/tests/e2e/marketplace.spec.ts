@@ -301,7 +301,9 @@ test("a GM can pick an illustrated portrait instead of initials", async ({ page 
 
   await page.getByRole("link", { name: /Edit profile & payment details/ }).click();
   await expect(page.getByRole("radio", { name: "Initials" })).toBeChecked(); // default for new GMs
-  await page.getByRole("radio", { name: "Portrait 1", exact: true }).check({ force: true });
+  // Tap the portrait tile itself, as a person would (it waits while the sign-in toast covers it).
+  await page.getByTitle("Portrait 1", { exact: true }).click();
+  await expect(page.getByRole("radio", { name: "Portrait 1", exact: true })).toBeChecked();
   // Live preview updates before saving.
   await expect(page.locator('img[src*="/images/gms/library/wizard-violet.svg"]').first()).toBeVisible();
   await page.getByLabel("Headline").fill("Petualangan high fantasy klasik");

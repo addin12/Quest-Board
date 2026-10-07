@@ -17,7 +17,7 @@ export function Toaster({ toast, closeLabel }: { toast: { text: string; id: stri
   }, [toast]);
   const visible = toast && hidden !== toast.id;
   return (
-    <div aria-live="polite" role="status" className="pointer-events-none fixed inset-x-0 bottom-20 z-[60] flex justify-center px-4 md:bottom-6">
+    <div aria-live="polite" role="status" className="pointer-events-none fixed inset-x-0 bottom-20 z-[60] flex justify-center px-4 xl:bottom-6">
       {visible && (
         <div className="parchment popover pointer-events-auto flex items-center gap-3 border-success/40! px-4 py-3 text-sm">
           <Icon name="check-circle" solid className="text-success" />

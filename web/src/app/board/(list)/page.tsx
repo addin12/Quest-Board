@@ -57,18 +57,18 @@ export default async function BoardPage(props: PageProps<"/board">) {
             );
           })}
         </nav>
-        <form className="mt-4 grid gap-3 sm:grid-cols-[1fr_200px_180px_auto]" role="search" aria-label={t("board.filters")}>
+        <form className="mt-4 grid items-end gap-3 sm:grid-cols-[1fr_200px_180px_auto]" role="search" aria-label={t("board.filters")}>
           {kind && <input type="hidden" name="kind" value={kind} />}
           <div>
-            <label htmlFor="bq" className="sr-only">{t("board.searchLabel")}</label>
+            <label htmlFor="bq" className="label">{t("board.searchLabel")}</label>
             <input id="bq" name="q" defaultValue={q} className="input" placeholder={t("board.searchPh")} />
           </div>
           <div>
-            <label htmlFor="bwhere" className="sr-only">{t("browse.where")}</label>
+            <label htmlFor="bwhere" className="label">{t("browse.where")}</label>
             <input id="bwhere" name="where" defaultValue={where} className="input" placeholder={t("hire.wherePh")} />
           </div>
           <div>
-            <label htmlFor="blang" className="sr-only">{t("browse.language")}</label>
+            <label htmlFor="blang" className="label">{t("browse.language")}</label>
             <select id="blang" name="language" defaultValue={language ?? ""} className="input">
               <option value="">{t("common.any")}</option>
               <option value="id">{t("lang.gameId")}</option>

@@ -2,6 +2,9 @@
 
 /*
  * Design tokens — "medieval tavern" theme (see DESIGN.md).
+ * Layout and type follow "Universal UI Rules for Real Users" with an Apple/Notion calm: a readable
+ * scale (17px body, 14px smallest), 44px controls, one accent, flat parchment cards with a hairline
+ * edge. The tavern stays in the palette, the wood, the textures, Cinzel headings and the art.
  * Light = parchment & ink by daylight; dark = a candlelit tavern at night.
  * `.parchment` re-applies the page palette inside a wooden area (e.g. the bell popover);
  * `.on-wood` switches to the dark-oak palette used by the header, footer, tab bar and hero.
@@ -24,7 +27,7 @@
   --success-soft: #e0ecd6;
   --danger: #9f2419;
   --danger-soft: #f5dcd4;
-  --card-shadow: inset 0 0 0 1px rgb(255 252 240 / 0.5), inset 0 0 36px rgb(140 95 35 / 0.1), 0 2px 6px -2px rgb(60 35 10 / 0.28);
+  --card-shadow: none;
   --page-texture: url("/textures/parchment.svg");
   color: var(--text);
 }
@@ -48,7 +51,7 @@
     --success-soft: #1f2e1a;
     --danger: #f08e7e;
     --danger-soft: #3b1b15;
-    --card-shadow: inset 0 0 0 1px rgb(255 220 160 / 0.05), inset 0 0 40px rgb(0 0 0 / 0.35), 0 2px 10px -2px rgb(0 0 0 / 0.6);
+    --card-shadow: none;
     --page-texture: url("/textures/wood-faint.svg");
   }
 }
@@ -70,7 +73,7 @@
   --success-soft: #1f2e1a;
   --danger: #f08e7e;
   --danger-soft: #3b1b15;
-  --card-shadow: inset 0 0 0 1px rgb(255 220 160 / 0.05), inset 0 0 40px rgb(0 0 0 / 0.35), 0 2px 10px -2px rgb(0 0 0 / 0.6);
+  --card-shadow: none;
   --page-texture: url("/textures/wood-faint.svg");
 }
 :root { color-scheme: light dark; }
@@ -106,6 +109,19 @@
   background-size: auto, 900px 180px;
 }
 
+/* Type scale (Tailwind's names, readable sizes): xs is the smallest text anywhere — 14px. */
+@theme {
+  --text-xs: 0.875rem;   --text-xs--line-height: 1.45;    /* 14px: supporting detail */
+  --text-sm: 1rem;       --text-sm--line-height: 1.5;     /* 16px: labels, buttons, card text */
+  --text-base: 1.0625rem; --text-base--line-height: 1.55; /* 17px: body */
+  --text-lg: 1.1875rem;  --text-lg--line-height: 1.45;    /* 19px: card titles */
+  --text-xl: 1.375rem;   --text-xl--line-height: 1.35;    /* 22px */
+  --text-2xl: 1.75rem;   --text-2xl--line-height: 1.25;   /* 28px: key numbers */
+  --text-3xl: 2rem;      --text-3xl--line-height: 1.2;    /* 32px: page titles */
+  --text-4xl: 2.5rem;    --text-4xl--line-height: 1.12;
+  --text-5xl: 3.25rem;   --text-5xl--line-height: 1.06;
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -138,6 +154,8 @@
     background-image: var(--page-texture);
     background-size: 360px 360px;
     color: var(--text);
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
   }
   h1, h2 {
     font-family: var(--font-cinzel), "Times New Roman", serif;
@@ -152,16 +170,13 @@
   }
 }
 
+/* Buttons: flat 8px rectangles, at least 44px tall, a full-word label; pressing shrinks them a touch. */
 @utility btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-md border border-transparent px-4 py-2 text-sm font-bold tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2 text-sm font-semibold transition-[background-color,color,border-color,transform] duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 motion-reduce:active:scale-100;
 }
-/* Wax seal: deep colour, a highlight on top, a darker lip below. */
-@utility btn-primary {
-  @apply btn border-black/25 bg-accent text-accent-ink shadow-[inset_0_1px_0_rgb(255_255_255/0.22),0_1px_2px_rgb(0_0_0/0.35)] hover:bg-accent-hover;
-}
-@utility btn-secondary {
-  @apply btn border-border bg-surface text-text shadow-[inset_0_1px_0_rgb(255_255_255/0.35)] hover:bg-surface-2;
-}
+/* The one accent: the main action of a section. */
+@utility btn-primary { @apply btn bg-accent text-accent-ink hover:bg-accent-hover; }
+@utility btn-secondary { @apply btn border-border bg-surface text-text hover:bg-surface-2; }
 @utility btn-ghost { @apply btn text-muted hover:bg-surface-2 hover:text-text; }
 @utility btn-danger { @apply btn border-danger/40 text-danger hover:bg-danger-soft; }
 /* Parchment card with a slightly burnt edge. */
@@ -170,11 +185,15 @@
    screen — slow phones reach first content sooner. The size is a placeholder until then
    ("auto" remembers the real size once drawn, so the scrollbar doesn't jump back). */
 @utility defer-render { content-visibility: auto; contain-intrinsic-size: auto 640px; }
-@utility card { @apply rounded-lg border border-border bg-surface shadow-(--card-shadow); }
+/* Parchment card: one hairline edge, no shadow (spacing groups things before borders do). */
+@utility card { @apply rounded-xl border border-border bg-surface; }
+/* Fields: 44px tall, 16px text (phones don't zoom in), the label always above (.label). */
 @utility input {
-  @apply w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text shadow-[inset_0_1px_3px_rgb(60_35_10/0.12)] placeholder:text-muted/80 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30;
+  @apply min-h-11 w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted/80 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30;
 }
-@utility label { @apply mb-1 block text-sm font-bold; }
+@utility label { @apply mb-1.5 block text-sm font-semibold; }
+/* Helper text under a field: an example or what happens next. */
+@utility hint { @apply mt-1.5 text-xs text-muted; }
 /* Round parchment medallion with a brass rim (home "Browse by categories"). Always parchment,
    in both themes, so the ink-drawn illustrations read the same on light and dark wood. */
 @utility medallion {
@@ -184,10 +203,10 @@
     box-shadow: 0 0 0 3px var(--accent), 0 0 0 6px var(--surface), 0 0 0 7px var(--accent), 0 10px 24px -6px rgb(40 20 5 / 0.5);
   }
 }
-@utility chip { @apply inline-flex items-center whitespace-nowrap rounded-md border border-border bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted; }
+@utility chip { @apply inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-border bg-surface-2 px-2.5 py-1 text-xs font-medium text-muted; }
 @utility popover { @apply overflow-hidden rounded-lg border border-border bg-surface text-text shadow-2xl shadow-black/40; }
-@utility badge { @apply flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-accent-ink ring-2 ring-[#2a1b10]; }
-@utility eyebrow { @apply font-display text-xs font-bold uppercase tracking-[0.18em] text-muted; }
+@utility badge { @apply flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-bold leading-none text-accent-ink ring-2 ring-[#2a1b10]; }
+@utility eyebrow { @apply font-display text-xs font-bold uppercase tracking-[0.12em] text-muted; }
 /* Notice-board note: parchment with a soft drop shadow, pinned at the top. */
 @utility notice {
   @apply rounded-sm border border-border bg-surface text-text shadow-[0_6px_14px_-6px_rgb(40_20_5/0.55),inset_0_0_30px_rgb(140_95_35/0.12)];

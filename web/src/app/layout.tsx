@@ -9,7 +9,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { siteOrigin } from "@/lib/site";
 import { maybeProcessReminders } from "@/lib/reminders";
 import { maybeDeliverNotificationEmails } from "@/lib/notification-mail";
-import { logoutAction, setLanguageAction, setThemeAction } from "./actions";
+import { setLanguageAction, setThemeAction } from "./actions";
 import { cookies, headers } from "next/headers";
 import { languageAlternates } from "@/lib/seo";
 import { readToast } from "@/lib/toast";
@@ -18,8 +18,9 @@ import { PrelaunchBanner } from "@/components/prelaunch-banner";
 import { isPrelaunch } from "@/lib/prelaunch";
 import { isMsgKey, type T } from "@/lib/i18n/dict";
 import { Toaster } from "@/components/toaster";
-import { Avatar } from "@/components/ui";
 import { I18nProvider } from "@/components/i18n-provider";
+import { AccountMenu } from "@/components/account-menu";
+import type { RegularIcon } from "@/lib/icons";
 import { Icon } from "@/components/icon";
 import { NotificationBell } from "@/components/notification-bell";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
@@ -63,66 +64,40 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const themeCookie = (await cookies()).get("qb_theme")?.value;
   const theme = themeCookie === "light" || themeCookie === "dark" ? themeCookie : "system";
   const pending = await readToast(isMsgKey);
+  // The page's own path, without a language prefix: which header link is the current page.
+  const path = ((await headers()).get("x-qb-path") ?? "/").replace(/^\/(en|id)(?=\/|$)/, "") || "/";
   return (
     <html lang={lang} data-theme={theme === "system" ? undefined : theme} className={`${cinzel.variable} ${alegreya.variable} ${alegreyaSans.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col font-sans max-md:pb-16">
+      <body className="flex min-h-full flex-col font-sans max-xl:pb-16">
         <I18nProvider lang={lang}>
           <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 btn-primary">
             {t("nav.skip")}
           </a>
-          <header className="on-wood wood-plank sticky top-0 z-40 border-b-2 border-[#8a6a3a] shadow-[0_2px_10px_rgb(0_0_0/0.35)]">
+          <header className="on-wood wood-plank sticky top-0 z-40 border-b border-[#8a6a3a]">
             <nav className="mx-auto flex h-16 max-w-6xl items-center gap-1 whitespace-nowrap px-4 2xl:max-w-7xl" aria-label={t("nav.main")}>
-              <Link href="/" className="mr-1 flex items-center gap-2 text-lg font-extrabold tracking-wide sm:mr-3" style={{ fontFamily: "var(--font-heading)" }}>
-                <Icon name="dice-d20" solid className="text-xl text-accent drop-shadow-[0_0_6px_rgb(234_179_90/0.55)]" /> <span className="max-[399px]:sr-only">Quest Board</span>
+              <Link href="/" className="mr-2 flex min-h-11 items-center gap-2 text-lg font-extrabold tracking-wide lg:mr-3" style={{ fontFamily: "var(--font-heading)" }}>
+                <Icon name="dice-d20" solid className="text-xl text-accent" /> <span className="max-[419px]:sr-only">Quest Board</span>
               </Link>
-              <Link href="/games" className="btn-ghost px-2.5 max-md:hidden xl:px-3" aria-label={t("nav.findGame")}>
-                <Icon name="search" /> <span className="hidden lg:inline">{t("nav.findGame")}</span>
-              </Link>
-              <Link href="/browse" className="btn-ghost px-2.5 max-md:hidden xl:px-3" aria-label={t("nav.browse")}>
-                <Icon name="map" /> <span className="hidden lg:inline">{t("nav.browse")}</span>
-              </Link>
-              <Link href="/hire-a-gm" className="btn-ghost px-2.5 max-md:hidden xl:px-3" aria-label={t("nav.hireGm")}>
-                <Icon name="briefcase" /> <span className="hidden lg:inline">{t("nav.hireGm")}</span>
-              </Link>
-              <Link href="/board" className="btn-ghost hidden px-2.5 lg:inline-flex xl:px-3" aria-label={t("nav.board")} title={t("nav.board")}>
-                <Icon name="thumbtack" /> <span className="hidden 2xl:inline">{t("nav.board")}</span>
-              </Link>
-              {!isGm && (
-                <Link href="/become-a-gm" className="btn-ghost hidden xl:inline-flex">
-                  <Icon name="hat-wizard" /> {t("nav.becomeGm")}
-                </Link>
-              )}
+              {/* From 1280px: every page link with its full name, the current one marked. Narrower screens use the tab bar. */}
+              <div className="hidden items-center gap-0.5 xl:flex">
+                <NavLink href="/games" icon="search" label={t("nav.findGame")} path={path} />
+                <NavLink href="/browse" icon="map" label={t("nav.browse")} path={path} />
+                <NavLink href="/hire-a-gm" icon="briefcase" label={t("nav.hireGm")} path={path} />
+                <NavLink href="/board" icon="thumbtack" label={t("nav.board")} path={path} />
+                {!isGm && <NavLink href="/become-a-gm" icon="hat-wizard" label={t("nav.becomeGm")} path={path} />}
+              </div>
               <div className="ml-auto flex items-center gap-1">
-                <ThemeSwitcher theme={theme} t={t} />
                 <LanguageSwitcher lang={lang} label={t("lang.switch")} />
                 {user ? (
                   <>
-                    {isGm && (
-                      <Link href="/gm" className="btn-ghost px-2.5 max-md:hidden xl:px-3" aria-label={t("nav.gmDashboard")}>
-                        <Icon name="hat-wizard" /> <span className="hidden xl:inline">{t("nav.gmDashboard")}</span>
-                      </Link>
-                    )}
-                    <Link href="/dashboard" className="btn-ghost px-2.5 max-md:hidden xl:px-3" aria-label={t("nav.myGames")}>
-                      <Icon name="calendar-clock" /> <span className="hidden xl:inline">{t("nav.myGames")}</span>
-                    </Link>
-                    {user.role === "admin" && (
-                      <Link href="/admin" className="btn-ghost px-2.5" aria-label={t("admin.title")} title={t("admin.title")}>
-                        <Icon name="shield" />
-                      </Link>
-                    )}
+                    {isGm && <NavLink href="/gm" icon="hat-wizard" label={t("nav.gmDashboard")} path={path} exact className="max-xl:hidden" />}
+                    <NavLink href="/dashboard" icon="calendar-clock" label={t("nav.myGames")} path={path} className="max-xl:hidden" />
                     <NotificationBell unread={unread} items={recent} openRequests={openRequests} />
-                    <Link href="/settings" className="flex items-center rounded-full pl-1 hover:opacity-90" aria-label={t("settings.title")} title={t("settings.title")}>
-                      <Avatar name={user.name} hue={user.avatar_hue} image={user.avatar_image} size={30} />
-                    </Link>
-                    <form action={logoutAction}>
-                      <button className="btn-ghost px-2.5 xl:px-3" type="submit" aria-label={t("nav.logout")} title={t("nav.logout")}>
-                        <Icon name="sign-out-alt" /> <span className="hidden 2xl:inline">{t("nav.logout")}</span>
-                      </button>
-                    </form>
+                    <AccountMenu name={user.name} hue={user.avatar_hue} image={user.avatar_image ?? null} admin={user.role === "admin"} />
                   </>
                 ) : (
                   <>
-                    <Link href="/login" className="btn-ghost max-sm:px-2!"><Icon name="sign-in-alt" className="hidden sm:inline-flex" /> {t("nav.login")}</Link>
+                    <Link href="/login" className="btn-ghost max-sm:px-2.5!">{t("nav.login")}</Link>
                     <Link href="/signup" className="btn-primary max-sm:px-3!">{t("nav.signup")}</Link>
                   </>
                 )}
@@ -157,12 +132,15 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <Link href="/feedback" className="hover:text-text">{t("feedback.title")}</Link>
               </div>
             </div>
-            <div className="mx-auto max-w-6xl border-t border-border px-4 py-4 text-xs text-muted">
+            <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-4 text-xs text-muted">
+              <ThemeSwitcher theme={theme} t={t} />
+              <span>
               {/* Required attribution for free use of Flaticon UIcons. */}
               {t("footer.iconsBy")}{" "}
               <a href="https://www.flaticon.com/uicons" target="_blank" rel="noopener noreferrer" className="underline hover:text-text">
                 Uicons by Flaticon
               </a>
+              </span>
             </div>
           </footer>
           <MobileTabBar signedIn={!!user} isGm={isGm} />
@@ -182,11 +160,11 @@ function ThemeSwitcher({ theme, t }: { theme: "system" | "light" | "dark"; t: T 
       <input type="hidden" name="theme" value={next} />
       <button
         type="submit"
-        className="btn-ghost px-2.5"
+        className="btn-secondary"
         aria-label={t("theme.switch", { current: name(theme), next: name(next) })}
-        title={t("theme.switch", { current: name(theme), next: name(next) })}
       >
         <Icon name={theme === "system" ? "circle-half-stroke" : theme === "light" ? "sun" : "candle-holder"} />
+        {t("theme.current", { current: name(theme) })}
       </button>
     </form>
   );
@@ -194,7 +172,7 @@ function ThemeSwitcher({ theme, t }: { theme: "system" | "light" | "dark"; t: T 
 
 function LanguageSwitcher({ lang, label }: { lang: "id" | "en"; label: string }) {
   return (
-    <form action={setLanguageAction} className="flex items-center rounded-md border border-border bg-black/20 p-0.5 text-xs font-bold" aria-label={label}>
+    <form action={setLanguageAction} className="flex items-center rounded-lg border border-border bg-black/20 p-0.5 text-sm font-bold" aria-label={label}>
       <Icon name="globe" className="hidden px-1.5 text-muted sm:inline-flex" />
       {(["en", "id"] as const).map((l) => (
         <button
@@ -203,11 +181,25 @@ function LanguageSwitcher({ lang, label }: { lang: "id" | "en"; label: string })
           name="lang"
           value={l}
           aria-pressed={lang === l}
-          className={`rounded px-2 py-1 uppercase ${lang === l ? "bg-accent text-accent-ink" : "text-muted hover:text-text"}`}
+          className={`min-h-10 min-w-10 rounded-md px-2 uppercase ${lang === l ? "bg-accent text-accent-ink" : "text-muted hover:text-text"}`}
         >
           {l}
         </button>
       ))}
     </form>
+  );
+}
+
+/** A header link: icon and full label; the current page gets aria-current and an amber underline. */
+function NavLink({ href, icon, label, path, exact = false, className = "" }: { href: string; icon: RegularIcon; label: string; path: string; exact?: boolean; className?: string }) {
+  const current = exact ? path === href : path === href || path.startsWith(`${href}/`);
+  return (
+    <Link
+      href={href}
+      aria-current={current ? "page" : undefined}
+      className={`btn-ghost relative px-2.5 2xl:px-3 ${current ? "bg-white/10 text-text! after:absolute after:inset-x-3 after:bottom-0.5 after:h-0.5 after:rounded-full after:bg-accent" : ""} ${className}`}
+    >
+      <Icon name={icon} className="hidden 2xl:inline-flex" /> {label}
+    </Link>
   );
 }
