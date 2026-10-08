@@ -5,9 +5,9 @@ export type UploadKind = "cover" | "portrait" | "qris";
 /** Biggest file accepted from a phone camera; it's re-encoded much smaller. */
 export const UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 
-/** Output size: covers are 2:1 banners, portraits are square (shown round). */
+/** Output size: covers are 4:5 portraits (Instagram's post shape), portraits are square (shown round). */
 export const UPLOAD_SIZES: Record<UploadKind, { width: number; height: number }> = {
-  cover: { width: 1600, height: 800 },
+  cover: { width: 1080, height: 1350 },
   portrait: { width: 512, height: 512 },
   qris: { width: 900, height: 900 }, // the most it's scaled down to; never cropped (lib/uploads.ts)
 };

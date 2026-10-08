@@ -36,11 +36,11 @@ The layout follows *Universal UI Rules for Real Users*, with an Apple/Notion cal
 - Use the tokens through Tailwind (`bg-surface`, `text-accent`…), never raw hex. The exceptions are the wood trim `#8a6a3a` and the hero wash.
 
 ## Imagery
-- **Game covers** are 1200×600 SVG scenes in a flat, layered, storybook style: gradient sky, silhouette landscape and one clear focal motif.
-  - **Keep the focal point in the vertical middle band (y ≈ 170–430).** Wide hero banners crop to roughly 4.5:1, and cards to roughly 3:1.
+- **Game covers are 4:5 portraits**, the shape of an Instagram post: a poster on game cards, beside the title on the game page (three-quarters width on phones), and a small poster on the booking page. Uploads are cut to 1080×1350.
+  - The built-in art is a flat, layered, storybook scene (gradient sky, silhouette landscape, one clear focal motif), drawn 1200×600 and recomposed into 960×1200 by `scripts/build-placeholders.mjs`: the sky stretched over the whole frame, the scene scaled 1.25× and anchored to the bottom, extra stars above on night skies. **Keep a motif's subject within x ≈ 220–980** of its 1200-wide scene, the part that stays in view.
   - The palette derives from the game's `cover_hue`, so art and gradient fallbacks feel related.
 - **GM portraits** are 512×512 SVGs: a friendly flat bust on a hue gradient, with one identifying accessory each (hood and d20 pendant, flower, beanie and goggles, hijab). They are shown in circles by `Avatar`. Keep faces centred and simple, and keep representation respectful and diverse.
-- **Cover picker (game form):** a grid of 2:1 tiles (2, 3 or 4 columns by breakpoint). They are real radio inputs, and the selected tile gets an accent border, a ring and a check badge. The order is Colour gradient → Current cover (only for non-library demo art) → the library. Tile names are translated (`cover.<motif>`).
+- **Cover picker (game form):** a grid of 4:5 tiles (3, 4 or 6 columns by breakpoint). They are real radio inputs, and the selected tile gets an accent border, a ring and a check badge. The order is Colour gradient → Current cover (only for non-library demo art) → the library. Tile names are translated (`cover.<motif>`).
 - **Portrait picker (GM profile form):** round tiles (4 or 5 columns), with Initials → Current portrait (demo art only) → the library, plus a live preview card above. Tiles have translated `aria-label`s ("Portrait 3" / "Potret 3"). Both pickers use `ImageChoiceGrid`; reuse it for any future image choice.
 - **Fallbacks are part of the design:** no image means a hue gradient cover or an initials avatar, never a broken image.
 - **Never** hot-link external images. The CSP allows only `'self'`, and the placeholders need no attribution.

@@ -160,3 +160,32 @@ test("hire a GM: the requester who chose a GM sees their QRIS code; nobody else 
   await signup(stranger, "Sari Stranger", unique("hire-qr-x"));
   expect((await stranger.request.get(`/payment-qr/${gmId}`)).status()).toBe(404);
 });
+
+// Feedback 2026-10-07: an in-person game names its venue and links it on Google Maps (public).
+test("an in-person game shows its venue and an 'Open in Google Maps' button; only Google Maps links are accepted", async ({ page, browser }) => {
+  test.setTimeout(150_000);
+  const slug = await createGmWithGame(page, "Vina Venue", unique("venue-gm"), "Venue Table");
+  const db = e2eDb();
+  const gameId = (db.prepare("SELECT id FROM games WHERE slug = ?").get(slug) as { id: number }).id;
+  db.close();
+  await page.goto(`/gm/games/${gameId}/edit`);
+  await page.getByLabel("Location").selectOption("in_person");
+  await page.locator("#city").fill("Bandung");
+  await page.getByLabel("Venue (optional)").fill("Kumu Ground Coffee");
+  await page.getByLabel("Google Maps link (optional)").fill("https://bit.ly/not-a-map");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Paste a Google Maps link")).toBeVisible();
+  await page.getByLabel("Google Maps link (optional)").fill("https://maps.app.goo.gl/KumuGroundCoffee");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await page.waitForURL(/\/gm\/games\/\d+$/);
+
+  // Anyone (signed out) sees the venue and the map link.
+  const visitor = await newPage(browser);
+  await visitor.goto(`/games/${slug}`);
+  await expect(visitor.getByText("Kumu Ground Coffee")).toBeVisible();
+  const maps = visitor.getByTestId("venue-maps");
+  await expect(maps).toHaveAttribute("href", "https://maps.app.goo.gl/KumuGroundCoffee");
+  await expect(maps).toHaveAttribute("target", "_blank");
+  await expect(maps).toHaveAttribute("rel", /noopener/);
+  await expect(maps).toHaveText(/Open in Google Maps/);
+});

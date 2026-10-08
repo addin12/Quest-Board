@@ -92,8 +92,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
   return (
     <article>
       {events.length > 0 && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(events) }} />}
-      <Cover hue={game.cover_hue} system={game.system} image={game.cover_image} className="h-48 sm:h-72" wide />
-      <div className="mx-auto max-w-6xl px-4">
+      <div className="mx-auto max-w-6xl px-4 pt-6">
         {preview && (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-accent/40 bg-accent-soft px-4 py-3 text-sm" role="status" data-testid="preview-banner">
             <p className="flex items-start gap-2"><Icon name="eye" className="mt-0.5 shrink-0 text-accent" /> {t(preview === "player" ? "preview.asPlayer" : "preview.asVisitor")}</p>
@@ -108,6 +107,10 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
         )}
         <div className="grid gap-10 py-8 lg:grid-cols-[1fr_360px]">
           <div className="min-w-0">
+            {/* The cover is a 4:5 poster (like an Instagram post): beside the title, or above it on phones. */}
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
+            <Cover hue={game.cover_hue} system={game.system} image={game.cover_image} priority sizes="(min-width: 640px) 256px, 100vw" className="aspect-[4/5] w-3/4 max-w-xs shrink-0 self-center rounded-xl border border-border sm:w-56 sm:self-start lg:w-64" />
+            <div className="min-w-0 flex-1">
             <div className="flex flex-wrap gap-1.5">
               <span className="chip gap-1"><Icon name={game.format === "campaign" ? "scroll-old" : "book-open-cover"} />{t(game.format === "campaign" ? "format.campaign" : "format.one_shot")}</span>
               <span className="chip gap-1"><Icon name={game.location_type === "online" ? "laptop" : "marker"} />{game.location_type === "online" ? t("loc.online") : `${t("loc.inPerson")} · ${game.city}`}</span>
@@ -132,6 +135,8 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                 {viewer?.admin && game.status === "published" && <ModRemoveButton targetType="game" targetId={game.id} />}
               </div>
             )}
+            </div>
+            </div>
 
             <section className="mt-8">
               <h2 className="text-xl font-bold">{t("game.about")}</h2>
@@ -161,7 +166,17 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
 
             <section className="mt-8 grid gap-4 sm:grid-cols-2">
               <InfoBlock icon={game.location_type === "online" ? "laptop" : "marker"} title={t("game.where")}>
-                {game.location_type === "online" ? game.platform || t("loc.online") : t("game.inPersonVenue", { city: game.city })}
+                {game.location_type === "online" ? game.platform || t("loc.online") : game.venue_name ? (
+                  <>
+                    <span className="block font-semibold">{game.venue_name}</span>
+                    <span className="block text-muted">{game.city}</span>
+                  </>
+                ) : t("game.inPersonVenue", { city: game.city })}
+                {game.location_type === "in_person" && game.venue_maps_url && (
+                  <a href={game.venue_maps_url} target="_blank" rel="noopener noreferrer nofollow" className="btn-secondary mt-3" data-testid="venue-maps">
+                    <Icon name="marker" /> {t("game.openMaps")}
+                  </a>
+                )}
               </InfoBlock>
               <InfoBlock icon="shield-check" title={t("game.safety")}>{game.safety_tools || t("game.safetyNone")}</InfoBlock>
               <InfoBlock icon="triangle-warning" title={t("game.cw")}>{game.content_warnings || t("game.cwNone")}</InfoBlock>
@@ -254,7 +269,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                 {game.price_idr > 0 && <span className="text-sm font-normal text-muted"> / {t("common.session")}</span>}
               </p>
               <p className="text-sm text-muted">{t("game.seatsPerSession", { n: game.seats_total })}</p>
-              {game.price_idr > 0 && <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted"><Icon name="percentage" /> {t("game.paidToGm")}</p>}
+              {game.price_idr > 0 && <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted"><Icon name="wallet" /> {t("game.paidToGm")}</p>}
               {/* Payments go straight to the GM, so their refund terms come before anyone books. */}
               <div className="mt-3 border-t border-border pt-3 text-sm" data-testid="refund-terms">
                 <p className="font-semibold">{t("game.refundTitle")}</p>

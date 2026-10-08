@@ -1,6 +1,6 @@
 // Generates ORIGINAL placeholder artwork (SVG) for the demo data:
-//   web/public/images/covers/<game-slug>.svg   (1200×600 scene per game)
-//   web/public/images/covers/library/<motif>.svg (1200×600 reusable cover a GM can pick)
+//   web/public/images/covers/<game-slug>.svg   (960×1200 portrait scene per game, 4:5 like an Instagram post)
+//   web/public/images/covers/library/<motif>.svg (960×1200 reusable cover a GM can pick)
 //   web/public/images/gms/<key>.svg            (512×512 portrait per seed GM)
 //   web/public/images/gms/library/<key>.svg    (512×512 portrait any GM can pick)
 //
@@ -387,6 +387,26 @@ function portrait({ style, hue, skin }) {
   return svg(S, S, defs, body, "Game Master portrait (placeholder)");
 }
 
+// ── portrait covers ──────────────────────────────────────────────────────
+// Each motif is drawn as a 1200×600 scene; covers are 4:5 portraits. The scene's sky (its first layer)
+// is stretched over the whole frame, the rest of the scene is scaled and anchored to the bottom, and
+// night skies get extra stars in the new space above.
+const PW = 960, PH = 1200, SCALE = 1.25;
+const STARRY = new Set(["lighthouse", "vampire-city", "space-station", "crown-castle", "neon-city", "starfall", "dungeon"]);
+function portraitCover(motif, defs, body, r, title) {
+  const sky = `<rect width="${W}" height="${H}" fill="url(#`;
+  if (!body.startsWith(sky)) throw new Error(`${motif}: no sky layer to stretch`);
+  const first = body.slice(0, body.indexOf("/>") + 2);
+  const id = first.slice(sky.length, first.indexOf(")"));
+  const dx = f((PW - W * SCALE) / 2), dy = f(PH - H * SCALE);
+  let b = `<rect width="${PW}" height="${PH}" fill="url(#${id})"/>`;
+  if (STARRY.has(motif) && motif !== "dungeon") {
+    for (let i = 0; i < 70; i++) b += `<circle cx="${f(r() * PW)}" cy="${f(r() * (dy + 120))}" r="${f(0.7 + r() * 1.9)}" fill="#fff" opacity="${f(0.25 + r() * 0.65)}"/>`;
+  }
+  b += `<g transform="translate(${dx} ${dy}) scale(${SCALE})">${body.slice(first.length)}</g>`;
+  return svg(PW, PH, defs, b, title);
+}
+
 // ── write files ──────────────────────────────────────────────────────────
 mkdirSync(path.join(root, "covers"), { recursive: true });
 mkdirSync(path.join(root, "gms"), { recursive: true });
@@ -394,13 +414,13 @@ mkdirSync(path.join(root, "covers", "library"), { recursive: true });
 let bytes = 0;
 for (const [slug, { motif, hue }] of Object.entries(COVER_ART)) {
   const { defs, body } = motifs[motif](hue, rng(slug));
-  const out = svg(W, H, defs, body, `${motif.replace(/-/g, " ")} (placeholder cover)`);
+  const out = portraitCover(motif, defs, body, rng(`stars:${slug}`), `${motif.replace(/-/g, " ")} (placeholder cover)`);
   writeFileSync(path.join(root, "covers", `${slug}.svg`), out);
   bytes += out.length;
 }
 for (const { motif, hue } of COVER_LIBRARY) {
   const { defs, body } = motifs[motif](hue, rng(`library:${motif}`));
-  const out = svg(W, H, defs, body, `${motif.replace(/-/g, " ")} (cover art)`);
+  const out = portraitCover(motif, defs, body, rng(`stars:library:${motif}`), `${motif.replace(/-/g, " ")} (cover art)`);
   writeFileSync(path.join(root, "covers", "library", `${motif}.svg`), out);
   bytes += out.length;
 }

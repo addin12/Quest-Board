@@ -52,7 +52,7 @@ test("anonymous visitor can browse, filter and open a game", async ({ page }) =>
   await page.getByRole("link", { name: /Mercusuar di Pulau Kabut/ }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Mercusuar di Pulau Kabut" })).toBeVisible();
   await expect(page.getByText("Tenggelam, body horror, isolasi")).toBeVisible();
-  await expect(page.getByText("Paid directly to the GM · 0% commission")).toBeVisible();
+  await expect(page.getByText("Paid directly to the GM", { exact: true })).toBeVisible();
   // Table chat and GM payment details are private to members.
   await expect(page.getByRole("heading", { name: "Table chat" })).toHaveCount(0);
   await expect(page.getByText("How to pay the GM")).toHaveCount(0);

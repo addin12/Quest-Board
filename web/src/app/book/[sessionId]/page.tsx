@@ -64,10 +64,15 @@ export default async function BookPage(props: PageProps<"/book/[sessionId]">) {
         </div>
       </div>
       <aside className="card h-fit overflow-hidden">
-        <Cover hue={s.cover_hue} system={s.system} image={s.cover_image} className="h-32" />
         <div className="space-y-3 p-5 text-sm">
-          <p className="text-lg font-semibold" style={{ fontFamily: "var(--font-heading)" }}>{s.title}</p>
-          <p className="flex items-center gap-2 text-muted"><Icon name="hat-wizard" /> {t("book.withGm", { name: s.gm_name })}</p>
+          <div className="flex items-start gap-4">
+            <Cover hue={s.cover_hue} system={s.system} image={s.cover_image} label={false} sizes="96px" className="aspect-[4/5] w-24 shrink-0 rounded-lg" />
+            <div className="min-w-0">
+              <p className="text-lg font-semibold" style={{ fontFamily: "var(--font-heading)" }}>{s.title}</p>
+              <p className="mt-1 text-muted">{s.system}</p>
+              <p className="mt-2 flex items-center gap-2 text-muted"><Icon name="hat-wizard" /> {t("book.withGm", { name: s.gm_name })}</p>
+            </div>
+          </div>
           <p className="flex items-start gap-2"><Icon name="calendar-clock" className="mt-0.5 text-muted" /> <span><LocalTime iso={s.starts_at} mode="long" /> · {t("common.hours", { n: s.duration_minutes / 60 })}</span></p>
           <p className="flex items-center gap-2 text-muted"><Icon name="users" /> {t("game.seatsLeftOf", { left: Math.max(0, s.seats_total - s.seats_taken - held), total: s.seats_total })}</p>
           <div className="flex justify-between border-t border-border pt-3 text-base font-semibold">

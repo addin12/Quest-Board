@@ -42,7 +42,8 @@
 // v36: email_suppressions (bounced / spam-reported addresses) + email_outbox.suppressed.
 // v37: gm_invites (founding-GM invitation links) + launch_notify (pre-launch "tell me when it opens").
 // v38: gm_profiles.refund_terms / payment_qr (QRIS picture), games.table_link, uploads kind 'qris'.
-export const SCHEMA_VERSION = 38;
+// v39: games.venue_name / venue_maps_url (where an in-person game meets, with a Google Maps link).
+export const SCHEMA_VERSION = 39;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -127,6 +128,8 @@ CREATE TABLE IF NOT EXISTS games (
   language           TEXT NOT NULL DEFAULT 'id' CHECK (language IN ('id','en','both')),
   platform           TEXT NOT NULL DEFAULT '',
   table_link         TEXT NOT NULL DEFAULT '',   -- v38: Discord/Meet link for online games, booked players only
+  venue_name         TEXT NOT NULL DEFAULT '',   -- v39: in person: the café or game store (public)
+  venue_maps_url     TEXT NOT NULL DEFAULT '',   -- v39: its Google Maps share link (public)
   city               TEXT NOT NULL DEFAULT '',
   price_idr          INTEGER NOT NULL CHECK (price_idr >= 0),   -- whole Rupiah, paid to the GM directly
   seats_total        INTEGER NOT NULL CHECK (seats_total BETWEEN 1 AND 12),

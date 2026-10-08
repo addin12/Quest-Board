@@ -384,15 +384,16 @@ async function saveGameActionImpl(_: FormState, form: FormData): Promise<FormSta
     }
     // Once published, the address never changes: it's in shared links, emails and calendars.
     const slug = existing.status === "draft" && !existing.announced_at ? uniqueSlug(g.title, idRaw) : existing.slug;
-    const placeChanged = existing.location_type !== g.locationType || existing.city !== g.city || existing.platform !== g.platform || existing.table_link !== g.tableLink;
+    const placeChanged = existing.location_type !== g.locationType || existing.city !== g.city || existing.platform !== g.platform || existing.table_link !== g.tableLink
+      || existing.venue_name !== g.venueName || existing.venue_maps_url !== g.venueMapsUrl;
     db()
       .prepare(
-        `UPDATE games SET slug = ?, title = ?, system = ?, summary = ?, description = ?, format = ?, location_type = ?, language = ?, platform = ?, table_link = ?, city = ?,
+        `UPDATE games SET slug = ?, title = ?, system = ?, summary = ?, description = ?, format = ?, location_type = ?, language = ?, platform = ?, table_link = ?, city = ?, venue_name = ?, venue_maps_url = ?,
            price_idr = ?, seats_total = ?, experience_level = ?, min_age = ?, content_warnings = ?, safety_tools = ?, tags = ?, cover_hue = ?, cover_image = ?, genres = ?, styles = ?, status = ?
          WHERE id = ?`,
       )
       .run(
-        slug, g.title, g.system, g.summary, g.description, g.format, g.locationType, g.language, g.platform, g.tableLink, g.city,
+        slug, g.title, g.system, g.summary, g.description, g.format, g.locationType, g.language, g.platform, g.tableLink, g.city, g.venueName, g.venueMapsUrl,
         g.priceIdr, g.seatsTotal, g.experienceLevel, g.minAge, g.contentWarnings, g.safetyTools, g.tags, hue, coverImage, genres, styles, g.status, idRaw,
       );
     gameId = idRaw;
@@ -414,12 +415,12 @@ async function saveGameActionImpl(_: FormState, form: FormData): Promise<FormSta
     gameId = Number(
       db()
         .prepare(
-          `INSERT INTO games (gm_id, slug, title, system, summary, description, format, location_type, language, platform, table_link, city,
+          `INSERT INTO games (gm_id, slug, title, system, summary, description, format, location_type, language, platform, table_link, city, venue_name, venue_maps_url,
              price_idr, seats_total, experience_level, min_age, content_warnings, safety_tools, tags, cover_hue, cover_image, genres, styles, status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
-          gm.id, uniqueSlug(g.title), g.title, g.system, g.summary, g.description, g.format, g.locationType, g.language, g.platform, g.tableLink, g.city,
+          gm.id, uniqueSlug(g.title), g.title, g.system, g.summary, g.description, g.format, g.locationType, g.language, g.platform, g.tableLink, g.city, g.venueName, g.venueMapsUrl,
           g.priceIdr, g.seatsTotal, g.experienceLevel, g.minAge, g.contentWarnings, g.safetyTools, g.tags, hue, coverImage, genres, styles, g.status,
         ).lastInsertRowid,
     );
@@ -573,9 +574,9 @@ export async function duplicateGameAction(form: FormData) {
   const id = Number(
     db()
       .prepare(
-        `INSERT INTO games (gm_id, slug, title, system, summary, description, format, location_type, language, platform, table_link, city,
+        `INSERT INTO games (gm_id, slug, title, system, summary, description, format, location_type, language, platform, table_link, city, venue_name, venue_maps_url,
            price_idr, seats_total, experience_level, min_age, content_warnings, safety_tools, tags, cover_hue, cover_image, genres, styles, status)
-         SELECT ?, ?, ?, system, summary, description, format, location_type, language, platform, table_link, city,
+         SELECT ?, ?, ?, system, summary, description, format, location_type, language, platform, table_link, city, venue_name, venue_maps_url,
            price_idr, seats_total, experience_level, min_age, content_warnings, safety_tools, tags, cover_hue, cover_image, genres, styles, 'draft'
            FROM games WHERE id = ?`,
       )

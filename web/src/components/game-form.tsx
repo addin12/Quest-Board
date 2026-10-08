@@ -25,6 +25,8 @@ export type GameFormDefaults = {
   platform: string;
   tableLink: string;
   city: string;
+  venueName: string;
+  venueMapsUrl: string;
   price: string;
   seatsTotal: string;
   experienceLevel: string;
@@ -42,7 +44,7 @@ export type GameFormDefaults = {
 };
 
 export const EMPTY_GAME: GameFormDefaults = {
-  title: "", system: "", summary: "", description: "", format: "one_shot", locationType: "online", language: "id", platform: "", tableLink: "", city: "",
+  title: "", system: "", summary: "", description: "", format: "one_shot", locationType: "online", language: "id", platform: "", tableLink: "", city: "", venueName: "", venueMapsUrl: "",
   price: "50.000", seatsTotal: "5", experienceLevel: "any", minAge: "18", contentWarnings: "", safetyTools: "Session zero, lines & veils, X-card",
   tags: "", coverHue: 260, coverImage: "", genres: "", styles: "", status: "published",
 };
@@ -108,7 +110,8 @@ export function GameForm({ defaults: initial, systems }: { defaults: GameFormDef
       <Fieldset title={t("gameForm.whereWho")}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="locationType" label={t("gameForm.location")}>
-            <select id="locationType" name="locationType" value={location} onChange={(e) => setLocation(e.target.value)} className="input">
+            {/* After a failed save React resets the form; keyed on the echoed value, the select is redrawn with what was submitted instead of jumping back to Online. */}
+            <select key={`location-${defaults.locationType}`} id="locationType" name="locationType" defaultValue={defaults.locationType} onChange={(e) => setLocation(e.target.value)} className="input">
               <option value="online">{t("loc.online")}</option>
               <option value="in_person">{t("loc.inPerson")}</option>
             </select>
@@ -128,6 +131,17 @@ export function GameForm({ defaults: initial, systems }: { defaults: GameFormDef
             </Field>
           )}
         </div>
+        {location === "in_person" && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field id="venueName" label={t("gameForm.venueName")} error={err("venueName")}>
+              <input id="venueName" {...errAttrs("venueName", err("venueName"))} name="venueName" maxLength={100} defaultValue={defaults.venueName} className="input" placeholder="Kumu Ground Coffee" />
+            </Field>
+            <Field id="venueMapsUrl" label={t("gameForm.venueMaps")} error={err("venueMapsUrl")} hint={t("gameForm.venueMapsHint")}>
+              <input id="venueMapsUrl" {...errAttrs("venueMapsUrl", err("venueMapsUrl"))} name="venueMapsUrl" type="url" inputMode="url" maxLength={500} defaultValue={defaults.venueMapsUrl} className="input" placeholder="https://maps.app.goo.gl/…" />
+            </Field>
+            <p className="hint sm:col-span-2 -mt-2">{t("gameForm.venuePublic")}</p>
+          </div>
+        )}
         <Field id="language" label={t("gameForm.language")}>
           <select id="language" name="language" defaultValue={defaults.language} className="input max-w-72">
             <option value="id">{t("lang.gameId")}</option>
@@ -178,7 +192,7 @@ export function GameForm({ defaults: initial, systems }: { defaults: GameFormDef
           hue={hue}
           error={err("coverImage")}
         />
-        <UploadField name="coverUpload" label={t("upload.coverLabel")} hint={t("upload.hint")} shape="wide" />
+        <UploadField name="coverUpload" label={t("upload.coverLabel")} hint={t("upload.hint")} shape="poster" />
         <Field id="coverHue" label={t("gameForm.gradientColour")} hint={t("gameForm.gradientHint")}>
           <div className="flex items-center gap-3">
             <input id="coverHue" name="coverHue" type="range" min={0} max={359} value={hue} onChange={(e) => setHue(Number(e.target.value))} className="flex-1 accent-[var(--accent)]" />
@@ -218,7 +232,7 @@ function CoverPicker({ value, onChange, current, hue, error }: {
       options={options}
       value={value}
       onChange={onChange}
-      shape="wide"
+      shape="poster"
       error={error}
       fallback={<span className="absolute inset-0" style={{ background: `linear-gradient(135deg, hsl(${hue} 60% 50%), hsl(${(hue + 40) % 360} 50% 25%))` }} />}
     />

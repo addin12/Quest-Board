@@ -348,3 +348,6 @@ users.time_zone   -- IANA zone, default 'Asia/Jakarta'; emails show times in it 
 
 - `reports` rebuilt so `reporter_id` may be NULL: an **automatic flag** (`autoFlag`, `lib/scam-signals.ts`) with `reason = 'scam'` and `details` = the matched signals (`credentials,newAccount,…`), shown in words in `/admin/reports`. One open automatic flag per piece of content.
 - Not in "Download my data" (the secret is a credential; challenges last minutes). `npm run admin -- reset-2fa <email>` clears the three columns and the account's sessions and challenges.
+
+## v39: where an in-person game meets
+- `games.venue_name` (TEXT, default '') and `games.venue_maps_url` (TEXT, default ''): for in-person games, the venue (a café, restaurant or game store) and its Google Maps share link. Both are public: the game page shows the venue under "Where we play" with an "Open in Google Maps" button, and the reminder email names it. Only Google Maps addresses are accepted (`maps.app.goo.gl`, `goo.gl/maps`, `google.com/maps`, `maps.google.com`, and the `.co.id` forms; `isGoogleMapsUrl` in `lib/validation.ts`), so nothing else can hide behind the button. The form asks for a public place, never a home address. Online games keep neither.

@@ -39,7 +39,7 @@ test("an upload is re-encoded to WebP at the right size, without the photo's hid
   const stored = readUpload(name)!;
   const meta = await sharp(stored).metadata();
   assert.equal(meta.format, "webp");
-  assert.deepEqual([meta.width, meta.height], [1600, 800]);
+  assert.deepEqual([meta.width, meta.height], [1080, 1350]);
   assert.equal(meta.exif, undefined); // camera, copyright — and GPS on real photos — are gone
   assert.ok(!stored.includes(Buffer.from("SECRET-LOCATION-MARKER")));
 

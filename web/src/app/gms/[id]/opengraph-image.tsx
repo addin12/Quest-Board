@@ -21,6 +21,6 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     lines: [gm.headline && clip(gm.headline, 60), systems && clip(systems, 60)].filter(Boolean) as string[],
     hue: gm.avatar_hue,
     avatar: { src: (await ogPortrait(gm.avatar_image)) ?? undefined, initial: (gm.name.trim()[0] ?? "?").toUpperCase(), hue: gm.avatar_hue },
-    badge: gm.review_count > 0 && gm.avg_rating ? t("og.gmRating", { rating: gm.avg_rating.toFixed(1) }) : t("og.badge"),
+    badge: gm.review_count > 0 && gm.avg_rating ? t("og.gmRating", { rating: gm.avg_rating.toFixed(1) }) : undefined,
   });
 }

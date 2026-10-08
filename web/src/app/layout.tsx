@@ -126,7 +126,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               <div className="flex flex-col gap-1">
                 <p className="font-semibold text-text">{t("footer.gms")}</p>
                 <Link href="/become-a-gm" className="hover:text-text">{t("footer.runGames")}</Link>
-                <Link href="/how-it-works#gms" className="hover:text-text">{t("footer.noCommission")}</Link>
+                <Link href="/how-it-works#gms" className="hover:text-text">{t("footer.gmGuide")}</Link>
                 <Link href="/terms" className="hover:text-text">{t("legal.terms.title")}</Link>
                 <Link href="/privacy" className="hover:text-text">{t("legal.privacy.title")}</Link>
                 <Link href="/feedback" className="hover:text-text">{t("feedback.title")}</Link>

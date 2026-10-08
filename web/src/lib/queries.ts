@@ -249,13 +249,16 @@ export type GameDetail = GameCard & {
   gm_refund_terms: string;
   /** Members only (the online table's link). */
   table_link: string;
+  /** In person: the venue and its Google Maps link (public). */
+  venue_name: string;
+  venue_maps_url: string;
 };
 
 /** Includes the GM's payment details — only render them to members (see isGameMember). */
 export function getGameBySlug(slug: string): GameDetail | undefined {
   return db()
     .prepare(
-      `SELECT c.*, g.description, g.platform, g.table_link, g.min_age, g.content_warnings, g.safety_tools, g.status,
+      `SELECT c.*, g.description, g.platform, g.table_link, g.venue_name, g.venue_maps_url, g.min_age, g.content_warnings, g.safety_tools, g.status,
               COALESCE(p.headline, '') AS gm_headline, u.bio AS gm_bio, COALESCE(p.payment_info, '') AS gm_payment_info,
               (COALESCE(p.payment_qr, '') <> '') AS gm_has_qr, COALESCE(p.refund_terms, '') AS gm_refund_terms
          FROM (${CARD_SELECT} WHERE g.slug = ?) c
@@ -268,7 +271,7 @@ export function getGameBySlug(slug: string): GameDetail | undefined {
 
 export type GameRow = {
   id: number; gm_id: number; slug: string; title: string; system: string; summary: string; description: string;
-  format: "one_shot" | "campaign"; location_type: "online" | "in_person"; language: GameLanguage; platform: string; table_link: string; city: string;
+  format: "one_shot" | "campaign"; location_type: "online" | "in_person"; language: GameLanguage; platform: string; table_link: string; city: string; venue_name: string; venue_maps_url: string;
   price_idr: number; seats_total: number; experience_level: "any" | "beginner" | "experienced"; min_age: number;
   content_warnings: string; safety_tools: string; tags: string; cover_hue: number; cover_image: string; genres: string; styles: string;
   status: "draft" | "published" | "archived"; created_at: string;

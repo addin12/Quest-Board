@@ -47,7 +47,7 @@ export default async function HireAGmPage(props: PageProps<"/hire-a-gm">) {
     ["calendar-clock", "hire.why1Title", "hire.why1Body"],
     ["magic-wand", "hire.why2Title", "hire.why2Body"],
     ["star", "hire.why3Title", "hire.why3Body"],
-    ["percentage", "hire.why4Title", "hire.why4Body"],
+    ["wallet", "hire.why4Title", "hire.why4Body"],
   ];
   const uses: [RegularIcon, MsgKey, MsgKey][] = [
     ["users-alt", "hire.use1Title", "hire.use1Body"],
@@ -73,19 +73,13 @@ export default async function HireAGmPage(props: PageProps<"/hire-a-gm">) {
               <Link href="#directory" className="btn-secondary px-5! py-3! text-base!"><Icon name="search" /> {t("hire.ctaBrowse")}</Link>
             </div>
           </div>
-          {all.length >= 3 ? (
-          <dl className="grid grid-cols-2 gap-3">
+          {/* Numbers only once there are enough GMs for them to mean something. */}
+          {all.length >= 3 && (
+          <dl className="grid grid-cols-3 gap-3 self-center">
             <Stat icon="hat-wizard" value={String(all.length)} label={t("hire.statGms")} />
             <Stat icon="dice-d20" value={String(hosted)} label={t("hire.statSessions")} />
             <Stat icon="star" value={avg ? avg.toFixed(1) : "—"} label={t("hire.statRating")} />
-            <Stat icon="percentage" value="0%" label={t("hire.statCommission")} />
           </dl>
-          ) : (
-            // Too few GMs for numbers to reassure anyone yet: lead with what's always true.
-            <dl className="grid grid-cols-2 gap-3 self-center">
-              <Stat icon="percentage" value="0%" label={t("hire.statCommission")} />
-              <Stat icon="wallet" value="100%" label={t("hire.statToGm")} />
-            </dl>
           )}
         </div>
       </section>

@@ -22,7 +22,7 @@ test("launch day: every public page works and invites the first GMs and players"
 
   await page.goto("/hire-a-gm");
   await expect(page.getByText("No Game Masters listed yet")).toBeVisible();
-  await expect(page.getByRole("term").filter({ hasText: "of the price goes to the GM" })).toHaveCount(1); // no tiles full of zeros
+  await expect(page.getByRole("term")).toHaveCount(0); // no number tiles until there are enough GMs (no tiles full of zeros)
   await expect(page.getByText("sessions hosted")).toHaveCount(0);
 
   await page.goto("/board");

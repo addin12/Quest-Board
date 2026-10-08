@@ -57,8 +57,10 @@ export function Stars({ rating, count, t, size = "sm" }: { rating: number | null
   );
 }
 
-/** Cover art if `image` is set; the hue gradient is the fallback (and shows while loading). */
-export function Cover({ hue, system, className = "", wide = false, image }: { hue: number; system: string; className?: string; wide?: boolean; image?: string | null }) {
+/** Cover art (4:5, like an Instagram post) if `image` is set; the hue gradient is the fallback (and shows while loading). */
+export function Cover({ hue, system, className = "", image, priority = false, sizes, label = true }: {
+  hue: number; system: string; className?: string; image?: string | null; priority?: boolean; sizes?: string; label?: boolean;
+}) {
   return (
     <div
       className={`relative overflow-hidden ${className}`}
@@ -69,15 +71,10 @@ export function Cover({ hue, system, className = "", wide = false, image }: { hu
       }}
     >
       {image && (
-        <Image src={image} alt="" fill priority={wide} sizes={wide ? "100vw" : "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"} className="object-cover" />
+        <Image src={image} alt="" fill priority={priority} sizes={sizes ?? "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"} className="object-cover" />
       )}
-      {wide ? (
-        // Full-bleed hero: align the label with the page content column.
-        <div className="relative mx-auto h-full max-w-6xl px-4">
-          <span className="absolute bottom-4 left-4 rounded-md bg-black/45 px-2.5 py-1 text-sm font-semibold text-white backdrop-blur">{system}</span>
-        </div>
-      ) : (
-        <span className="absolute left-3 top-3 rounded-md bg-black/45 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur">
+      {label && (
+        <span className="absolute left-3 top-3 rounded-md bg-black/50 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
           {system}
         </span>
       )}
@@ -116,7 +113,7 @@ export function GameCard({ game, t }: { game: GameCardData; t: T }) {
       href={`/games/${game.slug}`}
       className="card group flex flex-col overflow-hidden transition-colors hover:border-accent/50 focus-visible:outline-2 focus-visible:outline-accent"
     >
-      <Cover hue={game.cover_hue} system={game.system} image={game.cover_image} className="h-32" />
+      <Cover hue={game.cover_hue} system={game.system} image={game.cover_image} className="aspect-[4/5] w-full" />
       <div className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-lg font-semibold leading-snug group-hover:text-accent">{game.title}</h3>

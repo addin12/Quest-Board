@@ -72,7 +72,7 @@ test("/games can filter by genre and style", async ({ page }) => {
 test("hire-a-GM directory shows GMs and filters by location", async ({ page }) => {
   await page.goto("/hire-a-gm");
   await expect(page.getByRole("heading", { level: 1, name: "Hire a Game Master" })).toBeVisible();
-  await expect(page.getByText("0%").first()).toBeVisible();
+  await expect(page.getByRole("term").filter({ hasText: "Game Masters" })).toBeVisible(); // the real numbers (no commission tile)
   const directory = page.locator("#directory");
   await expect(directory.getByText("Raka Pradipta")).toBeVisible();
   await page.goto("/hire-a-gm?where=Bandung#directory");

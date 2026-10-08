@@ -9,7 +9,7 @@ import { UPLOAD_ACCEPT, UPLOAD_MAX_BYTES } from "@/lib/upload-rules";
  * "Or upload your own picture": a file input with a preview. The picture is sent with the form and
  * used (instead of the choice above) when the form is saved; the server checks and re-encodes it.
  */
-export function UploadField({ name, label, hint, shape }: { name: string; label: string; hint: string; shape: "wide" | "round" }) {
+export function UploadField({ name, label, hint, shape }: { name: string; label: string; hint: string; shape: "poster" | "round" }) {
   const { t } = useI18n();
   const input = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -28,7 +28,7 @@ export function UploadField({ name, label, hint, shape }: { name: string; label:
         {preview && (
           // A local blob: preview of the chosen file (next/image can't load blob: URLs).
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={preview} alt={t("upload.previewAlt")} className={shape === "round" ? "h-16 w-16 rounded-full object-cover" : "h-16 w-32 rounded-md object-cover"} />
+          <img src={preview} alt={t("upload.previewAlt")} className={shape === "round" ? "h-16 w-16 rounded-full object-cover" : "h-20 w-16 rounded-md object-cover"} />
         )}
         <input
           ref={input}

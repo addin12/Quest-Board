@@ -203,6 +203,12 @@ export function seedDatabase(conn: DatabaseSync) {
       );
 
       if (g.location === "online") conn.prepare("UPDATE games SET table_link = ? WHERE id = ?").run(`https://discord.gg/questboard-${slugify(g.title).slice(0, 20)}`, gameId);
+      // In person: a (made-up) café as the venue, with a Google Maps search link for it.
+      if (g.location === "in_person") {
+        const venue = `Kedai Dadu ${g.city}`;
+        conn.prepare("UPDATE games SET venue_name = ?, venue_maps_url = ? WHERE id = ?")
+          .run(venue, `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${venue}, ${g.city}`)}`, gameId);
+      }
 
       g.sessions.forEach((offset, si) => {
         const start = new Date(now + offset * day);

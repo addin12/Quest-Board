@@ -15,7 +15,7 @@ test("every placeholder in the manifest has a generated SVG (run `npm run placeh
   for (const slug of Object.keys(COVER_ART)) {
     const f = publicFile(coverPath(slug));
     assert.ok(existsSync(f), `missing cover for ${slug}`);
-    assert.match(readFileSync(f, "utf8"), /^<svg[^>]+viewBox="0 0 1200 600"/);
+    assert.match(readFileSync(f, "utf8"), /^<svg[^>]+viewBox="0 0 960 1200"/);
   }
   for (const { key } of Object.values(GM_PORTRAITS)) {
     assert.ok(existsSync(publicFile(portraitPath(key))), `missing portrait ${key}`);

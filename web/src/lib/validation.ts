@@ -151,6 +151,9 @@ export type GameInput = {
   /** Online only: the Discord/Meet/… link booked players use to join ("" when not set). */
   tableLink: string;
   city: string;
+  /** In person only: the venue's name and its Google Maps share link ("" when not set). */
+  venueName: string;
+  venueMapsUrl: string;
   priceIdr: number;
   seatsTotal: number;
   experienceLevel: "any" | "beginner" | "experienced";
@@ -160,6 +163,24 @@ export type GameInput = {
   tags: string;
   status: "draft" | "published";
 };
+
+/** A Google Maps link as the app's Share button gives it (maps.app.goo.gl/…), or a google.com/maps address. */
+export function isGoogleMapsUrl(v: string): boolean {
+  if (v.length > 500 || /[\s<>"']/.test(v)) return false;
+  let u: URL;
+  try {
+    u = new URL(v);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:" || u.username || u.password || u.port) return false;
+  const host = u.hostname.toLowerCase();
+  if (host === "maps.app.goo.gl") return u.pathname.length > 1;
+  if (host === "goo.gl") return u.pathname.startsWith("/maps/");
+  if (/^(www\.)?google\.(com|co\.id)$/.test(host)) return u.pathname === "/maps" || u.pathname.startsWith("/maps/");
+  if (/^maps\.google\.(com|co\.id)$/.test(host)) return true;
+  return false;
+}
 
 /** Accepts "75.000", "Rp 75,000", "75000". Empty means free (0). */
 function parsePrice(v: unknown): number {
@@ -181,6 +202,8 @@ export function parseGame(raw: Record<string, unknown>): Parsed<GameInput> {
   const platform = str(raw.platform);
   const tableLink = locationType === "online" ? str(raw.tableLink) : "";
   const city = str(raw.city);
+  const venueName = locationType === "in_person" ? str(raw.venueName) : "";
+  const venueMapsUrl = locationType === "in_person" ? str(raw.venueMapsUrl) : "";
   const priceIdr = parsePrice(raw.price);
   const seatsTotal = Number(str(raw.seatsTotal) || "0");
   const minAge = Number(str(raw.minAge) || "18");
@@ -199,6 +222,9 @@ export function parseGame(raw: Record<string, unknown>): Parsed<GameInput> {
   // An https link and nothing else (it's shown as a link to players).
   if (tableLink && (tableLink.length > 300 || !/^https:\/\/[^\s<>"']+\.[^\s<>"']+$/.test(tableLink))) errors.tableLink = "v.tableLink";
   if (locationType === "in_person" && !city) errors.city = "v.city";
+  if (venueName.length > 100) errors.venueName = "v.venueName";
+  // Only a Google Maps link: it's shown to everyone as "Open in Google Maps", so nothing else may hide behind it.
+  if (venueMapsUrl && !isGoogleMapsUrl(venueMapsUrl)) errors.venueMapsUrl = "v.venueMaps";
 
   if (Object.keys(errors).length) return { ok: false, errors };
   return {
@@ -214,6 +240,8 @@ export function parseGame(raw: Record<string, unknown>): Parsed<GameInput> {
       platform,
       tableLink,
       city,
+      venueName,
+      venueMapsUrl,
       priceIdr,
       seatsTotal,
       experienceLevel,
