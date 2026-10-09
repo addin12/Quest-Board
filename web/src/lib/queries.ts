@@ -20,6 +20,8 @@ export type GameCard = {
   location_type: "online" | "in_person";
   language: GameLanguage;
   city: string;
+  /** In person: the café or game store (public, v39); "" otherwise. */
+  venue_name: string;
   price_idr: number;
   seats_total: number;
   experience_level: "any" | "beginner" | "experienced";
@@ -51,7 +53,7 @@ const NEW_GM_SQL = `(COALESCE(p.verified, 0) = 0 AND u.created_at > strftime('%Y
   AND NOT EXISTS (SELECT 1 FROM reviews r2 JOIN games g2 ON g2.id = r2.game_id WHERE g2.gm_id = u.id))`;
 
 const CARD_SELECT = `
-  SELECT g.id, g.slug, g.title, g.system, g.summary, g.format, g.location_type, g.language, g.city,
+  SELECT g.id, g.slug, g.title, g.system, g.summary, g.format, g.location_type, g.language, g.city, g.venue_name,
          g.price_idr, g.seats_total, g.experience_level, g.tags, g.cover_hue, g.cover_image, g.genres, g.styles,
          u.id AS gm_id, u.name AS gm_name, u.avatar_hue AS gm_hue, u.avatar_image AS gm_image, COALESCE(p.verified, 0) AS gm_verified,
          ${NEW_GM_SQL} AS gm_new,
@@ -96,9 +98,10 @@ function gameFilterSql(f: GameFilters): { where: string[]; args: (string | numbe
 
   if (f.q) {
     // Each word on its own, in any order (lib/search-terms.ts): it matches the text (the GM's own
-    // location counts too) or, for words like "horor" or "pemula", the game's genres, styles or level.
+    // location and an in-person game's venue count too) or, for words like "horor" or "pemula", the game's
+    // genres, styles or level.
     // Escape % and _ so words match literally.
-    const cols = ["g.title", "g.summary", "g.description", "g.tags", "g.system", "u.name", "g.city", "p.location"];
+    const cols = ["g.title", "g.summary", "g.description", "g.tags", "g.system", "u.name", "g.city", "g.venue_name", "p.location"];
     const text = (word: string) => {
       args.push(...cols.map(() => `%${escapeLike(word)}%`));
       return cols.map((c) => `${c} LIKE ? ESCAPE '\\'`);

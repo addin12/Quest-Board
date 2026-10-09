@@ -308,3 +308,57 @@ test("rounds 29–30 screens have no axe violations: pre-launch, invites, the pu
   }
   expect(found).toEqual([]);
 });
+
+/** Raw string names on screen (a key the browser wasn't sent shows as e.g. "browse.clear"): none allowed. */
+async function rawKeysOn(page: Page, label: string): Promise<string[]> {
+  const { DICTIONARIES } = await import("../../src/lib/i18n/dict");
+  const keys = new Set(Object.keys(DICTIONARIES.en));
+  const text = await page.evaluate(() => document.body.innerText);
+  return [...new Set(text.match(/\b[a-zA-Z]+\.[a-zA-Z][\w.-]*/g) ?? [])].filter((w) => keys.has(w)).map((k) => `${label} → raw string name on screen: ${k}`);
+}
+
+// Round 36: everything new since the round-33 rework, open and in use, in both schemes; and no raw string
+// names anywhere (the browser now gets only the strings client code uses: lib/i18n/client-keys.ts).
+test("rounds 33–36 screens have no axe violations and show no raw string names", async ({ browser }) => {
+  test.setTimeout(240_000);
+  const problems: string[] = [];
+  const sharp = (await import("sharp")).default;
+  for (const colorScheme of ["light", "dark"] as const) {
+    const ctx = await browser.newContext({ colorScheme });
+    const page = await ctx.newPage();
+    const check = async (label: string) => {
+      problems.push(...(await violationsOf(page, `${colorScheme} ${label}`)), ...(await rawKeysOn(page, `${colorScheme} ${label}`)));
+    };
+    // Visitors: filter chips, the venue block, a phone with the tab bar and the filter sheet open.
+    await page.goto("/games?format=one_shot&location=online&level=beginner");
+    await check("filter chips");
+    await page.goto("/games/panen-harapan");
+    await expect(page.getByTestId("venue-maps")).toBeVisible();
+    await check("venue + poster");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/games");
+    await page.getByRole("button", { name: "Filters", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Filter games" })).toBeVisible();
+    await check("phone: filter sheet + tab bar");
+    await page.setViewportSize({ width: 1280, height: 900 });
+    // The GM: account menu open, the player preview, a cover upload with its warning.
+    await login(page, "gm@questboard.test");
+    await page.getByRole("button", { name: /Account menu/ }).click();
+    await expect(page.getByRole("link", { name: "Settings", exact: true })).toBeVisible();
+    await check("account menu open");
+    await page.goto("/games/mercusuar-di-pulau-kabut?preview=player");
+    await expect(page.getByTestId("preview-banner")).toBeVisible();
+    await check("GM preview as a player");
+    await page.goto("/gm/games/new");
+    const wide = await sharp({ create: { width: 1600, height: 900, channels: 3, background: "#336699" } }).png().toBuffer();
+    await page.getByLabel("Or upload your own cover").setInputFiles({ name: "wide.png", mimeType: "image/png", buffer: wide });
+    await expect(page.getByTestId("cover-wide")).toBeVisible();
+    await check("cover upload preview + warning");
+    await page.goto("/settings");
+    await check("settings");
+    await page.goto("/gm");
+    await check("GM dashboard numbers");
+    await ctx.close();
+  }
+  expect(problems, problems.join("\n")).toEqual([]);
+});

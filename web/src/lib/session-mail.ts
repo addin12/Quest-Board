@@ -1,6 +1,7 @@
 // Emails about a session (pure: no server imports, so node --test can load it).
 import { makeT, type Lang } from "./i18n/dict.ts";
 import { formatWhen } from "./time-zones.ts";
+import { formatIdr } from "./policy.ts";
 
 export type Mail = { to: string; subject: string; text: string };
 
@@ -54,5 +55,39 @@ export function cancellationEmail(
     to: person.email,
     subject: t("mail.cancelSubject", { title: s.title, when }),
     text: t("mail.cancelBody", { name: person.name, title: s.title, when, reason: reasonBlock, link: s.archived ? `${origin}/games` : `${origin}/games/${s.slug}` }),
+  };
+}
+
+/**
+ * "Your seat is booked" email for the player, right after reserving: when (in their time zone), where (the
+ * venue and its map, or the platform), the price and where to see how to pay, the GM's refund terms and a
+ * calendar file. The GM's payment details stay on the game page (they can change, and the page warns).
+ */
+export function bookingConfirmedEmail(
+  person: { email: string; name: string; locale: Lang; time_zone?: string },
+  s: {
+    id: number; title: string; slug: string; system: string; starts_at: string; duration_minutes: number; price_idr: number; gm_name: string;
+    location_type: string; platform: string; city: string; venue_name?: string; venue_maps_url?: string; gm_refund_terms?: string | null;
+  },
+  origin: string,
+): Mail {
+  const t = makeT(person.locale);
+  const when = formatWhen(s.starts_at, person.locale, person.time_zone);
+  const where = s.location_type === "online"
+    ? t("mail.bookedOnline", { platform: s.platform || t("loc.online") })
+    : s.venue_name
+      ? `${s.venue_name}, ${s.city}` + (s.venue_maps_url ? `\n${t("mail.bookedMap", { link: s.venue_maps_url })}` : "")
+      : t("mail.reminderInPerson", { city: s.city });
+  return {
+    to: person.email,
+    subject: t("mail.bookedSubject", { title: s.title, when }),
+    text: t("mail.bookedBody", {
+      name: person.name, title: s.title, system: s.system, gm: s.gm_name, when, hours: t("common.hours", { n: s.duration_minutes / 60 }), where,
+      price: s.price_idr === 0 ? t("common.free") : formatIdr(s.price_idr),
+      link: `${origin}/games/${s.slug}`,
+      refund: s.gm_refund_terms ? t("mail.bookedRefund", { terms: s.gm_refund_terms }) + "\n\n" : "",
+      ics: `${origin}/api/sessions/${s.id}/ics`,
+      mine: `${origin}/dashboard`,
+    }),
   };
 }

@@ -2,6 +2,29 @@
 
 What changed in each version of Quest Board, newest first. The current feature overview is in the [README](README.md).
 
+## v0.14: a calmer look, venues and launch-day tools (2026-10-02 to 2026-10-09)
+Rounds 31–36, each one checked end to end before it was committed. Round by round: IMPROVEMENTS.md.
+
+- **A design for real users:** bigger, readable text (17 px body, nothing under 14 px), buttons and fields
+  at least 44 px tall, every page link named in full with the current page marked, and filters shown as
+  chips you can remove one by one. Calmer, flatter surfaces in the spirit of Apple and Notion, while the
+  tavern stays: the palette, the wood, the textures, the lettering and the illustrations.
+- **Portrait covers:** game covers are 4:5, like an Instagram post: a poster on game cards and beside the
+  title, a 4:5 preview when a GM uploads their own (with a note if it's too wide or too small), and the
+  poster in the picture shown when a game is shared on WhatsApp or Discord.
+- **Where in-person games meet:** the venue (a café, restaurant or game store) and its Google Maps link, on
+  the game page, on game cards, in search, in calendar invites (so phones offer directions) and in emails.
+- **For players:** a confirmation email the moment a seat is booked (when, where, the price, the GM's refund
+  terms and a calendar file); taps that work at once on iPhones (before, 4 in 10 first taps were lost).
+- **For GMs:** "See it as a player" previews their game as a player with a seat or as a visitor; a verified
+  GM turns on two-step login first, then goes straight back to the profile form.
+- **For the owner:** a launch-day smoke test (`node scripts/smoke.mjs https://<domain>`), share pictures for
+  GM profiles and the "opening soon" page, a daily security watch that emails new advisories the morning
+  they appear, and "0% commission" said once, where it matters, instead of on every page.
+- **Faster and lighter:** compression once instead of twice (about 50% more requests a second in the load
+  test), one font weight instead of nine, and only the strings a page needs sent with it; a phone-weight
+  budget and a load-speed trend on every push keep it that way.
+
 ## v0.13: the pre-launch rounds (2026-09-26 to 2026-10-02)
 Thirty rounds of fixing, hardening and launch preparation, each one checked end to end (unit tests, the
 full end-to-end and accessibility suite, and a production rehearsal of the real server setup) before it

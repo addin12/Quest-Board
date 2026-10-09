@@ -11,6 +11,7 @@
 import { en } from "./en.ts";
 import { id } from "./id.ts";
 import { DEFAULT_LANG, translator, type Lang, type Messages, type MsgKey, type T } from "./core.ts";
+import { CLIENT_KEYS } from "./client-keys.ts";
 
 export { DEFAULT_LANG, DELETED_NAME, LANGS, LANG_COOKIE, shownName, translator } from "./core.ts";
 export type { Lang, Messages, MsgKey, T } from "./core.ts";
@@ -25,4 +26,16 @@ export function isMsgKey(k: string): k is MsgKey {
 /** Build a translator for a language (missing strings fall back to English). */
 export function makeT(lang: Lang): T {
   return translator(DICTIONARIES[lang] ?? DICTIONARIES[DEFAULT_LANG], DICTIONARIES.en);
+}
+
+/** The strings client code uses, in one language: what the root layout sends with each page (round 36). */
+const clientCache = new Map<Lang, Partial<Messages>>();
+export function clientMessages(lang: Lang): Partial<Messages> {
+  let m = clientCache.get(lang);
+  if (!m) {
+    const dict = DICTIONARIES[lang] ?? DICTIONARIES[DEFAULT_LANG];
+    m = Object.fromEntries(CLIENT_KEYS.map((k) => [k, dict[k as MsgKey] ?? DICTIONARIES.en[k as MsgKey]])) as Partial<Messages>;
+    clientCache.set(lang, m);
+  }
+  return m;
 }

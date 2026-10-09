@@ -93,3 +93,20 @@ test("no page trips the Content Security Policy", async ({ browser }) => {
   // Indonesian pages too (a separate context: /id/... switches the language for the visit).
   await visit(await watch(await newPage(browser)), ["/id", "/id/games", "/id/board"]);
 });
+
+// Round 36: the first tap must work on every control that needs the page's JavaScript, in Safari's engine
+// (every iPhone browser) above all — round 35 found 4 in 10 first taps lost there. Each tap is made the
+// moment the page has loaded, and only once.
+test("the first tap works: filters, notifications and the account menu, on a phone", async ({ browser }) => {
+  const phone = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+  await login(phone, "player@questboard.test");
+  await phone.goto("/games");
+  await phone.getByRole("button", { name: "Filters", exact: true }).click();
+  await expect(phone.getByRole("dialog", { name: "Filter games" })).toBeVisible();
+  await phone.goto("/games");
+  await phone.getByRole("button", { name: /^Notifications/ }).click();
+  await expect(phone.getByRole("region", { name: "Notifications" })).toBeVisible();
+  await phone.goto("/games");
+  await phone.getByRole("button", { name: /Account menu/ }).click();
+  await expect(phone.getByRole("button", { name: "Log out", exact: true })).toBeVisible();
+});

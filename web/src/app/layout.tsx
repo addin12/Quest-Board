@@ -16,7 +16,7 @@ import { readToast } from "@/lib/toast";
 import { LegalUpdateBanner } from "@/components/legal-update-banner";
 import { PrelaunchBanner } from "@/components/prelaunch-banner";
 import { isPrelaunch } from "@/lib/prelaunch";
-import { DICTIONARIES, isMsgKey, type T } from "@/lib/i18n/dict";
+import { clientMessages, isMsgKey, type T } from "@/lib/i18n/dict";
 import { Toaster } from "@/components/toaster";
 import { I18nProvider } from "@/components/i18n-provider";
 import { AccountMenu } from "@/components/account-menu";
@@ -69,7 +69,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang={lang} data-theme={theme === "system" ? undefined : theme} className={`${cinzel.variable} ${alegreya.variable} ${alegreyaSans.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans max-xl:pb-16">
-        <I18nProvider lang={lang} messages={DICTIONARIES[lang]}>
+        <I18nProvider lang={lang} messages={clientMessages(lang)}>
           <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 btn-primary">
             {t("nav.skip")}
           </a>

@@ -125,7 +125,7 @@ export function GameCard({ game, t }: { game: GameCardData; t: T }) {
         <p className="line-clamp-2 text-sm text-muted">{game.summary}</p>
         <div className="flex flex-wrap gap-1.5">
           <span className="chip gap-1"><Icon name={game.format === "campaign" ? "scroll-old" : "book-open-cover"} />{t(game.format === "campaign" ? "format.campaign" : "format.one_shot")}</span>
-          <span className="chip gap-1"><Icon name={game.location_type === "online" ? "laptop" : "marker"} />{game.location_type === "online" ? t("loc.online") : game.city}</span>
+          <span className="chip gap-1 whitespace-normal!"><Icon name={game.location_type === "online" ? "laptop" : "marker"} />{game.location_type === "online" ? t("loc.online") : game.venue_name ? `${game.venue_name} · ${game.city}` : game.city}</span>
           <span className="chip gap-1"><Icon name="language" />{languageLabel(game.language, t)}</span>
           {game.experience_level === "beginner" ? (
             <span className="chip gap-1 border-success/30! bg-success-soft! text-success!"><Icon name="seedling" />{t("level.beginner")}</span>

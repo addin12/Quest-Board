@@ -45,13 +45,20 @@ test("refund terms show before booking; the table link and the QRIS code only to
 
   // A player sees the terms on the booking page, books, then sees the link and the code.
   const player = await newPage(browser);
-  await signup(player, "Pia Payer", unique("terms-p"));
+  const playerEmail = unique("terms-p");
+  await signup(player, "Pia Payer", playerEmail);
   await player.goto(`/games/${slug}`);
   await player.getByRole("link", { name: "Book" }).first().click();
   await expect(player.getByTestId("refund-terms")).toContainText("Cancel 24 hours before for a full refund.");
   await player.getByRole("checkbox").check();
   await player.getByRole("button", { name: "Reserve my seat" }).click();
   await player.waitForURL("**/dashboard?booked=*");
+  // Round 36: the player gets a confirmation email, with the refund terms and a calendar file.
+  const booked = e2eDb().prepare("SELECT subject, body_text FROM email_outbox WHERE to_address = ? AND subject LIKE 'Seat booked:%'").get(playerEmail) as { subject: string; body_text: string } | undefined;
+  expect(booked?.subject).toContain("Terms Table");
+  expect(booked?.body_text).toContain("Cancel 24 hours before for a full refund.");
+  expect(booked?.body_text).toMatch(/\/api\/sessions\/\d+\/ics/);
+  expect(booked?.body_text).not.toContain("BCA 000-111-222"); // payment details stay on the game page
   await player.goto(`/games/${slug}`);
   await expect(player.getByTestId("table-link").getByRole("link", { name: "https://discord.gg/terms-table" })).toBeVisible();
   await expect(player.getByTestId("payment-qr")).toBeVisible();
@@ -188,6 +195,11 @@ test("an in-person game shows its venue and an 'Open in Google Maps' button; onl
   await expect(maps).toHaveAttribute("target", "_blank");
   await expect(maps).toHaveAttribute("rel", /noopener/);
   await expect(maps).toHaveText(/Open in Google Maps/);
+  // Round 36: searching for the café finds the game, and its card names the venue.
+  await visitor.goto("/games?q=Kumu");
+  const card = visitor.locator(`a[href="/games/${slug}"]`);
+  await expect(card).toBeVisible();
+  await expect(card.getByText("Kumu Ground Coffee · Bandung")).toBeVisible();
 });
 
 // Round 35: the cover upload shows the 4:5 crop and warns when a picture is wide or small.

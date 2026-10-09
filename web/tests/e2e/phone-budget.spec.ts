@@ -8,17 +8,17 @@ import { test, expect, type Page } from "@playwright/test";
 
 type Budget = { path: string; js: number; total: number };
 const KB = 1024;
-// Measured on 2026-10-05 (round 32: one language, one Alegreya weight) and raised on 2026-10-09 (round 35):
-// the visitor's language strings now come with the page (HTML +30–35 KB) instead of as a separate chunk,
-// because in Safari's engine taps made before that chunk arrived were lost. About 8% headroom. Raise one
-// only for a reason, in the same commit.
+// Measured on 2026-10-05 (round 32: one language, one Alegreya weight); round 35 sent the visitor's language
+// with the page (+30–35 KB of HTML: as a separate chunk, iPhones ignored the first tap), and round 36 sends only
+// the strings client code uses (lib/i18n/client-keys.ts, a quarter of them), back to round 32's weight. About 8%
+// headroom. Raise one only for a reason, in the same commit.
 const PAGES: Budget[] = [
-  { path: "/", js: 210, total: 415 },
-  { path: "/games", js: 210, total: 420 },
-  { path: "/games/mercusuar-di-pulau-kabut", js: 215, total: 405 },
-  { path: "/how-it-works", js: 210, total: 385 },
-  { path: "/login", js: 215, total: 390 },
-  { path: "/opening", js: 210, total: 385 },
+  { path: "/", js: 210, total: 385 },
+  { path: "/games", js: 210, total: 390 },
+  { path: "/games/mercusuar-di-pulau-kabut", js: 215, total: 380 },
+  { path: "/how-it-works", js: 210, total: 360 },
+  { path: "/login", js: 215, total: 365 },
+  { path: "/opening", js: 210, total: 360 },
 ];
 const LCP_LIMIT_MS = 8_000; // largest picture or text block drawn, on the slowed phone (1.3–3.4 s on the dev laptop)
 

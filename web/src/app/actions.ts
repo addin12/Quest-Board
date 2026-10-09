@@ -21,7 +21,7 @@ import { canReview, getGameById, getGmRequest, getGmSettings, getSessionWithGame
 import { LANG_COOKIE, makeT, type MsgKey } from "@/lib/i18n/dict";
 import { markAllRead, notify } from "@/lib/notifications";
 import { sendEmail } from "@/lib/mailer";
-import { movedEmail, seatRemovedEmail } from "@/lib/session-mail";
+import { movedEmail, seatRemovedEmail, bookingConfirmedEmail } from "@/lib/session-mail";
 import { deliverNotificationEmails } from "@/lib/notification-mail";
 import { consumeToken, issueToken, peekToken } from "@/lib/tokens";
 import { archiveGame, deleteAccount } from "@/lib/account";
@@ -624,6 +624,17 @@ async function reserveSeatActionImpl(_: FormState, form: FormData): Promise<Form
   if (bookingError) {
     if (bookingError === "err.sessionChanged") revalidatePath(`/book/${sessionId}`);
     return { error: bookingError };
+  }
+
+  // The player's confirmation email (verified addresses only). Never lets a booking fail: a delivery
+  // problem is recorded on the outbox row and retried.
+  try {
+    const s = getSessionWithGame(sessionId);
+    const p = db().prepare("SELECT email, name, locale, time_zone FROM users WHERE id = ? AND email_verified_at IS NOT NULL AND deleted_at IS NULL").get(user.id) as
+      | { email: string; name: string; locale: "en" | "id"; time_zone: string } | undefined;
+    if (s && p) await sendEmail(bookingConfirmedEmail(p, s, await siteOrigin()));
+  } catch (err) {
+    console.error("[quest-board] booking confirmation email", err);
   }
 
   revalidatePath("/", "layout");
