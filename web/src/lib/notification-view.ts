@@ -71,6 +71,7 @@ export function describeNotification(n: NotificationSource, t: T): NotificationV
     case "report_new": return { ...base, href: "/admin/reports", icon: "flag", text: n.actor_name ? t("notif.reportNew", { name: who }) : t("notif.reportAuto") };
     case "waitlist_offer": return { ...base, href: gameHref, icon: "ticket", text: t("notif.waitlistOffer", { title: game }) };
     case "payment_confirmed": return { ...base, href: "/dashboard", icon: "wallet", text: t("notif.paymentConfirmed", { name: who, title: game }) };
+    case "payment_sent": return { ...base, href: "/gm", icon: "wallet", text: t("notif.paymentSent", { name: who, title: game }) };
     case "lfg_reply": return { ...base, href: postHref, icon: "thumbtack", text: t("notif.lfgReply", { name: who, title: n.post_title ?? "" }) };
     case "followed_gm_game": return { ...base, href: gameHref, icon: "dice-d20", text: t("notif.followedGame", { name: who, title: game }) };
     case "session_reminder_24h": return { ...base, actor: null, href: gameHref, icon: "calendar-clock", text: t("notif.reminder24", { title: game }) };

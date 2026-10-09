@@ -91,3 +91,26 @@ export function bookingConfirmedEmail(
     }),
   };
 }
+
+/**
+ * "You cancelled your seat" email for the player, right after they cancel: what they cancelled, and for a
+ * paid seat that refunds are arranged with the GM (Quest Board never holds the money), with the GM's terms.
+ */
+export function playerCancelledEmail(
+  person: { email: string; name: string; locale: Lang; time_zone?: string },
+  s: { title: string; slug: string; starts_at: string; gm_name: string; gm_refund_terms?: string | null },
+  booking: { price_idr: number; paid: boolean },
+  origin: string,
+): Mail {
+  const t = makeT(person.locale);
+  const when = formatWhen(s.starts_at, person.locale, person.time_zone);
+  const refund = booking.price_idr > 0
+    ? t(booking.paid ? "mail.youCancelledPaid" : "mail.youCancelledMaybePaid", { gm: s.gm_name, price: formatIdr(booking.price_idr) }) + "\n\n"
+      + (s.gm_refund_terms ? t("mail.bookedRefund", { terms: s.gm_refund_terms }) + "\n\n" : "")
+    : "";
+  return {
+    to: person.email,
+    subject: t("mail.youCancelledSubject", { title: s.title, when }),
+    text: t("mail.youCancelledBody", { name: person.name, title: s.title, when, refund, link: `${origin}/games/${s.slug}`, games: `${origin}/games` }),
+  };
+}

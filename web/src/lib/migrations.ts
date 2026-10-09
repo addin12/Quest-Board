@@ -472,6 +472,9 @@ export const MIGRATIONS: Record<number, string> = {
     );
     CREATE INDEX IF NOT EXISTS idx_email_changes_user ON email_changes(user_id);
   `,
+  40: `
+    ALTER TABLE bookings ADD COLUMN player_paid_at TEXT;
+  `,
   39: `
     ALTER TABLE games ADD COLUMN venue_name TEXT NOT NULL DEFAULT '';
     ALTER TABLE games ADD COLUMN venue_maps_url TEXT NOT NULL DEFAULT '';

@@ -103,7 +103,7 @@ test("people on a waitlist can leave it, or pass an offer to the next person", a
   await expect(c.getByRole("link", { name: "Claim your seat" })).toBeVisible();
 });
 
-test("GMs tick 'paid ✓' on the roster; the player sees it and is notified", async ({ browser }) => {
+test("the player says they've paid, the GM sees it and ticks 'paid ✓'; the player sees it and is notified", async ({ browser }) => {
   test.setTimeout(120_000); // three accounts and two GM games: past 60 s on a busy machine
   const gm = await newPage(browser);
   const slug = await createGmWithGame(gm, "Paolo Paid", unique("paid-gm"), "Paid Table", { price: "50.000" });
@@ -112,14 +112,28 @@ test("GMs tick 'paid ✓' on the roster; the player sees it and is notified", as
   await signup(player, "Pipit Pays", unique("paid-p"));
   await bookFirstOpenSeat(player, [slug]);
 
+  // Round 37: the player says it's sent (and can take it back); the GM is told and sees "Says paid".
+  await player.goto("/dashboard");
+  await player.getByRole("button", { name: "I've sent the payment" }).click();
+  await expect(player.getByText("You told the GM you've paid. Waiting for them to confirm.")).toBeVisible();
+  await player.getByTestId("player-paid").getByRole("button", { name: "Undo" }).click();
+  await expect(player.getByRole("button", { name: "I've sent the payment" })).toBeVisible();
+  await player.getByRole("button", { name: "I've sent the payment" }).click();
+  await expect(player.getByText("You told the GM you've paid.", { exact: false })).toBeVisible();
+
+  await gm.goto("/notifications");
+  await expect(gm.getByText("Pipit Pays says they've sent the payment for Paid Table. Check and mark it paid.")).toBeVisible();
   await gm.goto(manage);
   await expect(gm.getByText("0/1 paid")).toBeVisible();
+  await expect(gm.getByTestId("says-paid")).toHaveText(/Says paid/);
   await gm.getByRole("button", { name: "Mark Pipit Pays's seat as paid" }).click();
+  await expect(gm.getByTestId("says-paid")).toHaveCount(0);
   await expect(gm.getByRole("button", { name: "Unmark Pipit Pays's seat as paid" })).toHaveAttribute("aria-pressed", "true");
   await expect(gm.getByText("1/1 paid")).toBeVisible();
 
   await player.goto("/dashboard");
   await expect(player.getByText("The GM confirmed your payment")).toBeVisible();
+  await expect(player.getByTestId("player-paid")).toHaveCount(0); // nothing left to say once the GM confirmed
   await player.goto("/notifications");
   await expect(player.getByText("Paolo Paid marked your seat at Paid Table as paid")).toBeVisible();
 

@@ -4,7 +4,7 @@ import { disallowedPaths, gameEventsJsonLd, jsonLdString, languageAlternates, lo
 
 type Ev = {
   "@type": string; endDate: string; eventAttendanceMode: string; remainingAttendeeCapacity: number; image?: string[];
-  location: { "@type": string; url?: string; address?: { addressLocality: string } }; offers: { availability: string };
+  location: { "@type": string; name?: string; url?: string; hasMap?: string; address?: { addressLocality: string } }; offers: { availability: string };
 };
 
 const game: EventGame = {
@@ -24,10 +24,16 @@ test("one Event per session with public details, price in IDR and remaining seat
   assert.deepEqual(e.image, ["https://qb.test/images/covers/naga.svg"]);
 });
 
-test("in-person games give only the city; full sessions are sold out; at most 10 events", () => {
+test("in-person games give the venue (or the city) and its map; full sessions are sold out; at most 10 events", () => {
   const offline = { ...game, location_type: "in_person" as const, city: "Bandung" };
   const [e] = gameEventsJsonLd(offline, [{ ...session, seats_taken: 5 }], "https://qb.test") as Ev[];
+  assert.equal(e.location.name, "Bandung");
+  assert.equal(e.location.hasMap, undefined);
   assert.equal(e.location.address?.addressLocality, "Bandung");
+  const [v] = gameEventsJsonLd({ ...offline, venue_name: "Kumu Ground Coffee", venue_maps_url: "https://maps.app.goo.gl/Kumu" }, [session], "https://qb.test") as Ev[];
+  assert.equal(v.location.name, "Kumu Ground Coffee");
+  assert.equal(v.location.hasMap, "https://maps.app.goo.gl/Kumu");
+  assert.equal(v.location.address?.addressLocality, "Bandung");
   assert.equal(e.offers.availability, "https://schema.org/SoldOut");
   assert.equal(e.remainingAttendeeCapacity, 0);
   assert.equal(gameEventsJsonLd(game, Array.from({ length: 14 }, (_, i) => ({ ...session, id: i })), "x").length, 10);

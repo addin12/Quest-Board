@@ -359,6 +359,7 @@ export const CLIENT_KEYS: readonly string[] = [
   "notif.offerReceived",
   "notif.openRequests",
   "notif.paymentConfirmed",
+  "notif.paymentSent",
   "notif.reminder1",
   "notif.reminder24",
   "notif.removedGame",

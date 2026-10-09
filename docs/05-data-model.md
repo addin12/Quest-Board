@@ -351,3 +351,6 @@ users.time_zone   -- IANA zone, default 'Asia/Jakarta'; emails show times in it 
 
 ## v39: where an in-person game meets
 - `games.venue_name` (TEXT, default '') and `games.venue_maps_url` (TEXT, default ''): for in-person games, the venue (a café, restaurant or game store) and its Google Maps share link. Both are public: the game page shows the venue under "Where we play" with an "Open in Google Maps" button, and the reminder email names it. Only Google Maps addresses are accepted (`maps.app.goo.gl`, `goo.gl/maps`, `google.com/maps`, `maps.google.com`, and the `.co.id` forms; `isGoogleMapsUrl` in `lib/validation.ts`), so nothing else can hide behind the button. The form asks for a public place, never a home address. Online games keep neither.
+
+## v40: "I've sent the payment"
+- `bookings.player_paid_at` (TEXT, null): when the player said they'd sent the payment, from My games ("I've sent the payment", with Undo). Paying still happens off Quest Board: this is the player's word, not proof. The GM is told (notification kind `payment_sent`), sees "Says paid" beside the player on the roster, and confirms with "Mark paid" (`paid_marked_at`, v11) as before; once they do, the player's button goes away. Only for the player's own confirmed seat on a paid game that the GM hasn't marked paid yet.

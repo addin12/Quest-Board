@@ -25,6 +25,7 @@ export type NotificationKind =
   | "content_removed"    // → author: a moderator removed their review, message, notice, reply or game
   | "waitlist_offer"     // → player: a seat opened up and is held for them
   | "payment_confirmed"  // → player: the GM marked their seat as paid
+  | "payment_sent"       // → GM: a player says they've sent the payment (the GM confirms on the roster)
   | "lfg_reply"          // → notice author: someone replied on the Notice Board (collapsed while unread)
   | "lfg_thread_reply"   // → earlier repliers on a notice: someone else replied (collapsed while unread)
   | "notice_expiring"    // → notice author: it comes down in a few days — keep it up?

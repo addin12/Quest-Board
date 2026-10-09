@@ -383,6 +383,8 @@ export function listGmReviews(gmId: number, limit = 10): ReviewRow[] {
 export type PlayerBooking = {
   booking_id: number;
   paid_marked_at: string | null;
+  /** v40: when the player said they'd sent the payment (the GM still confirms). */
+  player_paid_at: string | null;
   status: "confirmed" | "cancelled";
   cancelled_by: "player" | "gm" | null;
   price_idr: number;
@@ -409,7 +411,7 @@ export type PlayerBooking = {
 export function listPlayerBookings(playerId: number): PlayerBooking[] {
   return db()
     .prepare(
-      `SELECT b.id AS booking_id, b.status, b.cancelled_by, b.price_idr, b.paid_marked_at, s.id AS session_id, s.starts_at, s.duration_minutes, s.status AS session_status, s.cancel_reason,
+      `SELECT b.id AS booking_id, b.status, b.cancelled_by, b.price_idr, b.paid_marked_at, b.player_paid_at, s.id AS session_id, s.starts_at, s.duration_minutes, s.status AS session_status, s.cancel_reason,
               g.id AS game_id, g.slug, g.title, g.system, g.cover_hue, g.cover_image, g.platform, g.location_type, g.city, g.venue_name, g.venue_maps_url, u.name AS gm_name,
               EXISTS (SELECT 1 FROM reviews r WHERE r.game_id = g.id AND r.player_id = b.player_id) AS has_review
          FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id JOIN users u ON u.id = g.gm_id
@@ -539,10 +541,10 @@ export function gmDashboardStats(gmId: number) {
 export function listSessionRoster(sessionId: number) {
   return db()
     .prepare(
-      `SELECT b.id AS booking_id, b.status, b.paid_marked_at, u.id AS user_id, u.name, u.avatar_hue, u.avatar_image
+      `SELECT b.id AS booking_id, b.status, b.paid_marked_at, b.player_paid_at, u.id AS user_id, u.name, u.avatar_hue, u.avatar_image
          FROM bookings b JOIN users u ON u.id = b.player_id WHERE b.session_id = ? ORDER BY b.created_at`,
     )
-    .all(sessionId) as { booking_id: number; status: string; paid_marked_at: string | null; user_id: number; name: string; avatar_hue: number; avatar_image: string }[];
+    .all(sessionId) as { booking_id: number; status: string; paid_marked_at: string | null; player_paid_at: string | null; user_id: number; name: string; avatar_hue: number; avatar_image: string }[];
 }
 
 /** Every seat booked for a game, for the roster CSV. */

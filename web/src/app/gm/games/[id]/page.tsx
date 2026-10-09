@@ -175,6 +175,9 @@ function SessionCard({
           {active.map((p) => (
             <li key={p.booking_id} className={`flex items-center gap-2 rounded-full border py-1 pr-1.5 pl-1 text-sm ${paid && p.paid_marked_at ? "border-success/40 bg-success-soft" : "border-border"}`}>
               <Avatar name={p.name} hue={p.avatar_hue} image={p.avatar_image} size={24} /> {p.name}
+              {paid && p.player_paid_at && !p.paid_marked_at && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-semibold text-accent" data-testid="says-paid"><Icon name="wallet" /> {t("paid.saysPaid")}</span>
+              )}
               {paid ? (
                 <form action={markPaidAction}>
                   <input type="hidden" name="bookingId" value={p.booking_id} />

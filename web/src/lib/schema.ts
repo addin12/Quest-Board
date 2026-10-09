@@ -43,7 +43,8 @@
 // v37: gm_invites (founding-GM invitation links) + launch_notify (pre-launch "tell me when it opens").
 // v38: gm_profiles.refund_terms / payment_qr (QRIS picture), games.table_link, uploads kind 'qris'.
 // v39: games.venue_name / venue_maps_url (where an in-person game meets, with a Google Maps link).
-export const SCHEMA_VERSION = 39;
+// v40: bookings.player_paid_at (the player says "I've sent the payment"; the GM still confirms).
+export const SCHEMA_VERSION = 40;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -170,7 +171,8 @@ CREATE TABLE IF NOT EXISTS bookings (
   cancelled_by TEXT CHECK (cancelled_by IN ('player','gm')),
   created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   cancelled_at TEXT,
-  paid_marked_at TEXT                         -- v11: the GM ticked "paid ✓" (payment happens off-platform)
+  paid_marked_at TEXT,                        -- v11: the GM ticked "paid ✓" (payment happens off-platform)
+  player_paid_at TEXT                         -- v40: the player said "I've sent the payment" (the GM confirms)
 );
 CREATE INDEX IF NOT EXISTS idx_bookings_session ON bookings(session_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_player ON bookings(player_id);

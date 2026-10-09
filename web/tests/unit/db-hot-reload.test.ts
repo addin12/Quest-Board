@@ -13,8 +13,8 @@ const { SCHEMA_VERSION } = await import("../../src/lib/schema.ts");
 
 // Undo of the NEWEST migration only. When adding migration N, replace this with N's inverse
 // (as in hardening.test.ts) and update the check below.
-const UNDO_LATEST = "ALTER TABLE games DROP COLUMN venue_name; ALTER TABLE games DROP COLUMN venue_maps_url;";
-const latestIsBack = (conn: ReturnType<typeof db>) => conn.prepare("SELECT venue_name, venue_maps_url FROM games LIMIT 1").all();
+const UNDO_LATEST = "ALTER TABLE bookings DROP COLUMN player_paid_at;";
+const latestIsBack = (conn: ReturnType<typeof db>) => conn.prepare("SELECT player_paid_at FROM bookings LIMIT 1").all();
 
 test("an open connection prepared for an older schema is migrated on the next db() call", () => {
   const conn = db();

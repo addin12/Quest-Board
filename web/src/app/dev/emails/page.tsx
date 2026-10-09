@@ -5,6 +5,7 @@ import { emailHtml } from "@/lib/email-html";
 import { devOutboxEnabled } from "@/lib/mailer";
 import { makeT, type Lang, type MsgKey } from "@/lib/i18n/dict";
 import { formatMoment, formatWhen } from "@/lib/time-zones";
+import { bookingConfirmedEmail, playerCancelledEmail, type Mail } from "@/lib/session-mail";
 
 export const metadata: Metadata = { title: "Email gallery", robots: { index: false } };
 
@@ -57,6 +58,22 @@ export default async function DevEmailsPage(props: PageProps<"/dev/emails">) {
       },
     },
   ];
+  // Emails with their own builder are drawn by it (the very function the app sends with), with a sample game.
+  const reader = { email: "andi@example.com", name: "Andi", locale: lang, time_zone: tz };
+  const game = {
+    id: 12, title: base.title, slug: "mercusuar-di-pulau-kabut", system: "Call of Cthulhu 7e", starts_at: start, duration_minutes: 180, price_idr: 75_000,
+    gm_name: "Dewi", location_type: "in_person", platform: "", city: "Bandung", venue_name: "Kumu Ground Coffee", venue_maps_url: "https://maps.app.goo.gl/kumu",
+    gm_refund_terms: lang === "id" ? "Refund penuh sampai 24 jam sebelum mulai." : "Full refund up to 24 hours before the start.",
+  };
+  const built: { id: string; about: string; key: string; mail: Mail }[] = [
+    { id: "booked", about: "A player booked a seat (in person, paid)", key: "mail.bookedBody", mail: bookingConfirmedEmail(reader, game, site) },
+    { id: "booked-online", about: "A player booked a seat (online, free)", key: "mail.bookedBody", mail: bookingConfirmedEmail(reader, { ...game, location_type: "online", platform: "Discord", price_idr: 0, gm_refund_terms: "" }, site) },
+    { id: "you-cancelled", about: "A player cancelled their own seat (paid)", key: "mail.youCancelledBody", mail: playerCancelledEmail(reader, game, { price_idr: game.price_idr, paid: true }, site) },
+  ];
+  const shown = [
+    ...mails.map((m) => ({ id: m.id, about: m.about, key: m.body, subject: m.subject === m.body ? String(m.vars.text).slice(0, 150) : t(m.subject, m.vars), text: t(m.body, m.vars) })),
+    ...built.map((b) => ({ id: b.id, about: b.about, key: b.key, subject: b.mail.subject, text: b.mail.text })),
+  ];
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
       <h1 className="text-3xl font-bold">Email gallery</h1>
@@ -68,12 +85,10 @@ export default async function DevEmailsPage(props: PageProps<"/dev/emails">) {
         <Link href={`/dev/emails?lang=${lang}&tz=Asia/Jayapura`} className="text-accent hover:underline">WIT</Link>
       </p>
       <ul className="mt-6 space-y-4">
-        {mails.map((m) => {
-          const subject = m.subject === m.body ? String(m.vars.text).slice(0, 150) : t(m.subject, m.vars);
-          const text = t(m.body, m.vars);
+        {shown.map(({ id, about, key, subject, text }) => {
           return (
-            <li key={m.id} className="card p-4" data-testid="gallery-mail" id={m.id}>
-              <p className="text-xs uppercase tracking-wide text-muted">{m.about} · <code>{m.body}</code></p>
+            <li key={id} className="card p-4" data-testid="gallery-mail" id={id}>
+              <p className="text-xs uppercase tracking-wide text-muted">{about} · <code>{key}</code></p>
               <p className="mt-1 font-semibold" data-testid="gallery-subject">{subject}</p>
               <pre className="mt-2 whitespace-pre-wrap text-sm" data-testid="gallery-body">{text}</pre>
               <details className="mt-2">

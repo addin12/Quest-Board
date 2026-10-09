@@ -21,7 +21,7 @@ import { canReview, getGameById, getGmRequest, getGmSettings, getSessionWithGame
 import { LANG_COOKIE, makeT, type MsgKey } from "@/lib/i18n/dict";
 import { markAllRead, notify } from "@/lib/notifications";
 import { sendEmail } from "@/lib/mailer";
-import { movedEmail, seatRemovedEmail, bookingConfirmedEmail } from "@/lib/session-mail";
+import { movedEmail, seatRemovedEmail, bookingConfirmedEmail, playerCancelledEmail } from "@/lib/session-mail";
 import { deliverNotificationEmails } from "@/lib/notification-mail";
 import { consumeToken, issueToken, peekToken } from "@/lib/tokens";
 import { archiveGame, deleteAccount } from "@/lib/account";
@@ -426,7 +426,7 @@ async function saveGameActionImpl(_: FormState, form: FormData): Promise<FormSta
     );
   }
   announceGameIfNew(gameId); // first publish → tell the GM's followers
-  autoFlag("game", gameId, [g.title, g.summary, g.description, g.platform].join("\n")); // scam wording → the moderators' queue
+  autoFlag("game", gameId, [g.title, g.summary, g.description, g.platform, g.venueName].join("\n")); // scam wording → the moderators' queue
   revalidatePath("/", "layout");
   redirect(`/gm/games/${gameId}`);
 }
@@ -646,10 +646,12 @@ export async function cancelBookingAction(form: FormData) {
   const bookingId = Number(form.get("bookingId"));
   const b = db()
     .prepare(
-      `SELECT b.id, b.player_id, b.status, b.session_id, s.starts_at, g.gm_id
+      `SELECT b.id, b.player_id, b.status, b.session_id, b.price_idr, b.paid_marked_at, b.player_paid_at, s.starts_at, g.gm_id
          FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id WHERE b.id = ?`,
     )
-    .get(bookingId) as { id: number; player_id: number; status: string; session_id: number; starts_at: string; gm_id: number } | undefined;
+    .get(bookingId) as
+    | { id: number; player_id: number; status: string; session_id: number; price_idr: number; paid_marked_at: string | null; player_paid_at: string | null; starts_at: string; gm_id: number }
+    | undefined;
   if (!b || b.player_id !== user.id || b.status !== "confirmed") throw new Error("Booking not found");
   if (!canCancel(new Date(b.starts_at), new Date())) throw new Error("Session already started");
   db()
@@ -657,6 +659,15 @@ export async function cancelBookingAction(form: FormData) {
     .run(new Date().toISOString(), b.id);
   notify({ userId: b.gm_id, kind: "booking_cancelled", actorId: user.id, sessionId: b.session_id });
   tx((c) => processWaitlist(c, b.session_id));
+  // A confirmation for the player, with the GM's refund terms. Never in the way of the cancellation itself.
+  try {
+    const s = getSessionWithGame(b.session_id);
+    const p = db().prepare("SELECT email, name, locale, time_zone FROM users WHERE id = ? AND email_verified_at IS NOT NULL AND deleted_at IS NULL").get(user.id) as
+      | { email: string; name: string; locale: "en" | "id"; time_zone: string } | undefined;
+    if (s && p) await sendEmail(playerCancelledEmail(p, s, { price_idr: b.price_idr, paid: !!(b.paid_marked_at || b.player_paid_at) }, await siteOrigin()));
+  } catch (err) {
+    console.error("[quest-board] cancellation confirmation email", err);
+  }
   await toast("toast.seatReleased");
   revalidatePath("/", "layout");
 }
@@ -1134,6 +1145,27 @@ export async function markPaidAction(form: FormData) {
   db().prepare("UPDATE bookings SET paid_marked_at = ? WHERE id = ?").run(paid ? new Date().toISOString() : null, b.id);
   if (paid) notify({ userId: b.player_id, kind: "payment_confirmed", actorId: user.id, sessionId: b.session_id });
   await toast(paid ? "toast.paidMarked" : "toast.paidUnmarked");
+  revalidatePath("/", "layout");
+}
+
+/**
+ * The player says "I've sent the payment" (or takes it back). Only for their own confirmed, paid seat that
+ * the GM hasn't confirmed yet; the GM is told and confirms on the roster ("Mark paid", as before).
+ */
+export async function playerPaidAction(form: FormData) {
+  const user = await requireUser("/dashboard");
+  const b = db()
+    .prepare(`SELECT b.id, b.player_id, b.session_id, b.status, b.price_idr, b.paid_marked_at, b.player_paid_at, g.gm_id
+                FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id WHERE b.id = ?`)
+    .get(Number(form.get("bookingId"))) as
+    | { id: number; player_id: number; session_id: number; status: string; price_idr: number; paid_marked_at: string | null; player_paid_at: string | null; gm_id: number }
+    | undefined;
+  if (!b || b.player_id !== user.id || b.status !== "confirmed" || b.price_idr <= 0 || b.paid_marked_at) throw new Error("Not found");
+  const sent = form.get("sent") === "1";
+  if (sent === !!b.player_paid_at) return; // nothing to change (a double tap)
+  db().prepare("UPDATE bookings SET player_paid_at = ? WHERE id = ?").run(sent ? new Date().toISOString() : null, b.id);
+  if (sent) notify({ userId: b.gm_id, kind: "payment_sent", actorId: user.id, sessionId: b.session_id });
+  await toast(sent ? "toast.paymentSent" : "toast.paymentSentUndone");
   revalidatePath("/", "layout");
 }
 

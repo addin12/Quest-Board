@@ -8,6 +8,9 @@ export type EventGame = {
   system: string;
   location_type: "online" | "in_person";
   city: string;
+  /** v39: where an in-person game meets (a café, a store) and its Google Maps link, both public on the game page. */
+  venue_name?: string;
+  venue_maps_url?: string;
   price_idr: number;
   seats_total: number;
   cover_image: string | null;
@@ -19,7 +22,8 @@ export type EventSession = { id: number; starts_at: string; duration_minutes: nu
 
 /**
  * One schema.org `Event` per upcoming session, so search engines can show dates, price and
- * availability. Only public details: never the venue address or the GM's payment info.
+ * availability. Only what the game page shows everyone: the venue's name and map link for in-person games
+ * (never a street address typed by hand), never the GM's payment info.
  */
 export function gameEventsJsonLd(game: EventGame, sessions: EventSession[], origin: string): object[] {
   const url = `${origin}/games/${game.slug}`;
@@ -38,7 +42,12 @@ export function gameEventsJsonLd(game: EventGame, sessions: EventSession[], orig
       eventAttendanceMode: online ? "https://schema.org/OnlineEventAttendanceMode" : "https://schema.org/OfflineEventAttendanceMode",
       location: online
         ? { "@type": "VirtualLocation", url }
-        : { "@type": "Place", name: game.city, address: { "@type": "PostalAddress", addressLocality: game.city, addressCountry: "ID" } },
+        : {
+            "@type": "Place",
+            name: game.venue_name || game.city,
+            address: { "@type": "PostalAddress", addressLocality: game.city, addressCountry: "ID" },
+            ...(game.venue_name && game.venue_maps_url ? { hasMap: game.venue_maps_url } : {}),
+          },
       ...(game.cover_image ? { image: [`${origin}${game.cover_image}`] } : {}),
       organizer: { "@type": "Person", name: game.gm_name, url: `${origin}/gms/${game.gm_id}` },
       offers: {

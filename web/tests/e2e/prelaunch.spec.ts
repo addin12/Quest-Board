@@ -148,11 +148,16 @@ test("the dev email gallery shows every email in both languages, with every plac
   for (const lang of ["en", "id"] as const) {
     await page.goto(`/dev/emails?lang=${lang}`);
     const mails = page.getByTestId("gallery-mail");
-    await expect(mails).toHaveCount(24);
+    await expect(mails).toHaveCount(27);
     const texts = [...(await page.getByTestId("gallery-subject").allInnerTexts()), ...(await page.getByTestId("gallery-body").allInnerTexts())];
     for (const text of texts) expect(text, `[${lang}] ${text.slice(0, 60)}`).not.toMatch(/\{\w+\}/);
   }
   await expect(page.locator("#verify").getByTestId("gallery-subject")).not.toHaveText(/confirm/i); // Indonesian now
   await page.goto("/dev/emails?lang=id&tz=Asia/Makassar");
   await expect(page.locator("#reminder-24h").getByTestId("gallery-body")).toContainText("20.00 WITA");
+  // Round 37: the booking confirmation and the player's own cancellation, drawn by the real builders.
+  await expect(page.locator("#booked").getByTestId("gallery-body")).toContainText("Kumu Ground Coffee, Bandung");
+  await expect(page.locator("#booked").getByTestId("gallery-body")).toContainText("20.00 WITA");
+  await expect(page.locator("#booked-online").getByTestId("gallery-body")).toContainText("Discord");
+  await expect(page.locator("#you-cancelled").getByTestId("gallery-body")).toContainText("Refund penuh sampai 24 jam");
 });

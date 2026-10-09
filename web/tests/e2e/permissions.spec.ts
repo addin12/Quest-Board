@@ -46,7 +46,7 @@ test("hidden-field tampering can't touch other people's bookings, sessions, revi
   // The attackers' own things, so the forms appear: Dewi's game with Citra booked and reviewing; Citra's notice and request.
   const dewiGame = copyGame(`${tag}-dewi`, `Dewi Table ${tag}`, dewi);
   const dewiSession = session(dewiGame);
-  book(dewiSession, citra);
+  const citraBooking = book(dewiSession, citra);
   db.prepare("INSERT INTO reviews (game_id, player_id, rating, body) VALUES (?, ?, 4, 'Citra had fun')").run(dewiGame, citra);
   const archived = copyGame(`${tag}-gone`, `Removed Table ${tag}`, dewi, "archived");
   const citraNotice = Number(db.prepare("INSERT INTO lfg_posts (author_id, kind, title, schedule, body, expires_at) VALUES (?, 'lf_group', 'Citra looks for a group', 'Sundays', 'A relaxed Sunday group, beginners are welcome here.', ?)").run(citra, new Date(Date.now() + 2 * 86_400_000).toISOString()).lastInsertRowid);
@@ -54,7 +54,7 @@ test("hidden-field tampering can't touch other people's bookings, sessions, revi
   db.prepare("INSERT INTO gm_request_offers (request_id, gm_id, message, price_idr) VALUES (?, ?, 'Count me in', 50000)").run(citraRequest, dewi);
 
   const snapshot = () => ({
-    booking: db.prepare("SELECT status, paid_marked_at FROM bookings WHERE id = ?").get(victimBooking),
+    booking: db.prepare("SELECT status, paid_marked_at, player_paid_at FROM bookings WHERE id = ?").get(victimBooking),
     session: db.prepare("SELECT status, starts_at, duration_minutes FROM game_sessions WHERE id = ?").get(victimSession),
     review: db.prepare("SELECT rating, body, gm_reply FROM reviews WHERE id = ?").get(victimReview),
     notice: db.prepare("SELECT title, status, expires_at FROM lfg_posts WHERE id = ?").get(victimNotice),
@@ -122,6 +122,12 @@ test("hidden-field tampering can't touch other people's bookings, sessions, revi
     // ── Citra (a player) aims her own forms at Andi's things.
     const p = await newPage(browser);
     await login(p, "citra@questboard.test");
+    await p.goto("/dashboard");
+    const sent = p.getByTestId("player-paid").filter({ has: p.locator(`input[name="bookingId"][value="${citraBooking}"]`) });
+    await tamper(sent.locator('input[name="bookingId"]'), victimBooking);
+    await sent.getByRole("button", { name: "I've sent the payment" }).click();
+    await settle(p);
+
     await p.goto(`/games/${tag}-dewi`);
     const mine = p.getByRole("region", { name: /Reviews/ }).getByRole("listitem").filter({ hasText: "Citra had fun" });
     await mine.getByText("Edit your review").click();
