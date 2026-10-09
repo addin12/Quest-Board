@@ -61,7 +61,7 @@ export default async function SettingsPage(props: PageProps<"/settings">) {
             ["your-data", t("data.title")],
             ["delete", t("delete.title")],
           ] as [string, string][]).map(([id, label]) => (
-            <li key={id}><a href={`#${id}`} className="font-semibold text-accent hover:underline">{label}</a></li>
+            <li key={id}><a href={`#${id}`} className="inline-flex min-h-10 items-center rounded-lg border border-border bg-surface px-3 text-sm font-semibold text-accent hover:border-accent/60">{label}</a></li>
           ))}
         </ul>
       </nav>
@@ -178,8 +178,9 @@ export default async function SettingsPage(props: PageProps<"/settings">) {
         <h2 id="sec-h" className="flex items-center gap-2 text-xl font-bold"><Icon name="shield-check" className="text-muted" /> {t("dash.securityTitle")}</h2>
         <p className="mt-1 mb-4 text-sm text-muted">{t("settings.securityLead")}</p>
         <h3 id="devices" className="font-semibold">{t("devices.title")}</h3>
-        <ul className="mt-2 mb-5 divide-y divide-border rounded-lg border border-border" aria-labelledby="devices">
-          {logins.map((l) => (
+        {(() => {
+          // The five most recent sign-ins first; older ones are one click away (a long list buries the page).
+          const row = (l: (typeof logins)[number]) => (
             <li key={l.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3" data-testid="login-row">
               <span className="min-w-0">
                 <span className="flex flex-wrap items-center gap-2 font-semibold">
@@ -195,8 +196,22 @@ export default async function SettingsPage(props: PageProps<"/settings">) {
                 </form>
               )}
             </li>
-          ))}
-        </ul>
+          );
+          const recent = logins.slice(0, 5);
+          const older = logins.slice(5);
+          return (
+            <>
+              <ul className="mt-2 divide-y divide-border rounded-lg border border-border" aria-labelledby="devices">{recent.map(row)}</ul>
+              {older.length > 0 && (
+                <details className="mt-2">
+                  <summary className="btn-ghost inline-flex cursor-pointer list-none text-accent! [&::-webkit-details-marker]:hidden" data-testid="devices-more">{t("devices.showAll", { n: logins.length })}</summary>
+                  <ul className="mt-2 divide-y divide-border rounded-lg border border-border">{older.map(row)}</ul>
+                </details>
+              )}
+              <div className="mb-5" />
+            </>
+          );
+        })()}
         <form action={logoutEverywhereAction}>
           <ConfirmButton className="btn-secondary" message={t("dash.logoutEverywhereConfirm")}>
             <Icon name="sign-out-alt" /> {t("dash.logoutEverywhere")}

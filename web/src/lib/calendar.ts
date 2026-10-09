@@ -86,19 +86,24 @@ function veventLines(e: CalendarEvent, now: Date): string[] {
 
 /** One Quest Board session as a calendar event (public details only — never payment info). */
 export function sessionEvent(
-  s: { id: number; starts_at: string; duration_minutes: number; reschedule_count?: number; title: string; system: string; slug: string; location_type: string; platform: string; city: string },
+  s: {
+    id: number; starts_at: string; duration_minutes: number; reschedule_count?: number; title: string; system: string; slug: string;
+    location_type: string; platform: string; city: string; venue_name?: string; venue_maps_url?: string;
+  },
   origin: string,
   t: T,
 ): CalendarEvent {
   const url = `${origin}/games/${s.slug}`;
-  const where = s.location_type === "online" ? s.platform || t("loc.online") : s.city;
+  // In person: the venue and city, so a phone's calendar can offer directions; its map link goes in the notes.
+  const where = s.location_type === "online" ? s.platform || t("loc.online") : s.venue_name ? `${s.venue_name}, ${s.city}` : s.city;
+  const map = s.location_type === "in_person" && s.venue_maps_url ? `\n${t("game.openMaps")}: ${s.venue_maps_url}` : "";
   return {
     uid: `session-${s.id}@questboard`,
     start: new Date(s.starts_at),
     minutes: s.duration_minutes,
     sequence: s.reschedule_count ?? 0,
     title: `${s.title} (${s.system})`,
-    description: t("cal.description", { where }),
+    description: t("cal.description", { where }) + map,
     location: where,
     url,
   };

@@ -97,3 +97,12 @@ test("the daily clean-up removes pictures nothing shows, after a day, and keeps 
   assert.ok(existsSync(join(dir, parseUploadPath(used.path)!)));
   assert.ok(!existsSync(join(dir, parseUploadPath(orphan.path)!)));
 });
+
+test("cover advice: wide pictures are cropped at the sides, small ones may blur", async () => {
+  const { coverAdvice } = await import("../../src/lib/upload-rules.ts");
+  assert.deepEqual(coverAdvice(1080, 1350), []); // the ideal 4:5
+  assert.deepEqual(coverAdvice(1200, 1200), []); // square: a little off the sides, still fine
+  assert.deepEqual(coverAdvice(1920, 1080), ["wide"]);
+  assert.deepEqual(coverAdvice(500, 625), ["small"]);
+  assert.deepEqual(coverAdvice(800, 450), ["wide", "small"]);
+});

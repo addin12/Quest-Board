@@ -189,3 +189,23 @@ test("an in-person game shows its venue and an 'Open in Google Maps' button; onl
   await expect(maps).toHaveAttribute("rel", /noopener/);
   await expect(maps).toHaveText(/Open in Google Maps/);
 });
+
+// Round 35: the cover upload shows the 4:5 crop and warns when a picture is wide or small.
+test("the cover upload shows how the 4:5 cover will look, and warns about a wide or small picture", async ({ page }) => {
+  const slug = await createGmWithGame(page, "Cora Cover", unique("cover-gm"), "Cover Table");
+  const db = e2eDb();
+  const gameId = (db.prepare("SELECT id FROM games WHERE slug = ?").get(slug) as { id: number }).id;
+  db.close();
+  await page.goto(`/gm/games/${gameId}/edit`);
+  const wide = await sharp({ create: { width: 1600, height: 900, channels: 3, background: "#336699" } }).png().toBuffer();
+  await page.getByLabel("Or upload your own cover").setInputFiles({ name: "wide.png", mimeType: "image/png", buffer: wide });
+  await expect(page.getByTestId("cover-preview")).toBeVisible();
+  await expect(page.getByTestId("cover-wide")).toBeVisible();
+  await expect(page.getByTestId("cover-small")).toHaveCount(0);
+  const ratio = await page.getByTestId("cover-preview").evaluate((el) => el.getBoundingClientRect().width / el.getBoundingClientRect().height);
+  expect(ratio).toBeCloseTo(0.8, 1); // shown as the 4:5 it becomes
+  const small = await sharp({ create: { width: 400, height: 500, channels: 3, background: "#663399" } }).png().toBuffer();
+  await page.getByLabel("Or upload your own cover").setInputFiles({ name: "small.png", mimeType: "image/png", buffer: small });
+  await expect(page.getByTestId("cover-small")).toContainText("400×500");
+  await expect(page.getByTestId("cover-wide")).toHaveCount(0);
+});

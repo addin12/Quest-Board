@@ -312,7 +312,7 @@ export function getSessionWithGame(sessionId: number) {
               (SELECT COUNT(*) FROM bookings b WHERE b.session_id = s.id AND b.status = 'confirmed') AS seats_taken,
               g.id AS game_id, g.slug, g.title, g.system, g.price_idr, g.seats_total, g.status AS game_status,
               g.gm_id, g.cover_hue, g.cover_image, u.name AS gm_name, u.avatar_image AS gm_image,
-              g.summary, g.location_type, g.platform, g.city,
+              g.summary, g.location_type, g.platform, g.city, g.venue_name, g.venue_maps_url,
               (SELECT COALESCE(p.refund_terms, '') FROM gm_profiles p WHERE p.user_id = g.gm_id) AS gm_refund_terms
          FROM game_sessions s JOIN games g ON g.id = s.game_id JOIN users u ON u.id = g.gm_id
         WHERE s.id = ?`,
@@ -322,7 +322,7 @@ export function getSessionWithGame(sessionId: number) {
         id: number; starts_at: string; duration_minutes: number; status: string; seats_taken: number;
         game_id: number; slug: string; title: string; system: string; price_idr: number; seats_total: number;
         game_status: string; gm_id: number; cover_hue: number; cover_image: string; gm_name: string; gm_image: string;
-        summary: string; location_type: "online" | "in_person"; platform: string; city: string; gm_refund_terms: string | null;
+        summary: string; location_type: "online" | "in_person"; venue_name: string; venue_maps_url: string; platform: string; city: string; gm_refund_terms: string | null;
       }
     | undefined;
 }
@@ -397,6 +397,8 @@ export type PlayerBooking = {
   platform: string;
   location_type: string;
   city: string;
+  venue_name: string;
+  venue_maps_url: string;
   gm_name: string;
   has_review: number;
 };
@@ -405,7 +407,7 @@ export function listPlayerBookings(playerId: number): PlayerBooking[] {
   return db()
     .prepare(
       `SELECT b.id AS booking_id, b.status, b.cancelled_by, b.price_idr, b.paid_marked_at, s.id AS session_id, s.starts_at, s.duration_minutes, s.status AS session_status, s.cancel_reason,
-              g.id AS game_id, g.slug, g.title, g.system, g.cover_hue, g.cover_image, g.platform, g.location_type, g.city, u.name AS gm_name,
+              g.id AS game_id, g.slug, g.title, g.system, g.cover_hue, g.cover_image, g.platform, g.location_type, g.city, g.venue_name, g.venue_maps_url, u.name AS gm_name,
               EXISTS (SELECT 1 FROM reviews r WHERE r.game_id = g.id AND r.player_id = b.player_id) AS has_review
          FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id JOIN users u ON u.id = g.gm_id
         WHERE b.player_id = ? ORDER BY s.starts_at`,
@@ -778,7 +780,7 @@ export function sitemapEntries(): { games: { slug: string; created_at: string }[
 
 export type FeedSession = {
   id: number; starts_at: string; duration_minutes: number; status: string; reschedule_count: number;
-  title: string; system: string; slug: string; location_type: string; platform: string; city: string;
+  title: string; system: string; slug: string; location_type: string; platform: string; city: string; venue_name: string; venue_maps_url: string;
 };
 
 /** Whose calendar feed a token opens (active accounts only). */
@@ -795,7 +797,7 @@ export function calendarFeedOwner(token: string): { id: number; locale: "en" | "
  */
 export function calendarFeedSessions(userId: number, now = new Date()): FeedSession[] {
   const since = new Date(now.getTime() - 60 * 86_400_000).toISOString();
-  const cols = "s.id, s.starts_at, s.duration_minutes, s.status, s.reschedule_count, g.title, g.system, g.slug, g.location_type, g.platform, g.city";
+  const cols = "s.id, s.starts_at, s.duration_minutes, s.status, s.reschedule_count, g.title, g.system, g.slug, g.location_type, g.platform, g.city, g.venue_name, g.venue_maps_url";
   const rows = db()
     .prepare(
       `SELECT ${cols} FROM bookings b JOIN game_sessions s ON s.id = b.session_id JOIN games g ON g.id = s.game_id

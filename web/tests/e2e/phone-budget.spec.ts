@@ -8,15 +8,17 @@ import { test, expect, type Page } from "@playwright/test";
 
 type Budget = { path: string; js: number; total: number };
 const KB = 1024;
-// Measured on 2026-10-05 (round 32, after loading one language and one Alegreya weight: JS 222 → 187–192 KB,
-// fonts 125 → 106 KB) plus about 10% headroom. Raise one only for a reason, in the same commit.
+// Measured on 2026-10-05 (round 32: one language, one Alegreya weight) and raised on 2026-10-09 (round 35):
+// the visitor's language strings now come with the page (HTML +30–35 KB) instead of as a separate chunk,
+// because in Safari's engine taps made before that chunk arrived were lost. About 8% headroom. Raise one
+// only for a reason, in the same commit.
 const PAGES: Budget[] = [
-  { path: "/", js: 210, total: 390 },
-  { path: "/games", js: 210, total: 400 },
-  { path: "/games/mercusuar-di-pulau-kabut", js: 215, total: 375 },
-  { path: "/how-it-works", js: 210, total: 355 },
-  { path: "/login", js: 215, total: 360 },
-  { path: "/opening", js: 210, total: 355 },
+  { path: "/", js: 210, total: 415 },
+  { path: "/games", js: 210, total: 420 },
+  { path: "/games/mercusuar-di-pulau-kabut", js: 215, total: 405 },
+  { path: "/how-it-works", js: 210, total: 385 },
+  { path: "/login", js: 215, total: 390 },
+  { path: "/opening", js: 210, total: 385 },
 ];
 const LCP_LIMIT_MS = 8_000; // largest picture or text block drawn, on the slowed phone (1.3–3.4 s on the dev laptop)
 

@@ -192,7 +192,7 @@ export function GameForm({ defaults: initial, systems }: { defaults: GameFormDef
           hue={hue}
           error={err("coverImage")}
         />
-        <UploadField name="coverUpload" label={t("upload.coverLabel")} hint={t("upload.hint")} shape="poster" />
+        <UploadField name="coverUpload" label={t("upload.coverLabel")} hint={t("upload.coverHint")} shape="poster" />
         <Field id="coverHue" label={t("gameForm.gradientColour")} hint={t("gameForm.gradientHint")}>
           <div className="flex items-center gap-3">
             <input id="coverHue" name="coverHue" type="range" min={0} max={359} value={hue} onChange={(e) => setHue(Number(e.target.value))} className="flex-1 accent-[var(--accent)]" />

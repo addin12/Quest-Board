@@ -16,19 +16,32 @@ export function clip(s: string, max: number): string {
 /** A round portrait beside the title: a PNG data URI (next/og can't draw WebP), or the initial on the person's colour. */
 export type OgAvatar = { src?: string; initial: string; hue: number };
 
-export function ogCard(opts: { eyebrow: string; title: string; lines: string[]; hue?: number; badge?: string; avatar?: OgAvatar }) {
+/** A game's 4:5 cover poster on the left of the card: a PNG data URI, or its colour gradient. */
+export type OgPoster = { src?: string; hue: number };
+
+export function ogCard(opts: { eyebrow: string; title: string; lines: string[]; hue?: number; badge?: string; avatar?: OgAvatar; poster?: OgPoster }) {
   const hue = opts.hue ?? 30;
   const a = opts.avatar;
+  const p = opts.poster;
   return new ImageResponse(
     (
       <div
         style={{
-          width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between",
-          padding: 64, color: "#f3e6c8",
+          width: "100%", height: "100%", display: "flex", gap: 48,
+          padding: p ? 48 : 64, color: "#f3e6c8",
           background: `radial-gradient(circle at 85% 20%, hsl(${hue} 70% 45% / 0.55), transparent 55%), linear-gradient(135deg, #2a1b10, #140b05)`,
           border: "14px solid #8a6a3a",
         }}
       >
+        {p ? (
+          p.src ? (
+            // eslint-disable-next-line @next/next/no-img-element -- next/og renders plain img elements
+            <img src={p.src} width={404} height={505} alt="" style={{ borderRadius: 18, border: "4px solid #eab35a", objectFit: "cover" }} />
+          ) : (
+            <div style={{ display: "flex", width: 404, height: 505, borderRadius: 18, border: "4px solid #eab35a", background: `linear-gradient(160deg, hsl(${p.hue} 60% 50%), hsl(${(p.hue + 40) % 360} 50% 22%))` }} />
+          )
+        ) : null}
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", flex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 30, color: "#eab35a", letterSpacing: 4, textTransform: "uppercase" }}>
           <div style={{ display: "flex", width: 44, height: 44, borderRadius: 10, background: "#8e2b1c", alignItems: "center", justifyContent: "center", color: "#fbe9c8", fontSize: 22, fontWeight: 700 }}>20</div>
           {opts.eyebrow}
@@ -43,9 +56,9 @@ export function ogCard(opts: { eyebrow: string; title: string; lines: string[]; 
             )
           ) : null}
           <div style={{ display: "flex", flexDirection: "column", gap: 18, flex: 1 }}>
-            <div style={{ fontSize: opts.title.length > 40 ? 64 : 78, fontWeight: 700, lineHeight: 1.08 }}>{opts.title}</div>
+            <div style={{ fontSize: p ? (opts.title.length > 30 ? 52 : 64) : opts.title.length > 40 ? 64 : 78, fontWeight: 700, lineHeight: 1.08 }}>{opts.title}</div>
             {opts.lines.map((l) => (
-              <div key={l} style={{ fontSize: 32, color: "#d6c09b" }}>{l}</div>
+              <div key={l} style={{ fontSize: p ? 28 : 32, color: "#d6c09b" }}>{l}</div>
             ))}
           </div>
         </div>
@@ -54,6 +67,7 @@ export function ogCard(opts: { eyebrow: string; title: string; lines: string[]; 
           {opts.badge ? (
             <div style={{ display: "flex", padding: "10px 22px", borderRadius: 10, background: "#eab35a", color: "#1c1208", fontWeight: 700 }}>{opts.badge}</div>
           ) : null}
+        </div>
         </div>
       </div>
     ),

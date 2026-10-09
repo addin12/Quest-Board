@@ -28,19 +28,21 @@ export default async function AdminUsersPage(props: PageProps<"/admin/users">) {
         <input id="q" name="q" defaultValue={q} className="input" placeholder={t("admin.searchPh")} />
         <button className="btn-secondary"><Icon name="search" /> {t("common.search")}</button>
       </form>
+      {/* The count on the left, above the table it describes. */}
+      <p className="mb-2 text-sm text-muted" data-testid="member-count">{t("admin.memberCount", { n: rows.length })}</p>
       <div className="card overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-border text-xs uppercase tracking-wide text-muted">
             <tr>
               <th scope="col" className="px-4 py-3">{t("admin.colName")}</th>
               <th scope="col" className="px-4 py-3 max-sm:hidden">{t("admin.colRole")}</th>
-              <th scope="col" className="px-4 py-3 max-sm:hidden">{t("admin.colReports")}</th>
+              <th scope="col" className="px-4 py-3 text-right max-sm:hidden">{t("admin.colReports")}</th>
               <th scope="col" className="px-4 py-3"><span className="sr-only">{t("admin.colActions")}</span></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {rows.map((r) => (
-              <tr key={r.id}>
+              <tr key={r.id} className="even:bg-surface-2/40">
                 <td className="px-4 py-3">
                   {/* Only GMs have a public profile page; players are just listed. */}
                   {r.has_gm_profile ? <Link href={`/gms/${r.id}`} className="font-semibold hover:text-accent">{r.name}</Link> : <span className="font-semibold">{r.name}</span>}
@@ -48,7 +50,7 @@ export default async function AdminUsersPage(props: PageProps<"/admin/users">) {
                   {r.suspended_at ? <span className="chip mt-1 sm:hidden">{t("admin.suspendedChip")}</span> : null}
                 </td>
                 <td className="px-4 py-3 max-sm:hidden">{t(`admin.role.${r.role}` as "admin.role.player")}{r.suspended_at ? <span className="chip ml-2">{t("admin.suspendedChip")}</span> : null}</td>
-                <td className="px-4 py-3 max-sm:hidden">{r.open_reports > 0 ? <span className="font-bold text-danger">{r.open_reports}</span> : 0}</td>
+                <td className="px-4 py-3 text-right tabular-nums max-sm:hidden">{r.open_reports > 0 ? <span className="font-bold text-danger">{r.open_reports}</span> : 0}</td>
                 <td className="px-4 py-3 text-right">
                   {r.avatar_image.startsWith("/uploads/") && (
                     <form action={resetPortraitAction} className="mb-1">

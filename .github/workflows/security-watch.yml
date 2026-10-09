@@ -1,0 +1,40 @@
+name: Security watch
+
+# Every morning (and on demand from the Actions tab): new security advisories come out between pushes, so
+# they used to show up only when a push failed (three times in the week of 2026-10-05). This checks the
+# dependencies and the image servers actually pull, and a failure is emailed to the repository owner by
+# GitHub that morning. Findings are annotations (public, one plain line each).
+on:
+  schedule:
+    - cron: "0 0 * * *" # 07:00 WIB
+  workflow_dispatch:
+
+jobs:
+  dependencies:
+    name: dependencies (npm audit)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      # High or critical in what the site runs on fails the job; the fix (usually a patch release) is named.
+      - run: npm audit --omit=dev --json > audit.json || true
+      - run: node scripts/audit-annotate.mjs audit.json
+
+  image:
+    name: published image (Trivy)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      # The image servers pull (deploy/README.md "Small servers"): a fixable HIGH/CRITICAL finding means
+      # "rebuild": push to main (CI publishes a fresh image), then run deploy/update.sh on the server.
+      - name: Scan ghcr.io/addin12/quest-board:latest
+        run: docker run --rm aquasec/trivy:latest image --quiet --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 ghcr.io/addin12/quest-board:latest

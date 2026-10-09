@@ -42,10 +42,8 @@ test("notification popover, toasts and the phone layout", async ({ browser }) =>
   await phone.goto("/games");
   // A tap in the moment before the page is ready does nothing (the language strings load separately since
   // round 32; IMPROVEMENTS P2-19): tap again until the sheet opens, as a person would.
-  await expect(async () => {
-    await phone.getByRole("button", { name: "Filters", exact: true }).click();
-    await expect(phone.getByRole("dialog", { name: "Filter games" })).toBeVisible({ timeout: 2_000 });
-  }).toPass({ timeout: 20_000 });
+  await phone.getByRole("button", { name: "Filters", exact: true }).click();
+  await expect(phone.getByRole("dialog", { name: "Filter games" })).toBeVisible();
   await phone.keyboard.press("Escape");
   await phone.goto("/games/mercusuar-di-pulau-kabut");
   await expect(phone.getByRole("link", { name: "See dates" })).toBeVisible();

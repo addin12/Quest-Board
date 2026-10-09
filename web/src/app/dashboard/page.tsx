@@ -267,9 +267,14 @@ function BookingRow({ b, t, children, extra }: { b: PlayerBooking; t: T; childre
       <div className="min-w-0 flex-1 basis-56">
         <Link href={`/games/${b.slug}`} className="font-semibold hover:text-accent">{b.title}</Link>
         <p className="text-sm text-muted">
-          <LocalTime iso={b.starts_at} /> · {b.system} · {b.location_type === "online" ? b.platform : b.city} · GM {b.gm_name} ·{" "}
+          <LocalTime iso={b.starts_at} /> · {b.system} · {b.location_type === "online" ? b.platform : b.venue_name ? `${b.venue_name}, ${b.city}` : b.city} · GM {b.gm_name} ·{" "}
           {priceLabel(b.price_idr, t)}
         </p>
+        {b.location_type === "in_person" && b.venue_maps_url && b.session_status === "scheduled" && (
+          <a href={b.venue_maps_url} target="_blank" rel="noopener noreferrer nofollow" className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-accent hover:underline">
+            <Icon name="marker" /> {t("game.openMaps")}
+          </a>
+        )}
         {b.paid_marked_at && b.status === "confirmed" && (
           <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-success"><Icon name="check-circle" solid /> {t("paid.confirmedForYou")}</p>
         )}

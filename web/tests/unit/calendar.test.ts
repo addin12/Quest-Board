@@ -32,6 +32,12 @@ test("sessionEvent uses public details only and the right location", () => {
   assert.equal(e.title, "Mercusuar di Pulau Kabut (Call of Cthulhu)");
   const inPerson = sessionEvent({ ...session, location_type: "in_person", city: "Bandung" }, "https://x", t);
   assert.equal(inPerson.location, "Bandung");
+  // With a venue (v39): the venue and city as the location (phones offer directions), the map link in the notes.
+  const venue = sessionEvent({ ...session, location_type: "in_person", city: "Bandung", venue_name: "Kumu Ground Coffee", venue_maps_url: "https://maps.app.goo.gl/Kumu" }, "https://x", t);
+  assert.equal(venue.location, "Kumu Ground Coffee, Bandung");
+  assert.match(venue.description, /Open in Google Maps: https:\/\/maps\.app\.goo\.gl\/Kumu/);
+  assert.match(buildIcs(venue), /\r\nLOCATION:Kumu Ground Coffee\\, Bandung\r\n/);
+  assert.match(googleCalendarUrl(venue), /location=Kumu\+Ground\+Coffee%2C\+Bandung/);
 });
 
 test("buildIcs produces a valid single-event calendar with CRLF line endings", () => {

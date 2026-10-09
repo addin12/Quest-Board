@@ -122,7 +122,9 @@ test("GM profiles and the opening page have their own share picture (portrait, n
   const openingImage = await page.locator('meta[property="og:image"]').getAttribute("content");
   expect(openingImage).toMatch(/\/opening\/opengraph-image/);
   await expect(page.locator('meta[property="og:description"]')).toHaveAttribute("content", /^(Game Masters are listing|Para Game Master)/);
-  for (const url of [gmImage!, openingImage!]) {
+  await page.goto("/games/mercusuar-di-pulau-kabut"); // round 35: the game card carries its poster
+  const gameImage = await page.locator('meta[property="og:image"]').getAttribute("content");
+  for (const url of [gmImage!, openingImage!, gameImage!]) {
     const res = await request.get(new URL(url).pathname);
     expect(res.status(), url).toBe(200);
     expect(res.headers()["content-type"]).toBe("image/png");
