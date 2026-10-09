@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, endedSessionReason } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
 import { LoginForm } from "@/components/auth-forms";
 import { Notice } from "@/components/ui";
@@ -11,9 +11,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function LoginPage(props: PageProps<"/login">) {
-  const { next, step } = await props.searchParams;
+  const { next, step, ended } = await props.searchParams;
   if (await getCurrentUser()) redirect("/dashboard");
   const { t } = await getI18n();
+  // A session ends 90 days after its login however active it was: say so, or it looks like a bug.
+  const maxAge = ended === "max" || (await endedSessionReason()) === "max_age";
   return (
     <div className="mx-auto max-w-sm px-4 py-16">
       <h1 className="text-3xl font-bold">{t("auth.welcomeBack")}</h1>
@@ -22,6 +24,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
       {(step === "expired" || step === "locked") && (
         <div className="-mt-4 mb-6"><Notice tone="danger">{t(step === "locked" ? "err.twoStepTooMany" : "err.twoStepExpired")}</Notice></div>
       )}
+      {maxAge && <div className="-mt-4 mb-6" data-testid="ended-max-age"><Notice>{t("auth.endedMaxAge")}</Notice></div>}
       <LoginForm next={typeof next === "string" ? next : undefined} />
       <div className="mt-8 rounded-lg border border-dashed border-border p-4 text-xs text-muted">
         <p className="font-semibold text-text">{t("auth.demo")}</p>

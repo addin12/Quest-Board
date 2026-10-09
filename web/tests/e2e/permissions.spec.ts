@@ -79,7 +79,7 @@ test("hidden-field tampering can't touch other people's bookings, sessions, revi
 
     await gm.goto(manage);
     await tamper(card().locator('form:has(button[aria-pressed]) input[name="bookingId"]'), victimBooking);
-    await card().getByRole("button", { name: /Mark .* seat as paid/ }).click();
+    await card().getByRole("button", { name: /^Mark paid for / }).click();
     await settle(gm);
 
     await gm.goto(manage);

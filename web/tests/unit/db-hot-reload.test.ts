@@ -13,8 +13,8 @@ const { SCHEMA_VERSION } = await import("../../src/lib/schema.ts");
 
 // Undo of the NEWEST migration only. When adding migration N, replace this with N's inverse
 // (as in hardening.test.ts) and update the check below.
-const UNDO_LATEST = "DROP INDEX idx_fk_auth_sessions_user_id; DROP INDEX idx_fk_login_challenges_user_id; DROP INDEX idx_fk_reviews_player_id; DROP INDEX idx_fk_messages_user_id; DROP INDEX idx_fk_gm_requests_matched_gm_id; DROP INDEX idx_fk_gm_requests_gm_id; DROP INDEX idx_fk_gm_requests_requester_id; DROP INDEX idx_fk_gm_request_offers_gm_id; DROP INDEX idx_fk_gm_request_messages_user_id; DROP INDEX idx_fk_notifications_session_id; DROP INDEX idx_fk_notifications_request_id; DROP INDEX idx_fk_notifications_actor_id; DROP INDEX idx_fk_game_questions_player_id; DROP INDEX idx_fk_game_question_messages_user_id; DROP INDEX idx_fk_feedback_user_id; DROP INDEX idx_fk_email_queue_notification_id; DROP INDEX idx_fk_review_prompts_player_id; DROP INDEX idx_fk_session_reminders_user_id; DROP INDEX idx_fk_gm_invites_used_by; DROP INDEX idx_fk_gm_invites_created_by; DROP INDEX idx_fk_reports_resolved_by; DROP INDEX idx_fk_reports_target_owner_id; DROP INDEX idx_fk_reports_reporter_id; DROP INDEX idx_fk_waitlist_player_id; DROP INDEX idx_fk_lfg_posts_author_id; DROP INDEX idx_fk_lfg_replies_author_id; DROP INDEX idx_fk_saved_games_game_id; DROP INDEX idx_fk_admin_log_target_user_id; DROP INDEX idx_fk_admin_log_admin_id; DROP TABLE security_events; DROP TABLE web_vitals;";
-const latestIsBack = (conn: ReturnType<typeof db>) => conn.prepare("SELECT kind FROM security_events LIMIT 1").all();
+const UNDO_LATEST = "DROP TABLE security_counters;";
+const latestIsBack = (conn: ReturnType<typeof db>) => conn.prepare("SELECT n FROM security_counters LIMIT 1").all();
 
 test("an open connection prepared for an older schema is migrated on the next db() call", () => {
   const conn = db();

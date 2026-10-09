@@ -186,8 +186,9 @@ function SessionCard({
                     field="paid" pressed={!!p.paid_marked_at}
                     onClass="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-xs font-bold text-success hover:underline"
                     offClass="inline-flex min-h-11 items-center rounded-full bg-surface-2 px-3 text-xs font-bold text-muted hover:text-text"
-                    onLabel={t("paid.unmarkNamed", { name: p.name })} offLabel={t("paid.markNamed", { name: p.name })}
-                    on={<><Icon name="check" /> {t("paid.paid")}</>} off={t("paid.mark")}
+                    // The name starts with the visible words, so voice control ("click Mark paid") works.
+                    on={<><Icon name="check" /> {t("paid.paid")}<span className="sr-only"> {t("paid.forName", { name: p.name })}</span></>}
+                    off={<>{t("paid.mark")}<span className="sr-only"> {t("paid.forName", { name: p.name })}</span></>}
                   />
                 </form>
               ) : <span className="pr-1.5" />}

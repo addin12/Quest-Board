@@ -96,3 +96,54 @@ test("web vitals: only our pages, by route pattern; values checked; 75th percent
   assert.deepEqual(busiest, { page: "/games/[slug]", samples: 4, LCP: 3000, CLS: 0.05 });
   assert.equal(home.page, "/");
 });
+
+test("round 39: a password-guessing script can't flood the security log; the owner is warned once a day", async () => {
+  const { recentAttempts, failedLoginWarning, WARN_AFTER } = await import("../../src/lib/security-log.ts");
+  const uid = user("guessed@x.test");
+  const at = new Date("2025-01-15T13:20:00Z"); // a fixed hour no other test writes to
+  for (let i = 0; i < 120; i++) logSecurityEvent("login_failed", uid, "wrong password", at);
+  for (let i = 0; i < 300; i++) logSecurityEvent("login_failed", null, "unknown account", at);
+  const rows = db().prepare("SELECT user_id FROM security_events WHERE kind = 'login_failed' AND created_at = ?").all(at.toISOString()) as { user_id: number | null }[];
+  assert.equal(rows.length, 2, "one row per account per hour, one for all unknown emails");
+  assert.equal(recentAttempts("login_failed", uid, at), 120);
+  const shown = recentSecurityEvents(200, uid).find((e) => e.kind === "login_failed" && e.created_at === at.toISOString());
+  assert.equal(shown?.times, 120);
+  assert.deepEqual(recentSecurityEvents(200, uid).map((e) => e.user_id).filter((u) => u !== uid), [], "one person's history only");
+
+  const fresh = user("warned@x.test");
+  for (let i = 1; i < WARN_AFTER.password; i++) logSecurityEvent("login_failed", fresh, "wrong password", at);
+  assert.equal(failedLoginWarning(fresh, at), null);
+  logSecurityEvent("login_failed", fresh, "wrong password", at);
+  assert.deepEqual(failedLoginWarning(fresh, at), { reason: "password", attempts: WARN_AFTER.password });
+  logSecurityEvent("login_warning_sent", fresh, "password", at);
+  assert.equal(failedLoginWarning(fresh, new Date(at.getTime() + 600_000)), null, "at most one email a day");
+
+  const known = user("code@x.test");
+  for (let i = 0; i < WARN_AFTER.code; i++) logSecurityEvent("two_step_failed", known, "", at);
+  assert.equal(failedLoginWarning(known, at)?.reason, "code"); // they have the password: warned sooner
+});
+
+test("round 39: page-speed caps per page and per day; the 75th percentile is worked out in SQL like p75()", async () => {
+  const { VITALS_PER_PAGE_PER_DAY } = await import("../../src/lib/vitals-store.ts");
+  const day = Date.parse("2026-10-09T08:00:00Z");
+  let kept = 0;
+  for (let i = 0; i < VITALS_PER_PAGE_PER_DAY + 50; i++) if (recordVital({ page: "/quiz", metric: "LCP", value: 100 + i }, day)) kept++;
+  assert.equal(kept, VITALS_PER_PAGE_PER_DAY);
+  assert.equal(recordVital({ page: "/terms", metric: "LCP", value: 1 }, day), true, "another page still has room");
+  assert.equal(recordVital({ page: "/quiz", metric: "LCP", value: 1 }, day + 86_400_000), true, "a new day starts again");
+
+  const values = [7, 3, 9, 1, 5, 8, 2];
+  for (const v of values) recordVital({ page: "/feedback", metric: "INP", value: v }, day);
+  const row = vitalsSummary(7, day + 1000).find((r) => r.page === "/feedback");
+  assert.equal(row?.INP, p75(values));
+});
+
+test("round 39: an old-form calendar link gets one event pointing at Settings, in both languages", async () => {
+  const { linkChangedEvent, buildIcsFeed } = await import("../../src/lib/calendar.ts");
+  const { makeT } = await import("../../src/lib/i18n/dict.ts");
+  const e = linkChangedEvent("https://qb.test", makeT("en"), makeT("id"), new Date("2026-10-09T13:20:00Z"));
+  assert.equal(e.start.toISOString(), "2026-10-09T14:00:00.000Z");
+  assert.match(e.title, /calendar link changed .* tautan kalendermu berubah/);
+  assert.match(e.description, /https:\/\/qb\.test\/settings/);
+  assert.match(buildIcsFeed([e], "Quest Board"), /UID:calendar-link-changed@questboard/);
+});

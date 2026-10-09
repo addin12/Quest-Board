@@ -472,6 +472,19 @@ export const MIGRATIONS: Record<number, string> = {
     );
     CREATE INDEX IF NOT EXISTS idx_email_changes_user ON email_changes(user_id);
   `,
+  42: `
+    -- v42: how many failed logins / wrong codes an account (0 = no such account) had in each hour. The
+    -- security log records the first of each hour; this table counts the rest, so a script trying passwords
+    -- can't fill the append-only log. Kept 180 days, like the log.
+    CREATE TABLE IF NOT EXISTS security_counters (
+      kind    TEXT NOT NULL,
+      user_id INTEGER NOT NULL DEFAULT 0,
+      hour    TEXT NOT NULL,                     -- "2026-10-09T13" (UTC)
+      n       INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (kind, user_id, hour)
+    );
+    CREATE INDEX IF NOT EXISTS idx_security_counters_hour ON security_counters(hour);
+  `,
   41: `
     CREATE INDEX IF NOT EXISTS idx_fk_auth_sessions_user_id ON auth_sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_fk_login_challenges_user_id ON login_challenges(user_id);

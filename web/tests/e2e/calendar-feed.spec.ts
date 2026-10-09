@@ -40,7 +40,11 @@ test("personal calendar feed: booked sessions, cancellations marked, and a reset
     await page.getByRole("button", { name: "Reset link" }).click();
     await expect(page.getByLabel("Your private link")).not.toHaveValue(url);
     expect((await request.get(path)).status()).toBe(404);
-    expect((await request.get("/api/calendar/not-a-real-token-at-all-xx.ics")).status()).toBe(404);
+    expect((await request.get("/api/calendar/12.not-a-real-token-at-all-xx.ics")).status()).toBe(404);
+    // An old-form link (no account number) gets one event saying where the new link is (round 39).
+    const old = await request.get("/api/calendar/not-a-real-token-at-all-xx.ics");
+    expect(old.status()).toBe(200);
+    expect(await old.text()).toContain("calendar link changed");
   } finally {
     db.prepare("DELETE FROM game_sessions WHERE id = ?").run(sid);
     db.prepare("UPDATE users SET calendar_token = NULL WHERE id = ?").run(player.id);

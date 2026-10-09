@@ -37,7 +37,9 @@ All commands run on the server in `Quest-Board/deploy`.
 3. Start, check Admin → Setup, and tell GMs which bookings since the backup may be missing.
 
 ## An account may have been taken over
-1. Admin → Errors → **Security log**: failed logins, wrong two-step codes, password or email changes for that person.
+1. Admin → Users → the person → **Security log**: their failed logins (with how many per hour), wrong two-step codes,
+   password or email changes, and whether they were already emailed a warning (after 5 wrong passwords, or 3 wrong
+   codes, which means someone has their password).
 2. If the person is locked out, `docker compose exec app node scripts/admin.mjs reset-2fa <email>` ends every session;
    they then use "Forgot password". A GM's payment details changed? Players were warned for 14 days on the game page;
    check Admin → GMs and restore the right details with the GM.

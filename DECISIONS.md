@@ -59,7 +59,9 @@ outside hosts, and players' privacy matters (UU PDP).
 record must not be editable by whoever got in.
 **Decision.** `security_events`, with SQLite triggers refusing `UPDATE` and any `DELETE` before 180 days.
 **Consequences.** Even an admin can't tidy it (only the retention cron removes old rows). Someone with shell
-access to the server can still drop the table: the off-site backups keep earlier copies.
+access to the server can still drop the table: the off-site backups keep earlier copies. Because rows can't be
+deleted, repeatable events (failed logins, wrong codes) are counted per account per hour in a separate table
+and logged once per hour (round 39), so the log can't be flooded.
 
 ## ADR-18 · Email: two providers, an outbox, idempotency and a circuit breaker (2026-10-01, updated 2026-10-09)
 **Context.** Free plans allow 100 (Resend) + 300 (Brevo) emails a day; providers go down; a timeout leaves the

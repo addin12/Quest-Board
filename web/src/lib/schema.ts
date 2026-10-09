@@ -45,7 +45,8 @@
 // v39: games.venue_name / venue_maps_url (where an in-person game meets, with a Google Maps link).
 // v40: bookings.player_paid_at (the player says "I've sent the payment"; the GM still confirms).
 // v41: an index on every foreign key; security_events (append-only); web_vitals (real visitors' page speed).
-export const SCHEMA_VERSION = 41;
+// v42: security_counters (failed logins per account per hour, so the security log can't be flooded).
+export const SCHEMA_VERSION = 42;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -561,4 +562,16 @@ CREATE TABLE IF NOT EXISTS web_vitals (
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_web_vitals_created ON web_vitals(created_at, page, metric);
+
+-- v42: how many failed logins / wrong codes an account (0 = no such account) had in each hour. The
+-- security log records the first of each hour; this table counts the rest, so a script trying passwords
+-- can't fill the append-only log. Kept 180 days, like the log.
+CREATE TABLE IF NOT EXISTS security_counters (
+  kind    TEXT NOT NULL,
+  user_id INTEGER NOT NULL DEFAULT 0,
+  hour    TEXT NOT NULL,                     -- "2026-10-09T13" (UTC)
+  n       INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (kind, user_id, hour)
+);
+CREATE INDEX IF NOT EXISTS idx_security_counters_hour ON security_counters(hour);
 `;

@@ -32,8 +32,8 @@ test("GM earnings: expected vs marked paid, seats to follow up, and a CSV only G
     // Ticking the seat as paid on the roster clears it from the follow-up list.
     await mine.getByRole("link", { name: "Open roster" }).click();
     const seat = page.locator(`form:has(input[name="bookingId"][value="${bookingId}"])`);
-    await seat.getByRole("button", { name: `Mark ${player.name}'s seat as paid` }).click();
-    await expect(page.locator(`form:has(input[name="bookingId"][value="${bookingId}"])`).getByRole("button", { name: `Unmark ${player.name}'s seat as paid` })).toBeVisible();
+    await seat.getByRole("button", { name: `Mark paid for ${player.name}` }).click();
+    await expect(page.locator(`form:has(input[name="bookingId"][value="${bookingId}"])`).getByRole("button", { name: `Paid for ${player.name}` })).toBeVisible();
     await page.goto("/gm/earnings");
     await expect(chase.getByRole("listitem").filter({ hasText: "Rp 123.000" })).toHaveCount(0); // it now counts as paid instead
   } finally {

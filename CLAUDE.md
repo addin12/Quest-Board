@@ -83,7 +83,7 @@ project: each rule says how it is done here. "Checked by" names the test that fa
 - **No prop drilling beyond 2 levels:** use context (`I18nProvider`) or pass translated strings.
 - **Fonts through `next/font`** (self-hosted, no layout shift).
 - **JSON-LD on every public content page:** home (WebSite + Organization), game lists (CollectionPage), game pages (Event + BreadcrumbList), GM profiles (ProfilePage), How it works and Become a GM (WebPage), Hire a GM (FAQPage). Builders in `lib/seo.ts`. *Checked by* `seo.test.ts`.
-- **Core Web Vitals from real visitors:** `components/web-vitals.tsx` sends LCP, INP and CLS to `/api/vitals`; the admin Errors page shows the 75th percentile per page for the last 7 days.
+- **Core Web Vitals from real visitors:** `components/web-vitals.tsx` sends LCP, INP and CLS to `/api/vitals`; the admin Errors page shows the 75th percentile per page for the last 7 days (computed in SQL), with the rating in words beside its colour.
 
 ### Performance
 - **Cache at the nearest layer:** browser (`Cache-Control` on static files, share pictures, calendar feeds) → Caddy (compression, HTTP/2 and HTTP/3) → app (in-memory caches such as `lib/og-cache.ts`) → database.
@@ -108,7 +108,8 @@ project: each rule says how it is done here. "Checked by" names the test that fa
 - **Constant-time comparison** (`timingSafeEqual`) for every secret: passwords, two-step codes, webhook signatures, the cron secret, unsubscribe links, the calendar feed link. Tokens looked up in the database are stored as SHA-256 hashes.
 - **Content Security Policy** with a per-request nonce (`src/proxy.ts`); violations land in the error log through `/api/csp-report`. Review it when adding a script, style or host.
 - **Dependency audit:** `npm audit` on every push (CI fails on high), the daily security watch (`security-watch.yml`) and weekly Dependabot.
-- **Security events go to an append-only log** (`security_events`): failed logins, wrong two-step codes, password and email changes, two-step on/off, "log out everywhere", refused admin access. The database refuses to change or delete a row until it is 180 days old.
+- **Security events go to an append-only log** (`security_events`): failed logins, wrong two-step codes, password and email changes, two-step on/off, "log out everywhere", refused admin access. The database refuses to change or delete a row until it is 180 days old. **Anything a script can repeat is counted, not logged per attempt** (`security_counters`: first one per account per hour logged), and the owner is emailed after repeated attempts.
+- **Anything visitors can write without an account is capped** by a rate limit *and* a storage limit (page-speed beacons: 500 per page a day, 10,000 a day), so it can't fill the disk.
 - **Secrets live only in `deploy/.env` on the server** (never committed, mode 600, read by Docker Compose); change one with deploy/README.md → "Changing a secret".
 - **Threat-model before a new login or account flow:** write down who could abuse it and how (docs/10-security-trust-safety.md), then build it.
 

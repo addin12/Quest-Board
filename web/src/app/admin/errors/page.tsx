@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/auth";
+import Link from "next/link";
 import { getI18n } from "@/lib/i18n/server";
+import { db } from "@/lib/db";
 import type { MsgKey } from "@/lib/i18n/dict";
 import { adminStats } from "@/lib/moderation";
 import { listErrorGroups } from "@/lib/error-log";
@@ -19,12 +21,14 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("admin.errors"), robots: { index: false } };
 }
 
-export default async function AdminErrorsPage() {
+export default async function AdminErrorsPage(props: PageProps<"/admin/errors">) {
   await requireAdmin();
   const { t } = await getI18n();
+  const who = Number((await props.searchParams).user) || undefined;
+  const whoName = who ? (db().prepare("SELECT name FROM users WHERE id = ?").get(who) as { name: string } | undefined)?.name : undefined;
   const groups = listErrorGroups();
   const vitals = vitalsSummary(7);
-  const events = recentSecurityEvents(50);
+  const events = recentSecurityEvents(who ? 200 : 50, who);
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       <h1 className="text-3xl font-bold">{t("admin.errors")}</h1>
@@ -57,14 +61,22 @@ export default async function AdminErrorsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm tabular-nums">
               <thead className="text-xs text-muted">
-                <tr><th className="py-2 pr-4">{t("admin.vitalsPage")}</th>{SHOWN.map((m) => <th key={m} className="py-2 pr-4">{m}</th>)}<th className="py-2">{t("admin.vitalsSamples")}</th></tr>
+                <tr><th scope="col" className="py-2 pr-4">{t("admin.vitalsPage")}</th>{SHOWN.map((m) => <th scope="col" key={m} className="py-2 pr-4">{m}</th>)}<th scope="col" className="py-2">{t("admin.vitalsSamples")}</th></tr>
               </thead>
               <tbody>
                 {vitals.map((r) => (
                   <tr key={r.page} className="border-t border-border">
-                    <td className="py-2 pr-4 font-mono">{r.page}</td>
+                    <th scope="row" className="py-2 pr-4 text-left font-mono font-normal">{r.page}</th>
                     {SHOWN.map((m) => (
-                      <td key={m} className={`py-2 pr-4 ${r[m] === undefined ? "text-muted" : RATING_CLASS[vitalRating(m, r[m]!)]}`}>{r[m] === undefined ? "–" : m === "CLS" ? r[m]!.toFixed(2) : m === "INP" ? `${Math.round(r[m]!)} ms` : `${(r[m]! / 1000).toFixed(1)} s`}</td>
+                      <td key={m} className={`py-2 pr-4 ${r[m] === undefined ? "text-muted" : RATING_CLASS[vitalRating(m, r[m]!)]}`}>
+                        {r[m] === undefined ? "–" : (
+                          <>
+                            {m === "CLS" ? r[m]!.toFixed(2) : m === "INP" ? `${Math.round(r[m]!)} ms` : `${(r[m]! / 1000).toFixed(1)} s`}
+                            {/* The rating in words too: colour alone says nothing to some readers (UI rules). */}
+                            <span className="ml-1 text-xs">({t(`admin.vitalsRating.${vitalRating(m, r[m]!)}` as MsgKey)})</span>
+                          </>
+                        )}
+                      </td>
                     ))}
                     <td className="py-2">{r.samples}</td>
                   </tr>
@@ -76,8 +88,9 @@ export default async function AdminErrorsPage() {
       </section>
 
       <section className="mt-10" aria-labelledby="security-title" data-testid="admin-security-log">
-        <h2 id="security-title" className="text-2xl font-bold">{t("admin.securityTitle")}</h2>
+        <h2 id="security-title" className="text-2xl font-bold">{whoName ? t("admin.securityFor", { name: whoName }) : t("admin.securityTitle")}</h2>
         <p className="mt-1 mb-4 text-sm text-muted">{t("admin.securityLead")}</p>
+        {who && <p className="mb-4 text-sm"><Link href="/admin/errors#security-title" className="font-semibold text-accent hover:underline">{t("admin.securityAll")}</Link></p>}
         {events.length === 0 ? (
           <EmptyState title={t("admin.securityEmpty")} />
         ) : (
@@ -87,6 +100,7 @@ export default async function AdminErrorsPage() {
                 <span className="font-semibold">{t(`security.kind.${e.kind}` as MsgKey)}</span>
                 <span className="text-muted">{e.name ?? t("admin.securityNoAccount")}</span>
                 {e.detail && <span className="text-muted">· {e.detail}</span>}
+                {e.times > 1 && <span className="font-semibold text-danger">· {t("admin.securityTimes", { n: e.times })}</span>}
                 <span className="ml-auto text-xs text-muted"><LocalTime iso={e.created_at} /></span>
               </li>
             ))}

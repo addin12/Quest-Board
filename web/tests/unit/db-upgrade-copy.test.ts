@@ -19,7 +19,7 @@ delete process.env.QUESTBOARD_BACKUP_DIR; // next to the database: <dir>/backups
 {
   const old = new DatabaseSync(file);
   old.exec(SCHEMA_SQL);
-  old.exec(`DROP INDEX idx_fk_auth_sessions_user_id; DROP INDEX idx_fk_login_challenges_user_id; DROP INDEX idx_fk_reviews_player_id; DROP INDEX idx_fk_messages_user_id; DROP INDEX idx_fk_gm_requests_matched_gm_id; DROP INDEX idx_fk_gm_requests_gm_id; DROP INDEX idx_fk_gm_requests_requester_id; DROP INDEX idx_fk_gm_request_offers_gm_id; DROP INDEX idx_fk_gm_request_messages_user_id; DROP INDEX idx_fk_notifications_session_id; DROP INDEX idx_fk_notifications_request_id; DROP INDEX idx_fk_notifications_actor_id; DROP INDEX idx_fk_game_questions_player_id; DROP INDEX idx_fk_game_question_messages_user_id; DROP INDEX idx_fk_feedback_user_id; DROP INDEX idx_fk_email_queue_notification_id; DROP INDEX idx_fk_review_prompts_player_id; DROP INDEX idx_fk_session_reminders_user_id; DROP INDEX idx_fk_gm_invites_used_by; DROP INDEX idx_fk_gm_invites_created_by; DROP INDEX idx_fk_reports_resolved_by; DROP INDEX idx_fk_reports_target_owner_id; DROP INDEX idx_fk_reports_reporter_id; DROP INDEX idx_fk_waitlist_player_id; DROP INDEX idx_fk_lfg_posts_author_id; DROP INDEX idx_fk_lfg_replies_author_id; DROP INDEX idx_fk_saved_games_game_id; DROP INDEX idx_fk_admin_log_target_user_id; DROP INDEX idx_fk_admin_log_admin_id; DROP TABLE security_events; DROP TABLE web_vitals; PRAGMA user_version = ${SCHEMA_VERSION - 1};`);
+  old.exec(`DROP TABLE security_counters; PRAGMA user_version = ${SCHEMA_VERSION - 1};`);
   old.prepare("INSERT INTO app_state (key, value) VALUES ('marker', 'from before the upgrade')").run();
   old.close();
 }

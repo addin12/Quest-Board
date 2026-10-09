@@ -88,6 +88,7 @@ export function exportAccount(userId: number) {
     payment_detail_changes: q("SELECT changed_at FROM payment_changes WHERE user_id = ? ORDER BY changed_at", userId),
     login_devices: q("SELECT device, first_seen_at, last_seen_at FROM login_devices WHERE user_id = ? ORDER BY first_seen_at", userId),
     security_events: q("SELECT kind, detail, created_at FROM security_events WHERE user_id = ? ORDER BY id", userId),
+    failed_attempts_per_hour: q("SELECT kind, hour, n FROM security_counters WHERE user_id = ? ORDER BY hour", userId),
     email_delivery_stopped: one("SELECT reason, created_at FROM email_suppressions WHERE email = (SELECT email FROM users WHERE id = ?)", userId) ?? null,
     questions: q(
       `SELECT g.title AS game, m.body, m.created_at FROM game_question_messages m JOIN game_questions gq ON gq.id = m.question_id

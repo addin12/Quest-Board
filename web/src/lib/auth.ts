@@ -100,8 +100,24 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 
 export async function requireUser(next?: string): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user) redirect(`/login${next ? `?next=${encodeURIComponent(next)}` : ""}`);
+  if (!user) {
+    const q = new URLSearchParams();
+    if (next) q.set("next", next);
+    if ((await endedSessionReason()) === "max_age") q.set("ended", "max"); // the login page says why
+    redirect(`/login${q.size ? `?${q}` : ""}`);
+  }
   return user;
+}
+
+/**
+ * Why this browser's session cookie stopped working, when we can tell: "max_age" when the session
+ * reached SESSION_MAX_DAYS after its login. Otherwise null (logged out, expired, revoked, no cookie).
+ */
+export async function endedSessionReason(): Promise<"max_age" | null> {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  const row = db().prepare("SELECT created_at FROM auth_sessions WHERE token_hash = ?").get(hashToken(token)) as { created_at: string } | undefined;
+  return row && Date.parse(row.created_at) <= Date.now() - SESSION_MAX_DAYS * 86_400_000 ? "max_age" : null;
 }
 
 /**

@@ -50,6 +50,25 @@ export function buildIcs(e: CalendarEvent, now = new Date()): string {
  * A calendar with many events. `name` (X-WR-CALNAME) is set for subscribed feeds; calendar apps
  * re-fetch roughly every REFRESH-INTERVAL. Cancelled events keep their UID with STATUS:CANCELLED.
  */
+/**
+ * The one-event calendar an out-of-date feed link gets (round 38 changed the link's form): calendar apps
+ * show it, so the person learns to fetch the new link instead of seeing their sessions vanish. In both
+ * languages, because an old link doesn't say whose it was.
+ */
+export function linkChangedEvent(origin: string, en: T, id: T, now = new Date()): CalendarEvent {
+  const start = new Date(Math.ceil(now.getTime() / 3_600_000) * 3_600_000); // the next full hour
+  const link = `${origin}/settings`;
+  return {
+    uid: "calendar-link-changed@questboard",
+    start,
+    minutes: 30,
+    title: `${en("cal.linkChangedTitle")} / ${id("cal.linkChangedTitle")}`,
+    description: `${en("cal.linkChangedBody", { link })}\n\n${id("cal.linkChangedBody", { link })}`,
+    location: "",
+    url: link,
+  };
+}
+
 export function buildIcsFeed(events: CalendarEvent[], name: string | null, now = new Date()): string {
   const lines = [
     "BEGIN:VCALENDAR",

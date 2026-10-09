@@ -71,5 +71,43 @@ test("a calendar link with someone else's account number opens nothing", async (
   db.prepare("UPDATE users SET calendar_token = ? WHERE id = ?").run(secret, andi);
   expect((await request.get(`/api/calendar/${andi}.${secret}.ics`)).status()).toBe(200);
   expect((await request.get(`/api/calendar/${citra}.${secret}.ics`)).status()).toBe(404);
-  expect((await request.get(`/api/calendar/${secret}.ics`)).status()).toBe(404); // the old form, without the account
+  expect(await (await request.get(`/api/calendar/${secret}.ics`)).text()).not.toContain("BEGIN:VEVENT\r\nUID:session"); // the old form: the "link changed" event only
+});
+
+test("five wrong passwords: one log row with a count, and one warning email to the owner (round 39)", async ({ page }) => {
+  const db = e2eDb();
+  const email = "citra@questboard.test";
+  const uid = (db.prepare("SELECT id FROM users WHERE email = ?").get(email) as { id: number }).id;
+  const before = (db.prepare("SELECT COUNT(*) AS n FROM email_outbox WHERE to_address = ? AND subject LIKE '%trying to log in%'").get(email) as { n: number }).n;
+  for (let i = 0; i < 6; i++) {
+    await page.goto("/login");
+    await page.getByLabel("Email").fill(email);
+    await page.getByLabel("Password", { exact: true }).fill(`wrong-${i}`);
+    await page.getByRole("button", { name: "Log in" }).click();
+    await expect(page.getByText("Incorrect email or password.")).toBeVisible();
+  }
+  const hour = new Date().toISOString().slice(0, 13);
+  expect((db.prepare("SELECT n FROM security_counters WHERE kind = 'login_failed' AND user_id = ? AND hour = ?").get(uid, hour) as { n: number }).n).toBeGreaterThanOrEqual(6);
+  expect((db.prepare("SELECT COUNT(*) AS n FROM security_events WHERE kind = 'login_failed' AND user_id = ? AND created_at >= ?").get(uid, hour) as { n: number }).n).toBe(1);
+  const after = (db.prepare("SELECT COUNT(*) AS n FROM email_outbox WHERE to_address = ? AND subject LIKE '%trying to log in%'").get(email) as { n: number }).n;
+  expect(after).toBe(before + 1); // the 6th attempt doesn't send a second one
+
+  await login(page, "admin@questboard.test");
+  await page.goto("/admin/users?q=citra");
+  await page.getByRole("link", { name: "Security log" }).first().click();
+  await expect(page.getByRole("heading", { name: /Security log: Citra/ })).toBeVisible();
+  await expect(page.getByTestId("admin-security-log")).toContainText(/times this hour/);
+});
+
+test("a session older than 90 days ends, and the login page says why (round 39)", async ({ page, context }) => {
+  await login(page, "player@questboard.test");
+  const db = e2eDb();
+  const cookie = (await context.cookies()).find((c) => c.name === "qb_session");
+  expect(cookie).toBeTruthy();
+  const { createHash } = await import("node:crypto");
+  const old = new Date(Date.now() - 91 * 86_400_000).toISOString();
+  db.prepare("UPDATE auth_sessions SET created_at = ? WHERE token_hash = ?").run(old, createHash("sha256").update(cookie!.value).digest("hex"));
+  await page.goto("/dashboard");
+  await expect(page).toHaveURL(/\/login\?.*ended=max/);
+  await expect(page.getByTestId("ended-max-age")).toContainText("90 days");
 });

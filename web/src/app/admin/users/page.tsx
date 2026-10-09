@@ -47,6 +47,7 @@ export default async function AdminUsersPage(props: PageProps<"/admin/users">) {
                   {/* Only GMs have a public profile page; players are just listed. */}
                   {r.has_gm_profile ? <Link href={`/gms/${r.id}`} className="font-semibold hover:text-accent">{r.name}</Link> : <span className="font-semibold">{r.name}</span>}
                   <span className="block text-xs text-muted">{r.email}</span>
+                  <Link href={`/admin/errors?user=${r.id}#security-title`} className="mt-1 inline-flex min-h-11 items-center text-xs font-semibold text-accent hover:underline">{t("admin.securityHistory")}</Link>
                   {r.suspended_at ? <span className="chip mt-1 sm:hidden">{t("admin.suspendedChip")}</span> : null}
                 </td>
                 <td className="px-4 py-3 max-sm:hidden">{t(`admin.role.${r.role}` as "admin.role.player")}{r.suspended_at ? <span className="chip ml-2">{t("admin.suspendedChip")}</span> : null}</td>

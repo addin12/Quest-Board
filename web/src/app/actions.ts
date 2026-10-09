@@ -39,7 +39,8 @@ import { saveUpload, ownsUpload, discardUpload } from "@/lib/uploads";
 import * as twoStep from "@/lib/two-step";
 import { endLogin } from "@/lib/login-devices";
 import { formatMoment, isValidTimeZone, timeZoneOr } from "@/lib/time-zones";
-import { logSecurityEvent } from "@/lib/security-log";
+import { failedLoginWarning, logSecurityEvent } from "@/lib/security-log";
+import { failedLoginsEmail } from "@/lib/security-mail";
 
 /**
  * Errors are translation keys; client forms render them with t().
@@ -150,6 +151,7 @@ async function loginActionImpl(_: FormState, form: FormData): Promise<FormState>
   // Same message for unknown email and wrong password to avoid account enumeration.
   if (!user || !verifyPassword(password, user.password_hash)) {
     logSecurityEvent("login_failed", user?.id ?? null, user ? "wrong password" : "unknown account");
+    if (user) await warnAboutFailedLogins(user.id);
     return { error: "err.badLogin" };
   }
   if (user.suspended_at) return { error: "err.suspended" };
@@ -176,6 +178,7 @@ async function loginCodeActionImpl(_: FormState, form: FormData): Promise<FormSt
   }
   if (result === "wrong") {
     logSecurityEvent("two_step_failed", c.user_id);
+    await warnAboutFailedLogins(c.user_id);
     return { fieldErrors: { code: "v.totpCode" } };
   }
   const suspended = db().prepare("SELECT 1 FROM users WHERE id = ? AND (suspended_at IS NOT NULL OR deleted_at IS NOT NULL)").get(c.user_id);
@@ -183,6 +186,21 @@ async function loginCodeActionImpl(_: FormState, form: FormData): Promise<FormSt
   if (suspended) return { error: "err.suspended" };
   await createSession(c.user_id);
   redirect(safeNext(c.next_path));
+}
+
+/** Email the account's owner when someone keeps trying to get in (lib/security-log.ts: at most daily). */
+async function warnAboutFailedLogins(userId: number) {
+  try {
+    const warning = failedLoginWarning(userId);
+    if (!warning) return;
+    const p = db().prepare("SELECT email, name, locale, time_zone FROM users WHERE id = ? AND email_verified_at IS NOT NULL AND deleted_at IS NULL").get(userId) as
+      | { email: string; name: string; locale: "en" | "id"; time_zone: string } | undefined;
+    if (!p) return;
+    logSecurityEvent("login_warning_sent", userId, warning.reason);
+    await sendEmail(failedLoginsEmail(p, warning, await siteOrigin()));
+  } catch (err) {
+    console.error("[quest-board] failed-login warning", err);
+  }
 }
 
 export async function loginCodeAction(prev: FormState, form: FormData): Promise<FormState> {

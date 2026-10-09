@@ -126,9 +126,9 @@ test("the player says they've paid, the GM sees it and ticks 'paid ✓'; the pla
   await gm.goto(manage);
   await expect(gm.getByText("0/1 paid")).toBeVisible();
   await expect(gm.getByTestId("says-paid")).toHaveText(/Says paid/);
-  await gm.getByRole("button", { name: "Mark Pipit Pays's seat as paid" }).click();
+  await gm.getByRole("button", { name: "Mark paid for Pipit Pays" }).click();
   await expect(gm.getByTestId("says-paid")).toHaveCount(0);
-  await expect(gm.getByRole("button", { name: "Unmark Pipit Pays's seat as paid" })).toHaveAttribute("aria-pressed", "true");
+  await expect(gm.getByRole("button", { name: "Paid for Pipit Pays" })).toHaveAttribute("aria-pressed", "true");
   await expect(gm.getByText("1/1 paid")).toBeVisible();
 
   await player.goto("/dashboard");
