@@ -14,13 +14,13 @@
 - Error boundaries in Next 16 receive `{ error, retry }`, not `reset`.
 
 ## Module boundaries
-- `src/lib/policy.ts`, `src/lib/validation.ts`, `src/lib/i18n/dict.ts` and `src/lib/icons.ts` are **pure**: no runtime imports (`import type` is fine). This lets `node --test` run them directly and lets the icon script import `icons.ts`. Business rules go here.
+- `src/lib/policy.ts`, `src/lib/validation.ts`, `src/lib/i18n/*.ts`, `src/lib/seo.ts`, `src/lib/vitals.ts`, `src/lib/circuit-breaker.ts` and `src/lib/icons.ts` are **pure**: no runtime imports (`import type` is fine). This lets `node --test` run them directly and lets the icon script import `icons.ts`. Business rules go here.
 - `src/lib/db.ts`, `auth.ts`, `queries.ts` and `i18n/server.ts` start with `import "server-only"`. Never import them from a `"use client"` file.
 - Server components get text via `const { t, lang } = await getI18n()`. Client components use `const { t, lang } = useI18n()`.
 - `components/ui.tsx` is presentational and server-safe. Components that need text take a `t: T` prop or an already-translated string.
 
 ## Text & i18n
-- **Never write user-visible literals in JSX.** Add a key to `en` **and** `id` in `dict.ts`. `id` is typed `Record<MsgKey, string>`, so a missing translation fails typecheck.
+- **Never write user-visible literals in JSX.** Add a key to `src/lib/i18n/en.ts` **and** `id.ts` (`dict.ts` combines them). `id` is typed `Record<MsgKey, string>`, so a missing translation fails typecheck.
 - Key names follow `namespace.name` (`game.book`, `v.price`, `err.full`). Placeholders look like `{name}`. Plurals use `"one|other"`, chosen by the `n` variable.
 - Validation functions and server actions return **translation keys** (`MsgKey`), never sentences. The client renders them with `t()`.
 - Indonesian tone is friendly and informal (*kamu*, *-mu*). Keep community loanwords: one-shot, session zero, X-card, GM.

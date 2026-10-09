@@ -1,6 +1,6 @@
 // Server-side mail logic against a real (temporary) database and a fake email provider.
 // Runs because `npm test` uses --conditions=react-server, where "server-only" is a no-op.
-import { test, before } from "node:test";
+import { test, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync } from "node:fs";
 import { join } from "node:path";
@@ -29,7 +29,9 @@ globalThis.fetch = (async (url: string, init: { body: string; headers: Record<st
 }) as unknown as typeof fetch;
 
 const { db } = await import("../../src/lib/db.ts");
-const { sendEmail, retryFailedEmails, MAX_ATTEMPTS } = await import("../../src/lib/mailer.ts");
+const { providerBreaker, sendEmail, retryFailedEmails, MAX_ATTEMPTS } = await import("../../src/lib/mailer.ts");
+// Each test starts with every provider trusted again (the breaker test below trips it on purpose).
+beforeEach(() => providerBreaker.reset());
 const row = (subject: string) => db().prepare("SELECT sent_at, error, attempts, retryable, body_text, provider, deferred FROM email_outbox WHERE subject = ?").get(subject) as
   { sent_at: string | null; error: string | null; attempts: number; retryable: number; body_text: string; provider: string | null; deferred: number };
 
@@ -162,4 +164,33 @@ test("optional emails don't go to an address that bounced or reported spam; impo
   clearSuppression("GONE@x.test");
   await sendEmail({ to: "gone@x.test", subject: "Optional again", text: "x", optional: true });
   assert.ok(row("Optional again").sent_at);
+});
+
+test("Resend gets the same idempotency key on a retry; a provider failing 3 times in a row is skipped for a while", async () => {
+  const keys: { to: string; key: string }[] = [];
+  const real = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init: { body: string; headers: Record<string, string> }) => {
+    keys.push({ to: (JSON.parse(init.body).to ?? [])[0] ?? "", key: init.headers["Idempotency-Key"] });
+    return real(url, init as unknown as RequestInit);
+  }) as unknown as typeof fetch;
+  try {
+    failNext = 1;
+    await sendEmail({ to: "idem@x.test", subject: "Idem", text: "hi" });
+    await retryFailedEmails();
+    const idem = keys.filter((k) => k.to === "idem@x.test").map((k) => k.key);
+    assert.equal(idem.length, 2);
+    assert.match(idem[0], /^qb-outbox-\d+$/);
+    assert.equal(idem[0], idem[1]);
+
+    keys.length = 0;
+    failNext = 3;
+    for (const n of [1, 2, 3]) await sendEmail({ to: `down${n}@x.test`, subject: "Down", text: "hi" });
+    assert.equal(keys.length, 3);
+    await sendEmail({ to: "skipped@x.test", subject: "Skipped", text: "hi" });
+    assert.equal(keys.length, 3, "the 4th email doesn't wait for a provider that is down");
+    const row = db().prepare("SELECT sent_at, deferred FROM email_outbox WHERE to_address = 'skipped@x.test'").get() as { sent_at: string | null; deferred: number };
+    assert.deepEqual({ ...row }, { sent_at: null, deferred: 1 }); // the cron sends it once the provider is back
+  } finally {
+    globalThis.fetch = real;
+  }
 });

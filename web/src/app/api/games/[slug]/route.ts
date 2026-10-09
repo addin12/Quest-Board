@@ -1,6 +1,8 @@
 import { getGameBySlug, listSessions } from "@/lib/queries";
 import { apiLimited } from "@/lib/rate-limit";
 
+// GET /api/games/{slug} — one published game with its upcoming sessions and seats left (public JSON API,
+// docs/06-api-spec.md). Never the GM's payment details. 404 {"error":"not_found"} for drafts and unknown slugs.
 export async function GET(_: Request, ctx: RouteContext<"/api/games/[slug]">) {
   const limited = await apiLimited();
   if (limited) return limited;

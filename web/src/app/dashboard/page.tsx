@@ -6,7 +6,8 @@ import type { T } from "@/lib/i18n/dict";
 import { listMyGmRequests, listPlayerBookings, type PlayerBooking } from "@/lib/queries";
 import { Avatar, EmptyState, GameCard, Notice, Thumb, priceLabel } from "@/components/ui";
 import { LocalTime } from "@/components/local-time";
-import { ConfirmButton, SubmitButton } from "@/components/submit-button";
+import { ConfirmButton } from "@/components/submit-button";
+import { PaidClaim } from "@/components/paid-claim";
 import { RequestStatus } from "@/components/request-bits";
 import { cancelBookingAction, playerPaidAction } from "../actions";
 import { CalendarLinks } from "@/components/calendar-links";
@@ -280,14 +281,10 @@ function BookingRow({ b, t, children, extra }: { b: PlayerBooking; t: T; childre
           <form action={playerPaidAction} className="mt-1.5 flex flex-wrap items-center gap-2 text-sm" data-testid="player-paid">
             <input type="hidden" name="bookingId" value={b.booking_id} />
             <input type="hidden" name="sent" value={b.player_paid_at ? "0" : "1"} />
-            {b.player_paid_at ? (
-              <>
-                <span className="inline-flex items-center gap-1 font-semibold text-muted"><Icon name="hourglass-end" /> {t("paid.youSaid")}</span>
-                <SubmitButton className="btn-ghost">{t("paid.undo")}</SubmitButton>
-              </>
-            ) : (
-              <SubmitButton className="btn-secondary"><Icon name="wallet" /> {t("paid.iSent")}</SubmitButton>
-            )}
+            <PaidClaim
+              sent={!!b.player_paid_at} undo={t("paid.undo")}
+              iSent={<><Icon name="wallet" /> {t("paid.iSent")}</>} youSaid={<><Icon name="hourglass-end" /> {t("paid.youSaid")}</>}
+            />
           </form>
         )}
         {b.paid_marked_at && b.status === "confirmed" && (

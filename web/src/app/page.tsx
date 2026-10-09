@@ -4,16 +4,21 @@ import { searchGames, listSystemsInUse } from "@/lib/queries";
 import { getI18n } from "@/lib/i18n/server";
 import { GameCard, LaunchCard, Notice } from "@/components/ui";
 import { Icon } from "@/components/icon";
+import { JsonLd } from "@/components/json-ld";
+import { websiteJsonLd } from "@/lib/seo";
+import { siteOrigin } from "@/lib/site";
 
 export default async function HomePage(props: PageProps<"/">) {
-  const { t } = await getI18n();
+  const { t, lang } = await getI18n();
   const { deleted } = await props.searchParams;
+  const origin = await siteOrigin();
   const soonest = searchGames({ sort: "soonest" }, 6);
   const beginner = searchGames({ level: "beginner", sort: "rating" }, 3);
   const systems = listSystemsInUse();
 
   return (
     <>
+      <JsonLd data={websiteJsonLd(origin, lang, t("meta.description"))} />
       {deleted && <div className="mx-auto max-w-6xl px-4 pt-6"><Notice tone="success">{t("delete.done")}</Notice></div>}
       {/* Tavern hero: candlelit scene (hero.webp, pre-rendered from hero.svg by npm run tavern-art) under a dark wash for legible text. */}
       <section className="on-wood relative overflow-hidden border-b-2 border-[#8a6a3a] bg-[#1b1008]">

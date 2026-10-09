@@ -3,8 +3,8 @@ import { buildIcsFeed, sessionEvent } from "@/lib/calendar";
 import { makeT } from "@/lib/i18n/dict";
 import { siteOrigin } from "@/lib/site";
 
-// GET /api/calendar/<token>.ics — a person's private, subscribable calendar (public details only).
-// The token is the only credential: it's revocable in Settings ("Reset link").
+// GET /api/calendar/<id>.<secret>.ics — a person's private, subscribable calendar (public details only).
+// The secret is the only credential, compared in constant time; it's revocable in Settings ("Reset link").
 export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, ctx: RouteContext<"/api/calendar/[feed]">) {

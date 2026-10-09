@@ -3,6 +3,10 @@ import { db } from "./db";
 import { emailHtml } from "./email-html";
 import { configuredProviders, hasRoom, parseFrom, type ProviderId, type ProviderInfo } from "./mail-providers";
 import { isSuppressed } from "./email-suppression";
+import { makeBreaker } from "./circuit-breaker";
+
+/** A provider that failed 3 times in a row is skipped for 5 minutes (each call waits up to 8 s otherwise). */
+export const providerBreaker = makeBreaker({ failures: 3, coolMs: 5 * 60_000 });
 
 // Transactional email. Every message is written to `email_outbox` first (audit trail,
 // and the dev outbox page reads it), then delivered through the first provider that has room
@@ -22,7 +26,7 @@ export type Email = { to: string; subject: string; text: string; secret?: string
 
 const DAY = 86_400_000;
 
-function post(p: ProviderInfo, mail: Email, from: string): Promise<Response> {
+function post(p: ProviderInfo, mail: Email, from: string, outboxId: number): Promise<Response> {
   const html = emailHtml(mail.subject, mail.text);
   const signal = AbortSignal.timeout(8_000);
   if (p.id === "brevo") {
@@ -35,7 +39,8 @@ function post(p: ProviderInfo, mail: Email, from: string): Promise<Response> {
   }
   return fetch(`${p.url}/emails`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY ?? ""}`, "Content-Type": "application/json" },
+    // The same outbox row always sends the same key: a retry after a timeout can't send the email twice.
+    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY ?? ""}`, "Content-Type": "application/json", "Idempotency-Key": `qb-outbox-${outboxId}` },
     body: JSON.stringify({ from, to: [mail.to], subject: mail.subject, text: mail.text, html, ...(mail.headers ? { headers: mail.headers } : {}) }),
     signal,
   });
@@ -74,21 +79,30 @@ async function deliver(id: number, mail: Email): Promise<boolean> {
   if (mail.expiresAt && Date.parse(mail.expiresAt) <= Date.now()) return false; // too late to be useful
   const used = sentLast24h();
   let lastError: string | null = null;
+  let unknownOutcome = false;
   for (const p of providers) {
-    if (!hasRoom(p, used[p.id], !!mail.optional)) continue;
+    if (!hasRoom(p, used[p.id], !!mail.optional) || !providerBreaker.allows(p.id)) continue;
     try {
-      const res = await post(p, mail, from);
+      const res = await post(p, mail, from, id);
       if (res.status === 429) continue; // the provider's own limit: try the next one; not a failure
+      if (res.status >= 500) providerBreaker.failure(p.id);
       if (!res.ok) throw new Error(`${p.name} ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      providerBreaker.success(p.id);
       db()
         .prepare("UPDATE email_outbox SET sent_at = ?, error = NULL, deferred = 0, provider = ?, attempts = attempts + 1 WHERE id = ?")
         .run(new Date().toISOString(), p.id, id);
       return true;
     } catch (err) {
       lastError = String(err).slice(0, 500);
+      const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError" || err.name === "TypeError");
+      if (timedOut) providerBreaker.failure(p.id);
+      // Brevo has no idempotency key: after a timeout it may have sent the email. Optional emails aren't
+      // retried then (a duplicate reminder is worse than a missing one); important ones still are.
+      if (timedOut && p.id === "brevo" && mail.optional) unknownOutcome = true;
       console.error("[quest-board] email delivery failed", err);
     }
   }
+  if (unknownOutcome) db().prepare("UPDATE email_outbox SET retryable = 0 WHERE id = ?").run(id);
   if (lastError) db().prepare("UPDATE email_outbox SET attempts = attempts + 1, error = ?, deferred = 0 WHERE id = ?").run(lastError, id);
   else db().prepare("UPDATE email_outbox SET deferred = 1 WHERE id = ?").run(id); // every provider at its limit: wait for room
   return false;

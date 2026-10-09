@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
-import { getUserSettings, getGmSettings } from "@/lib/queries";
+import { getUserSettings, getGmSettings, calendarFeedPath } from "@/lib/queries";
 import { Icon } from "@/components/icon";
 import { EmailChangeForm, PasswordForm, ProfileSettingsForm } from "@/components/settings-forms";
 import { pendingEmailChange } from "@/lib/email-change";
@@ -93,7 +93,7 @@ export default async function SettingsPage(props: PageProps<"/settings">) {
         <p className="mt-1 mb-4 text-sm text-muted">{t("cal.feedLead")}</p>
         {me.calendar_token ? (
           <>
-            <CalendarFeedLinks url={`${origin}/api/calendar/${me.calendar_token}.ics`} />
+            <CalendarFeedLinks url={`${origin}${calendarFeedPath(me.id, me.calendar_token)}`} />
             <form action={resetCalendarFeedAction} className="mt-4">
               <p className="mb-2 text-xs text-muted">{t("cal.feedResetHint")}</p>
               <ConfirmButton className="btn-ghost" message={t("cal.feedResetConfirm")}><Icon name="key" /> {t("cal.feedReset")}</ConfirmButton>

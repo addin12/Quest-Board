@@ -103,3 +103,87 @@ export function languageAlternates(rawPath: string, lang: "en" | "id") {
 export function disallowedPaths(): string[] {
   return NO_INDEX_PATHS.flatMap((p) => [p, `/en${p}`, `/id${p}`]);
 }
+
+// ── Structured data for the other public pages (CLAUDE.md: JSON-LD on every public content page) ──
+
+export type Crumb = { name: string; url: string };
+
+/** BreadcrumbList: where a page sits (Home › Games › Kopi & Naga). */
+export function breadcrumbJsonLd(crumbs: Crumb[]): object {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.name, item: c.url })),
+  };
+}
+
+/**
+ * The home page: the site (with its search box, so search engines can offer it) and who runs it.
+ * @example websiteJsonLd("https://questboard.id", "id", "Cari game TTRPG…")
+ */
+export function websiteJsonLd(origin: string, lang: "en" | "id", description: string): object[] {
+  return [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "Quest Board",
+      url: origin,
+      inLanguage: lang === "id" ? "id-ID" : "en",
+      description,
+      potentialAction: { "@type": "SearchAction", target: `${origin}/games?q={search_term_string}`, "query-input": "required name=search_term_string" },
+    },
+    { "@context": "https://schema.org", "@type": "Organization", name: "Quest Board", url: origin, logo: `${origin}/apple-icon.png`, areaServed: "ID" },
+  ];
+}
+
+/** A list of games (search results, a category): CollectionPage whose main entity is the list. */
+export function collectionJsonLd(page: { name: string; description: string; url: string }, items: { title: string; slug: string }[], origin: string): object {
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: page.name,
+    description: page.description,
+    url: page.url,
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: items.length,
+      itemListElement: items.slice(0, 50).map((g, i) => ({ "@type": "ListItem", position: i + 1, name: g.title, url: `${origin}/games/${g.slug}` })),
+    },
+  };
+}
+
+/** A GM's public profile: ProfilePage about a Person, with their rating once they have reviews. */
+export function gmProfileJsonLd(
+  gm: { id: number; name: string; headline: string; bio: string; avatar_image: string; avg_rating: number | null; review_count: number },
+  origin: string,
+): object {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    url: `${origin}/gms/${gm.id}`,
+    mainEntity: {
+      "@type": "Person",
+      name: gm.name,
+      jobTitle: "Game Master",
+      description: gm.headline || gm.bio.slice(0, 300),
+      ...(gm.avatar_image ? { image: gm.avatar_image.startsWith("http") ? gm.avatar_image : `${origin}${gm.avatar_image}` } : {}),
+      ...(gm.review_count > 0 && gm.avg_rating
+        ? { aggregateRating: { "@type": "AggregateRating", ratingValue: gm.avg_rating, reviewCount: gm.review_count, bestRating: 5, worstRating: 1 } }
+        : {}),
+    },
+  };
+}
+
+/** A plain content page (How it works, Become a GM). */
+export function webPageJsonLd(page: { name: string; description: string; url: string }): object {
+  return { "@context": "https://schema.org", "@type": "WebPage", name: page.name, description: page.description, url: page.url };
+}
+
+/** Questions and answers shown on the page (Hire a GM): FAQPage. */
+export function faqJsonLd(qa: { q: string; a: string }[]): object {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: qa.map(({ q, a }) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })),
+  };
+}

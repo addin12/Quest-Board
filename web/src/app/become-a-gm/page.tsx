@@ -8,6 +8,9 @@ import { BecomeGmForm } from "@/components/become-gm-form";
 import { Icon } from "@/components/icon";
 import { Notice } from "@/components/ui";
 import { verifiedGmNeedsTwoStep } from "@/lib/two-step";
+import { JsonLd } from "@/components/json-ld";
+import { webPageJsonLd } from "@/lib/seo";
+import { siteOrigin } from "@/lib/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -19,9 +22,11 @@ export default async function BecomeGmPage() {
   const { t } = await getI18n();
   const profile = user ? getGmSettings(user.id) : undefined;
   const needsTwoStep = !!user && verifiedGmNeedsTwoStep(user.id);
+  const origin = await siteOrigin();
 
   return (
     <>
+    <JsonLd data={webPageJsonLd({ name: t("nav.becomeGm"), description: t("meta.description"), url: `${origin}/become-a-gm` })} />
     <section className="on-wood relative overflow-hidden border-b-2 border-[#8a6a3a] bg-[#1b1008]">
       <Image src="/images/tavern/hero.svg" alt="" fill priority sizes="100vw" className="object-cover object-[75%_center] opacity-70" />
       <div aria-hidden className="absolute inset-0 bg-linear-to-r from-[#140b05]/95 via-[#140b05]/75 to-[#140b05]/30" />

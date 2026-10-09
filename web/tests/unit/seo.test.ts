@@ -58,3 +58,31 @@ test("language URLs: prefixes are stripped and added; hreflang lists both langua
   assert.equal(languageAlternates("/id/dashboard", "id"), undefined);
   assert.ok(disallowedPaths().includes("/id/dashboard") && disallowedPaths().includes("/en/admin"));
 });
+
+test("structured data for the other public pages: site + search box, lists, GM profile, FAQ, breadcrumbs", async () => {
+  const { websiteJsonLd, collectionJsonLd, gmProfileJsonLd, faqJsonLd, breadcrumbJsonLd, webPageJsonLd } = await import("../../src/lib/seo.ts");
+  const [site, org] = websiteJsonLd("https://qb.test", "id", "Cari game") as { "@type": string; inLanguage?: string; potentialAction?: { target: string } }[];
+  assert.equal(site["@type"], "WebSite");
+  assert.equal(site.inLanguage, "id-ID");
+  assert.equal(site.potentialAction?.target, "https://qb.test/games?q={search_term_string}");
+  assert.equal(org["@type"], "Organization");
+
+  const list = collectionJsonLd({ name: "Games", description: "d", url: "https://qb.test/games" }, [{ title: "Naga", slug: "naga" }], "https://qb.test") as { mainEntity: { numberOfItems: number; itemListElement: { url: string; position: number }[] } };
+  assert.equal(list.mainEntity.numberOfItems, 1);
+  assert.deepEqual(list.mainEntity.itemListElement[0], { "@type": "ListItem", position: 1, name: "Naga", url: "https://qb.test/games/naga" });
+
+  const gm = { id: 7, name: "Raka", headline: "Horror GM", bio: "", avatar_image: "/uploads/a.webp", avg_rating: 4.8, review_count: 12 };
+  const profile = gmProfileJsonLd(gm, "https://qb.test") as { "@type": string; mainEntity: { image?: string; aggregateRating?: { ratingValue: number; reviewCount: number } } };
+  assert.equal(profile["@type"], "ProfilePage");
+  assert.equal(profile.mainEntity.image, "https://qb.test/uploads/a.webp");
+  assert.deepEqual([profile.mainEntity.aggregateRating?.ratingValue, profile.mainEntity.aggregateRating?.reviewCount], [4.8, 12]);
+  const newGm = gmProfileJsonLd({ ...gm, avatar_image: "", avg_rating: null, review_count: 0 }, "https://qb.test") as { mainEntity: object };
+  assert.ok(!("aggregateRating" in newGm.mainEntity) && !("image" in newGm.mainEntity)); // no rating before any review
+
+  const faq = faqJsonLd([{ q: "How do I pay?", a: "Directly to the GM." }]) as { mainEntity: { name: string; acceptedAnswer: { text: string } }[] };
+  assert.equal(faq.mainEntity[0].acceptedAnswer.text, "Directly to the GM.");
+  const crumbs = breadcrumbJsonLd([{ name: "Quest Board", url: "https://qb.test" }, { name: "Naga", url: "https://qb.test/games/naga" }]) as { itemListElement: { position: number; item: string }[] };
+  assert.deepEqual(crumbs.itemListElement.map((c) => c.position), [1, 2]);
+  assert.equal((webPageJsonLd({ name: "How", description: "d", url: "u" }) as { "@type": string })["@type"], "WebPage");
+  assert.ok(!jsonLdString(faqJsonLd([{ q: "</script>", a: "x" }])).includes("<"));
+});

@@ -9,6 +9,8 @@ import type { RegularIcon } from "@/lib/icons";
 import { EmptyState } from "@/components/ui";
 import { GmCard } from "@/components/gm-card";
 import { Icon } from "@/components/icon";
+import { JsonLd } from "@/components/json-ld";
+import { faqJsonLd } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -59,6 +61,7 @@ export default async function HireAGmPage(props: PageProps<"/hire-a-gm">) {
 
   return (
     <>
+      <JsonLd data={faqJsonLd(faqs.map((n) => ({ q: t(`hire.faq${n}Q` as MsgKey), a: t(`hire.faq${n}A` as MsgKey) })))} />
       {/* Hero */}
       <section className="on-wood relative overflow-hidden border-b-2 border-[#8a6a3a] bg-[#1b1008]">
         <Image src="/images/tavern/hero.svg" alt="" fill priority sizes="100vw" className="object-cover object-[85%_center] opacity-70" />

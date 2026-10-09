@@ -4,6 +4,8 @@ import { pruneNotifications } from "@/lib/notifications";
 import { pruneOutbox, retryFailedEmails } from "@/lib/mailer";
 import { promptReviews } from "@/lib/review-prompts";
 import { purgeExpiredSessions } from "@/lib/auth";
+import { pruneSecurityEvents } from "@/lib/security-log";
+import { pruneVitals } from "@/lib/vitals-store";
 import { purgeOldWindows } from "@/lib/rate-limit";
 import { pruneErrorLog } from "@/lib/error-log";
 import { deliverNotificationEmails } from "@/lib/notification-mail";
@@ -45,7 +47,7 @@ async function run(request: Request) {
   const openingEmails = await sendOpeningEmails(origin); // once Quest Board has opened (pre-launch list)
   purgeExpiredSessions();
   purgeOldWindows();
-  const pruned = { notifications: pruneNotifications(), outbox: pruneOutbox(), errors: pruneErrorLog(), uploads: pruneOrphanUploads(), ...pruneSecurityRecords() };
+  const pruned = { notifications: pruneNotifications(), outbox: pruneOutbox(), errors: pruneErrorLog(), uploads: pruneOrphanUploads(), ...pruneSecurityRecords(), securityEvents: pruneSecurityEvents(), vitals: pruneVitals() };
   // For /api/health?full=1: an uptime monitor notices when the cron stops.
   const now = new Date().toISOString();
   db().prepare("INSERT INTO app_state (key, value, updated_at) VALUES ('cron_last_run', ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at").run(now, now);

@@ -88,7 +88,7 @@ export default async function RequestPage(props: PageProps<"/hire-a-gm/requests/
               <p className="mt-2 whitespace-pre-line text-sm">{getPaymentInfo(matchedOffer.gm_id) || (hasPaymentQr(matchedOffer.gm_id) ? "" : t("game.howToPayEmpty"))}</p>
               {hasPaymentQr(matchedOffer.gm_id) && (
                 // eslint-disable-next-line @next/next/no-img-element -- a private picture behind a permission check, not for next/image
-                <img src={`/payment-qr/${matchedOffer.gm_id}`} alt={t("game.qrisAlt")} className="mt-3 w-full max-w-56 rounded-md border border-border bg-white p-2" />
+                <img loading="lazy" src={`/payment-qr/${matchedOffer.gm_id}`} alt={t("game.qrisAlt")} className="mt-3 w-full max-w-56 rounded-md border border-border bg-white p-2" />
               )}
               {getPaymentInfo(matchedOffer.gm_id) && <PaymentChangedNote gmId={matchedOffer.gm_id} />}
               {getPaymentInfo(matchedOffer.gm_id) && <ReportButton targetType="user" targetId={matchedOffer.gm_id} label={t("report.paymentDetails")} defaultReason="scam" className="mt-2" />}

@@ -472,6 +472,64 @@ export const MIGRATIONS: Record<number, string> = {
     );
     CREATE INDEX IF NOT EXISTS idx_email_changes_user ON email_changes(user_id);
   `,
+  41: `
+    CREATE INDEX IF NOT EXISTS idx_fk_auth_sessions_user_id ON auth_sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_login_challenges_user_id ON login_challenges(user_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_reviews_player_id ON reviews(player_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_messages_user_id ON messages(user_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_gm_requests_matched_gm_id ON gm_requests(matched_gm_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_gm_requests_gm_id ON gm_requests(gm_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_gm_requests_requester_id ON gm_requests(requester_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_gm_request_offers_gm_id ON gm_request_offers(gm_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_gm_request_messages_user_id ON gm_request_messages(user_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_notifications_session_id ON notifications(session_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_notifications_request_id ON notifications(request_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_notifications_actor_id ON notifications(actor_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_game_questions_player_id ON game_questions(player_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_game_question_messages_user_id ON game_question_messages(user_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_feedback_user_id ON feedback(user_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_email_queue_notification_id ON email_queue(notification_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_review_prompts_player_id ON review_prompts(player_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_session_reminders_user_id ON session_reminders(user_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_gm_invites_used_by ON gm_invites(used_by);
+    CREATE INDEX IF NOT EXISTS idx_fk_gm_invites_created_by ON gm_invites(created_by);
+    CREATE INDEX IF NOT EXISTS idx_fk_reports_resolved_by ON reports(resolved_by);
+    CREATE INDEX IF NOT EXISTS idx_fk_reports_target_owner_id ON reports(target_owner_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_reports_reporter_id ON reports(reporter_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_waitlist_player_id ON waitlist(player_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_lfg_posts_author_id ON lfg_posts(author_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_lfg_replies_author_id ON lfg_replies(author_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_saved_games_game_id ON saved_games(game_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_admin_log_target_user_id ON admin_log(target_user_id);
+    CREATE INDEX IF NOT EXISTS idx_fk_admin_log_admin_id ON admin_log(admin_id);
+    -- v41: security events, append-only. No foreign key: the record outlives an account. Rows can't be
+    -- changed, and can't be deleted until they're 180 days old (the retention cron then removes them).
+    CREATE TABLE IF NOT EXISTS security_events (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      kind       TEXT NOT NULL,                 -- lib/security-log.ts SecurityEventKind
+      user_id    INTEGER,                       -- the account it's about (NULL: no such account)
+      detail     TEXT NOT NULL DEFAULT '',      -- never a password, code or token
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_security_events_created ON security_events(created_at);
+    CREATE INDEX IF NOT EXISTS idx_security_events_user ON security_events(user_id, created_at);
+    CREATE TRIGGER IF NOT EXISTS security_events_no_update BEFORE UPDATE ON security_events
+    BEGIN SELECT RAISE(ABORT, 'security_events is append-only'); END;
+    CREATE TRIGGER IF NOT EXISTS security_events_keep BEFORE DELETE ON security_events
+    WHEN old.created_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-180 days')
+    BEGIN SELECT RAISE(ABORT, 'security_events rows are kept for 180 days'); END;
+    
+    -- v41: Core Web Vitals from real visitors (components/web-vitals.tsx → /api/vitals). Only the page's route
+    -- pattern, the metric and its value: no account, no address, no query string. Kept 30 days.
+    CREATE TABLE IF NOT EXISTS web_vitals (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      page       TEXT NOT NULL,                 -- route pattern, e.g. /games/[slug] (lib/vitals.ts)
+      metric     TEXT NOT NULL CHECK (metric IN ('LCP','INP','CLS','FCP','TTFB')),
+      value      REAL NOT NULL CHECK (value >= 0),
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_web_vitals_created ON web_vitals(created_at, page, metric);
+  `,
   40: `
     ALTER TABLE bookings ADD COLUMN player_paid_at TEXT;
   `,

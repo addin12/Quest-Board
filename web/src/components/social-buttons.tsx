@@ -1,6 +1,6 @@
 import type { T } from "@/lib/i18n/dict";
 import { toggleFollowAction, toggleSaveAction } from "@/app/actions";
-import { SubmitButton } from "./submit-button";
+import { ToggleSubmit } from "./submit-button";
 import { Icon } from "./icon";
 
 /** Bookmark a game (server form; works without JS). */
@@ -10,9 +10,11 @@ export function SaveGameButton({ gameId, slug, saved, t }: { gameId: number; slu
       <input type="hidden" name="gameId" value={gameId} />
       <input type="hidden" name="slug" value={slug} />
       <input type="hidden" name="save" value={saved ? "0" : "1"} />
-      <SubmitButton className={`${saved ? "btn-primary" : "btn-secondary"} px-3! py-1.5! text-xs!`} ariaPressed={saved}>
-        {saved ? <Icon name="bookmark" solid /> : <Icon name="bookmark" />} {t(saved ? "social.saved" : "social.save")}
-      </SubmitButton>
+      <ToggleSubmit
+        field="save" pressed={saved}
+        onClass="btn-primary px-3! text-xs!" offClass="btn-secondary px-3! text-xs!"
+        on={<><Icon name="bookmark" solid /> {t("social.saved")}</>} off={<><Icon name="bookmark" /> {t("social.save")}</>}
+      />
     </form>
   );
 }
@@ -22,9 +24,11 @@ export function FollowGmButton({ gmId, following, count, t }: { gmId: number; fo
     <form action={toggleFollowAction} className="flex items-center gap-2">
       <input type="hidden" name="gmId" value={gmId} />
       <input type="hidden" name="follow" value={following ? "0" : "1"} />
-      <SubmitButton className={`${following ? "btn-primary" : "btn-secondary"} px-3! py-1.5! text-xs!`} ariaPressed={following}>
-        {following ? <Icon name="heart" solid /> : <Icon name="heart" />} {t(following ? "social.following" : "social.follow")}
-      </SubmitButton>
+      <ToggleSubmit
+        field="follow" pressed={following}
+        onClass="btn-primary px-3! text-xs!" offClass="btn-secondary px-3! text-xs!"
+        on={<><Icon name="heart" solid /> {t("social.following")}</>} off={<><Icon name="heart" /> {t("social.follow")}</>}
+      />
       <span className="text-xs text-muted">{t("social.followers", { n: count })}</span>
     </form>
   );

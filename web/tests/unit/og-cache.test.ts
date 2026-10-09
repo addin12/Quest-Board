@@ -29,6 +29,19 @@ test("each answer can be read on its own (the cached bytes are never handed out 
   assert.deepEqual([...new Uint8Array(await b.arrayBuffer())], Array(10).fill(7));
 });
 
+test("requests arriving together for the same picture share one drawing (no stampede)", async () => {
+  const cache = makeOgCache(1024 * 1024);
+  let drawn = 0;
+  let finish!: () => void;
+  const slow = () => new Promise<Response>((resolve) => { drawn++; finish = () => resolve(new Response(new Uint8Array(50))); });
+  const twenty = Array.from({ length: 20 }, () => cache({ title: "Busy chat" }, slow));
+  await new Promise((r) => setTimeout(r, 0));
+  finish();
+  const answers = await Promise.all(twenty);
+  assert.equal(drawn, 1);
+  for (const a of answers) assert.equal((await a.arrayBuffer()).byteLength, 50);
+});
+
 test("over its size limit, the least recently shown picture goes first", async () => {
   const cache = makeOgCache(250);
   await cache("a", png(100));

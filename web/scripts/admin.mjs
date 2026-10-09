@@ -5,6 +5,7 @@
 //   npm run admin -- promote <email>           make an existing account an admin
 //   npm run admin -- demote <email>            back to GM (if they have a GM profile) or player
 //   npm run admin -- reset-2fa <email>         turn off two-step login (lost phone); they can set it up again
+//   npm run admin -- end-sessions               log everyone out (docs/runbooks.md: a leaked database or cookie secret)
 //
 // Uses QUESTBOARD_DB (default data/questboard.db). The app must have started once so the
 // database exists at the current schema version; this tool never creates or migrates it.
@@ -69,11 +70,17 @@ export function resetTwoStep(db, email) {
   return true;
 }
 
+/** Everyone logs in again: every session and unfinished login step ends. Returns how many sessions ended. */
+export function endAllSessions(db) {
+  db.prepare("DELETE FROM login_challenges").run();
+  return Number(db.prepare("DELETE FROM auth_sessions").run().changes);
+}
+
 function main(argv) {
   const [cmd, a, b] = argv;
   const file = process.env.QUESTBOARD_DB ?? "data/questboard.db";
-  if (!["list", "create", "promote", "demote", "reset-2fa"].includes(cmd)) {
-    console.log('Usage: npm run admin -- list | create <email> "<Name>" | promote <email> | demote <email> | reset-2fa <email>');
+  if (!["list", "create", "promote", "demote", "reset-2fa", "end-sessions"].includes(cmd)) {
+    console.log('Usage: npm run admin -- list | create <email> "<Name>" | promote <email> | demote <email> | reset-2fa <email> | end-sessions');
     return 1;
   }
   if (!existsSync(file)) {
@@ -97,6 +104,8 @@ function main(argv) {
       console.log(`Admin ${a} created. One-time password (shown once, change it in Settings after logging in):\n\n  ${password}\n`);
     } else if (cmd === "promote") {
       console.log(promote(db, a) ? `${a} is now an admin.` : `${a} was already an admin.`);
+    } else if (cmd === "end-sessions") {
+      console.log(`Logged everyone out (${endAllSessions(db)} sessions ended). Everyone logs in again with their password.`);
     } else if (cmd === "reset-2fa") {
       console.log(resetTwoStep(db, a) ? `Two-step login is off for ${a}, and they were logged out everywhere. Ask them to set it up again in Settings.` : `${a} didn't have two-step login on.`);
     } else {

@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getI18n } from "@/lib/i18n/server";
 import { Icon } from "@/components/icon";
+import { JsonLd } from "@/components/json-ld";
+import { webPageJsonLd } from "@/lib/seo";
+import { siteOrigin } from "@/lib/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -10,8 +13,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function HowItWorksPage() {
   const { t } = await getI18n();
+  const origin = await siteOrigin();
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
+      <JsonLd data={webPageJsonLd({ name: t("how.title"), description: t("how.p1"), url: `${origin}/how-it-works` })} />
       <h1 className="text-4xl font-bold">{t("how.title")}</h1>
       <section className="mt-10">
         <h2 className="flex items-center gap-2 text-2xl font-bold"><Icon name="dice-d20" className="text-accent" /> {t("how.players")}</h2>

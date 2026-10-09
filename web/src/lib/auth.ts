@@ -8,7 +8,8 @@ import { getLang } from "./i18n/server";
 import { deviceLabel } from "./device";
 import { noteDevice, sendNewDeviceEmail } from "./login-devices";
 
-import { SESSION_COOKIE, SESSION_DAYS, secureCookies, sessionCookieOptions } from "./session-cookie";
+import { SESSION_COOKIE, SESSION_DAYS, SESSION_MAX_DAYS, secureCookies, sessionCookieOptions } from "./session-cookie";
+import { logSecurityEvent } from "./security-log";
 export { SESSION_COOKIE, secureCookies };
 
 export type CurrentUser = {
@@ -76,9 +77,10 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     .prepare(
       `SELECT u.id, u.email, u.name, u.role, u.avatar_hue, u.avatar_image, u.email_verified_at, u.locale, u.legal_seen_version, u.totp_enabled_at, s.expires_at, s.last_seen_at
          FROM auth_sessions s JOIN users u ON u.id = s.user_id
-        WHERE s.token_hash = ? AND u.deleted_at IS NULL AND u.suspended_at IS NULL`,
+        WHERE s.token_hash = ? AND u.deleted_at IS NULL AND u.suspended_at IS NULL AND s.created_at > ?`,
     )
-    .get(hashToken(token)) as (Omit<CurrentUser, "email_verified"> & { email_verified_at: string | null; locale: string; expires_at: string; last_seen_at: string | null; totp_enabled_at: string | null }) | undefined;
+    // Sliding expiry keeps an active session alive, but never past SESSION_MAX_DAYS after the login.
+    .get(hashToken(token), new Date(Date.now() - SESSION_MAX_DAYS * 86_400_000).toISOString()) as (Omit<CurrentUser, "email_verified"> & { email_verified_at: string | null; locale: string; expires_at: string; last_seen_at: string | null; totp_enabled_at: string | null }) | undefined;
   if (!row || new Date(row.expires_at) < new Date()) return null;
   // "Last active" in Settings → Where you're logged in, and the sliding expiry: SESSION_DAYS after the
   // last visit, not after the login (src/proxy.ts renews the cookie). At most one write per 10 minutes.
@@ -109,7 +111,10 @@ export async function requireUser(next?: string): Promise<CurrentUser> {
 export async function requireAdmin(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user || user.role !== "admin") notFound();
-  if (!user.admin) redirect("/settings?twoStep=required#two-step");
+  if (!user.admin) {
+    logSecurityEvent("admin_denied", user.id, "two-step login not turned on");
+    redirect("/settings?twoStep=required#two-step");
+  }
   return user;
 }
 

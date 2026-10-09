@@ -36,11 +36,12 @@ import { NewMessageAnnouncer } from "@/components/new-message-announcer";
 import { changeVersion } from "@/lib/changes";
 import { googleCalendarUrl, sessionEvent } from "@/lib/calendar";
 import { siteOrigin } from "@/lib/site";
-import { gameEventsJsonLd, jsonLdString } from "@/lib/seo";
+import { breadcrumbJsonLd, gameEventsJsonLd } from "@/lib/seo";
 import { myWaitlist, refreshWaitlists } from "@/lib/waitlist";
 import { WaitlistControls, WaitlistOffer } from "@/components/waitlist-controls";
 import { SaveGameButton } from "@/components/social-buttons";
 import { isSaved } from "@/lib/community";
+import { JsonLd } from "@/components/json-ld";
 
 export async function generateMetadata(props: PageProps<"/games/[slug]">): Promise<Metadata> {
   const { slug } = await props.params;
@@ -91,7 +92,12 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
 
   return (
     <article>
-      {events.length > 0 && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(events) }} />}
+      {game.status === "published" && (
+        <JsonLd data={[
+          ...events,
+          breadcrumbJsonLd([{ name: "Quest Board", url: origin }, { name: t("nav.browse"), url: `${origin}/games` }, { name: game.title, url: gameUrl }]),
+        ]} />
+      )}
       <div className="mx-auto max-w-6xl px-4 pt-6">
         {preview && (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-accent/40 bg-accent-soft px-4 py-3 text-sm" role="status" data-testid="preview-banner">
@@ -352,7 +358,7 @@ export default async function GamePage(props: PageProps<"/games/[slug]">) {
                 <p className="mt-2 whitespace-pre-line text-sm">{game.gm_payment_info || (game.gm_has_qr ? "" : t("game.howToPayEmpty"))}</p>
                 {game.gm_has_qr ? (
                   // eslint-disable-next-line @next/next/no-img-element -- a private picture behind a permission check, not for next/image
-                  <img src={`/payment-qr/${game.gm_id}`} alt={t("game.qrisAlt")} className="mt-3 w-full max-w-56 rounded-md border border-border bg-white p-2" data-testid="payment-qr" />
+                  <img loading="lazy" src={`/payment-qr/${game.gm_id}`} alt={t("game.qrisAlt")} className="mt-3 w-full max-w-56 rounded-md border border-border bg-white p-2" data-testid="payment-qr" />
                 ) : null}
                 {(game.gm_payment_info || game.gm_has_qr) ? <PaymentChangedNote gmId={game.gm_id} /> : null}
                 {!preview && (game.gm_payment_info || game.gm_has_qr) ? <ReportButton targetType="user" targetId={game.gm_id} label={t("report.paymentDetails")} defaultReason="scam" className="mt-2" /> : null}

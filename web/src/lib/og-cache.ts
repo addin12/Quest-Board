@@ -15,15 +15,25 @@ export type OgCache = {
 /** A cache holding at most `maxBytes` of PNG; the least recently shown picture goes first. */
 export function makeOgCache(maxBytes: number): OgCache {
   const pictures = new Map<string, Uint8Array>(); // Map order = least recently shown first
+  const drawing = new Map<string, Promise<Uint8Array>>(); // being drawn now: later requests wait for it
   let bytes = 0;
+  const draw = async (render: () => Response | Promise<Response>) => new Uint8Array(await (await render()).arrayBuffer());
   const cached = (async (parts, render) => {
     const key = createHash("sha256").update(JSON.stringify(parts)).digest("base64url").slice(0, 32);
     let png = pictures.get(key);
     if (png) {
       pictures.delete(key);
       pictures.set(key, png);
+    } else if (drawing.has(key)) {
+      png = await drawing.get(key)!; // a link pasted into a busy group chat: one drawing, not twenty
     } else {
-      png = new Uint8Array(await (await render()).arrayBuffer());
+      const pending = draw(render);
+      drawing.set(key, pending);
+      try {
+        png = await pending;
+      } finally {
+        drawing.delete(key);
+      }
       pictures.set(key, png);
       bytes += png.byteLength;
       for (const [k, v] of pictures) {

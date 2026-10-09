@@ -24,7 +24,9 @@
     "i18n:client-keys": "node scripts/build-client-keys.mjs",
     "db:restore": "node scripts/db-backup.mjs restore",
     "db:offsite": "node scripts/offsite.mjs",
-    "db:fetch-offsite": "node scripts/offsite.mjs fetch"
+    "db:fetch-offsite": "node scripts/offsite.mjs fetch",
+    "docs:api": "node scripts/build-api-docs.mjs",
+    "analyze": "next experimental-analyze"
   },
   "dependencies": {
     "next": "16.3.8",

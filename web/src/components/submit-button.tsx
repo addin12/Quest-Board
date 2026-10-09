@@ -26,6 +26,33 @@ export function SubmitButton({
   );
 }
 
+/**
+ * An on/off button (save, follow, paid) that shows its new state the moment it's tapped, while the form is
+ * sent: `field` is the hidden input whose value "1" means "turn on". If the action fails, the page shows
+ * the real state again when it reloads. The form stays a plain server form, so it works without JavaScript.
+ */
+export function ToggleSubmit({
+  field, pressed, on, off, onClass, offClass, onLabel, offLabel,
+}: {
+  field: string;
+  pressed: boolean;
+  on: React.ReactNode;
+  off: React.ReactNode;
+  onClass: string;
+  offClass: string;
+  /** Accessible names when the visible text alone isn't enough (e.g. whose seat). */
+  onLabel?: string;
+  offLabel?: string;
+}) {
+  const { pending, data } = useFormStatus();
+  const shown = pending && data ? data.get(field) === "1" : pressed;
+  return (
+    <button type="submit" disabled={pending} aria-busy={pending} aria-pressed={shown} aria-label={shown ? onLabel : offLabel} className={shown ? onClass : offClass}>
+      {shown ? on : off}
+    </button>
+  );
+}
+
 /** Submit button that asks for confirmation first (for destructive actions). */
 export function ConfirmButton({
   children,

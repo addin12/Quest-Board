@@ -1,6 +1,44 @@
 # ARCHITECTURE: how Quest Board fits together
 
-Human-oriented detail, including diagrams and ADRs, is in `docs/04-technical-architecture.md` and `docs/05-data-model.md`. This file is the working map.
+Human-oriented detail is in `docs/04-technical-architecture.md` and `docs/05-data-model.md`; why things are the way they are is in [DECISIONS.md](DECISIONS.md). This file is the working map.
+
+## The system in production
+```mermaid
+flowchart LR
+  subgraph Phone["Player's or GM's browser"]
+    UI[Pages + forms]
+    WV[web-vitals beacon]
+  end
+  UI -- HTTPS --> C[Caddy<br/>TLS · zstd/gzip · HTTP/2+3]
+  WV -- POST /api/vitals --> C
+  C --> APP[Next.js app<br/>Node 24, standalone]
+  SCH[Scheduler<br/>scripts/scheduler.mjs] -- "POST /api/cron/reminders (every 5 min)" --> APP
+  APP --> DB[(SQLite, WAL<br/>/data/questboard.db)]
+  APP --> UP[/data/uploads/]
+  APP -- outbox → first provider with room --> MAIL[Resend → Brevo]
+  MAIL -. bounces, spam reports .-> APP
+  SCH -- nightly checked backup --> BK[/data/backups/]
+  BK -- off-site copy --> S3[(R2 / B2 / S3)]
+```
+
+## A booking, end to end
+```mermaid
+sequenceDiagram
+  participant P as Player
+  participant A as reserveSeatAction
+  participant D as SQLite
+  participant M as Outbox / email
+  participant G as GM
+  P->>A: "Reserve a seat" (form, works without JS)
+  A->>A: requireUser · hit("reserve") · validate
+  A->>D: BEGIN IMMEDIATE · canBook() · INSERT booking · COMMIT
+  A->>G: notify(booking_new)
+  A->>M: bookingConfirmedEmail (time zone, venue, refund terms, .ics)
+  A-->>P: redirect /dashboard?booked=…
+  P->>A: "I've sent the payment" (paid games)
+  A->>G: notify(payment_sent) → roster shows "Says paid"
+  G->>A: "Mark paid" → notify(payment_confirmed)
+```
 
 ## Stack
 - **Framework:** Next.js 16 App Router, React 19, TypeScript strict, Tailwind v4.
@@ -82,7 +120,7 @@ tests/    unit/*.test.ts (node:test) · e2e/marketplace.spec.ts (Playwright)
 - **Read:** a server component awaits `params`, then calls `getI18n()`, `getCurrentUser()` (memoised per request) and the synchronous `queries.ts` functions, and renders HTML. Client components hydrate only forms and `<LocalTime>`.
 - **Write:** a `<form action={serverAction}>` sends the request. The exported action wraps an internal `…Impl` in `withEcho()`. The impl validates (returning `MsgKey` errors), rate-limits (`hit()`), authorizes, writes the DB (inside `tx()` if capacity is involved), calls `revalidatePath("/", "layout")`, and then either redirects or returns `{ ok }`. On failure, `withEcho` adds `values` so the form can refill itself after React's automatic reset.
 
-## Data model (schema v12)
+## Data model (main tables; every table and column with its version: docs/05-data-model.md, now v41)
 | Table | Contents |
 |---|---|
 | `users` | `role` is `player`, `gm` or `admin`; `avatar_image` (optional path, v6); `email_verified_at`, `deleted_at` (v9; deleted accounts are scrubbed, never removed, so history keeps its foreign keys); `suspended_at` (v10, set by moderators) |

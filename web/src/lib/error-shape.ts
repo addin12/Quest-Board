@@ -12,6 +12,7 @@ export function isControlFlow(err: unknown): boolean {
 /**
  * A path that's safe to log: no query string, and no secret path segment — an invite link's token,
  * a private calendar feed's token (both work as passwords for whoever has them).
+ * @example redactPath("/api/calendar/12.s3cret.ics?x=1") // "/api/calendar/…"
  */
 export function redactPath(path: string): string {
   return path

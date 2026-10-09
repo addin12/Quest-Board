@@ -36,6 +36,7 @@ export const LIMITS = {
   launchNotify: { limit: 100, windowMs: 60 * 60_000 }, // "tell me when it opens" per IP (pre-launch)
   cspReport: { limit: 100, windowMs: 60 * 60_000 },
   webhookAuth: { limit: 100, windowMs: 60 * 60_000 }, // failed email-webhook authentications per IP // script-policy reports per IP (a broken page sends one per view)
+  vitals: { limit: 300, windowMs: 10 * 60_000 }, // page-speed beacons per IP (about 4 per page view)
   changes: { limit: 2000, windowMs: 60_000 }, // /api/changes polls per IP (one per open page every 15 s; stops hammering only)
 } as const;
 

@@ -1,4 +1,5 @@
 import "server-only";
+import { sameSecret } from "./secret-compare";
 import type { RosterRow } from "./earnings";
 import { db } from "./db";
 import { escapeLike } from "./policy";
@@ -788,13 +789,22 @@ export type FeedSession = {
   title: string; system: string; slug: string; location_type: string; platform: string; city: string; venue_name: string; venue_maps_url: string;
 };
 
-/** Whose calendar feed a token opens (active accounts only). */
-export function calendarFeedOwner(token: string): { id: number; locale: "en" | "id"; name: string } | undefined {
-  if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return undefined;
-  return db()
-    .prepare("SELECT id, locale, name FROM users WHERE calendar_token = ? AND deleted_at IS NULL AND suspended_at IS NULL")
-    .get(token) as { id: number; locale: "en" | "id"; name: string } | undefined;
+/**
+ * Whose calendar feed a link opens (active accounts only). The link is "<account id>.<secret>": the account
+ * is looked up by id and the secret compared in constant time, so response times can't reveal it.
+ */
+export function calendarFeedOwner(feed: string): { id: number; locale: "en" | "id"; name: string } | undefined {
+  const m = /^(\d{1,12})\.([A-Za-z0-9_-]{20,64})$/.exec(feed);
+  if (!m) return undefined;
+  const row = db()
+    .prepare("SELECT id, locale, name, calendar_token FROM users WHERE id = ? AND deleted_at IS NULL AND suspended_at IS NULL")
+    .get(Number(m[1])) as { id: number; locale: "en" | "id"; name: string; calendar_token: string | null } | undefined;
+  if (!row?.calendar_token || !sameSecret(row.calendar_token, m[2])) return undefined;
+  return { id: row.id, locale: row.locale, name: row.name };
 }
+
+/** The calendar feed's path for a person: /api/calendar/<id>.<secret>.ics */
+export const calendarFeedPath = (userId: number, token: string) => `/api/calendar/${userId}.${token}.ics`;
 
 /**
  * Sessions for someone's calendar feed, from 60 days ago onwards: seats they booked (sessions the
@@ -810,7 +820,7 @@ export function calendarFeedSessions(userId: number, now = new Date()): FeedSess
        UNION
        SELECT ${cols} FROM game_sessions s JOIN games g ON g.id = s.game_id
         WHERE g.gm_id = ? AND s.starts_at > ?
-       ORDER BY starts_at`,
+       ORDER BY starts_at LIMIT 1000`, // one person's sessions; the bound keeps a feed small whatever happens
     )
     .all(userId, since, userId, since) as FeedSession[];
   return rows;

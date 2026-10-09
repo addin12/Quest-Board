@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { SCHEMA_SQL } from "../../src/lib/schema.ts";
 import { verifyPassword } from "../../src/lib/password.ts";
-import { createAdmin, demote, listAdmins, promote } from "../../scripts/admin.mjs";
+import { createAdmin, demote, endAllSessions, listAdmins, promote } from "../../scripts/admin.mjs";
 
 const fresh = () => { const db = new DatabaseSync(":memory:"); db.exec(SCHEMA_SQL); return db; };
 
@@ -33,4 +33,13 @@ test("admin CLI: promote and demote, never removing the last admin", () => {
   assert.equal(listAdmins(db).length, 2);
   assert.equal(demote(db, "gm@x.test"), true);
   assert.equal((db.prepare("SELECT role FROM users WHERE email = 'gm@x.test'").get() as { role: string }).role, "gm"); // keeps their GM role
+});
+
+test("admin CLI: end-sessions logs everyone out", () => {
+  const db = fresh();
+  createAdmin(db, "end@x.test", "End");
+  const uid = (db.prepare("SELECT id FROM users WHERE email = 'end@x.test'").get() as { id: number }).id;
+  db.prepare("INSERT INTO auth_sessions (token_hash, user_id, expires_at) VALUES ('a', ?, '2099'), ('b', ?, '2099')").run(uid, uid);
+  assert.equal(endAllSessions(db), 2);
+  assert.equal((db.prepare("SELECT COUNT(*) AS n FROM auth_sessions").get() as { n: number }).n, 0);
 });

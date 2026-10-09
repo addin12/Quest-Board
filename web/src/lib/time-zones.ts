@@ -37,7 +37,10 @@ export function zoneLabel(tz: string, lang: "en" | "id", at = new Date()): strin
   return part?.value ?? tz;
 }
 
-/** "Sat 3 Oct, 19.00 WIB" — a session time in an email, in the reader's zone. */
+/**
+ * "Sat 3 Oct, 19.00 WIB" — a session time in an email, in the reader's zone.
+ * @example formatWhen("2026-10-20T11:00:00.000Z", "id", "Asia/Makassar") // "Sel, 20 Okt, 19.00 WITA"
+ */
 export function formatWhen(iso: string, lang: "en" | "id", tz: string = DEFAULT_TIME_ZONE): string {
   const zone = timeZoneOr(tz);
   const at = new Date(iso);

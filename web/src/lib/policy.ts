@@ -12,12 +12,18 @@ export const MAX_PRICE_IDR = 10_000_000;
 
 const idr = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 });
 
-/** "Rp 75.000". Rupiah has no minor unit, so amounts are whole integers. */
+/**
+ * "Rp 75.000". Rupiah has no minor unit, so amounts are whole integers.
+ * @example formatIdr(75000) // "Rp 75.000"
+ */
 export function formatIdr(amount: number): string {
   return idr.format(amount).replace(/ /g, " ");
 }
 
-/** Parse user input such as "75.000", "Rp 75,000" or "75000" into whole Rupiah. */
+/**
+ * Parse user input such as "75.000", "Rp 75,000" or "75000" into whole Rupiah.
+ * @example parseIdr("75.000") // 75000 · parseIdr("") // 0 · parseIdr("gratis") // null
+ */
 export function parseIdr(input: string): number | null {
   const digits = input.replace(/[^\d]/g, "");
   if (!digits) return input.trim() === "" ? 0 : null;
@@ -49,12 +55,18 @@ export function canBook(i: BookabilityInput): BookabilityResult {
   return { ok: true };
 }
 
-/** Players may give up their seat any time before the session starts. */
+/**
+ * Players may give up their seat any time before the session starts.
+ * @example canCancel(new Date("2026-10-20T11:00Z"), new Date("2026-10-20T10:00Z")) // true
+ */
 export function canCancel(sessionStartsAt: Date, now: Date): boolean {
   return sessionStartsAt.getTime() > now.getTime();
 }
 
-/** Escape LIKE wildcards so user input matches literally. Use with `ESCAPE '\'`. */
+/**
+ * Escape LIKE wildcards so user input matches literally. Use with `ESCAPE '\'`.
+ * @example db.prepare("… WHERE title LIKE ? ESCAPE '\\'").all(`%${escapeLike("50%_off")}%`)
+ */
 export function escapeLike(input: string): string {
   return input.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
@@ -122,6 +134,7 @@ export function slugify(input: string): string {
   );
 }
 
+/** @example splitList("D&D 5e, Pathfinder ,") // ["D&D 5e", "Pathfinder"] */
 export function splitList(csv: string): string[] {
   return csv
     .split(",")

@@ -7,6 +7,9 @@ import { EmptyState, GameCard, LaunchCard } from "@/components/ui";
 import { Icon } from "@/components/icon";
 import { FilterSheet } from "@/components/filter-sheet";
 import { GENRES, MECHANICS, STYLES, genreLabelKey, isGenre, isMechanic, isStyle, styleLabelKey } from "@/lib/categories";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbJsonLd, collectionJsonLd } from "@/lib/seo";
+import { siteOrigin } from "@/lib/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -74,9 +77,14 @@ export default async function BrowsePage(props: PageProps<"/games">) {
   if (filters.level === "beginner" || filters.level === "experienced") chips.push(["level", t(filters.level === "beginner" ? "browse.imNew" : "browse.experienced")]);
   if (filters.maxPrice != null) chips.push(["maxPrice", t("browse.upTo", { price: formatIdr(filters.maxPrice) })]);
   if (filters.free) chips.push(["free", t("browse.freeOnly")]);
+  const origin = await siteOrigin();
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
+      <JsonLd data={[
+        collectionJsonLd({ name: t("nav.browse"), description: t("meta.description"), url: `${origin}/games` }, games, origin),
+        breadcrumbJsonLd([{ name: "Quest Board", url: origin }, { name: t("nav.browse"), url: `${origin}/games` }]),
+      ]} />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-3xl font-bold">{t("browse.title")}</h1>
         <Link href="/browse" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline"><Icon name="map" /> {t("browse.byCategory")}</Link>

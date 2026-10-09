@@ -164,7 +164,10 @@ export type GameInput = {
   status: "draft" | "published";
 };
 
-/** A Google Maps link as the app's Share button gives it (maps.app.goo.gl/…), or a google.com/maps address. */
+/**
+ * A Google Maps link as the app's Share button gives it (maps.app.goo.gl/…), or a google.com/maps address.
+ * @example isGoogleMapsUrl("https://maps.app.goo.gl/abc") // true · isGoogleMapsUrl("https://evil.example/maps") // false
+ */
 export function isGoogleMapsUrl(v: string): boolean {
   if (v.length > 500 || /[\s<>"']/.test(v)) return false;
   let u: URL;

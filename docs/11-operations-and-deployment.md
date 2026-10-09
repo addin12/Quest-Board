@@ -59,6 +59,8 @@ upgrade the app keeps a copy of the database as it was (`backups/questboard-befo
 
 ## 3. Runbook
 
+Incidents (site down, emails stuck, a damaged database, a taken-over account, a leaked secret): [runbooks.md](runbooks.md).
+
 | Task | How |
 |---|---|
 | **First admin (launch day)** | Start the app once (it creates the database), then `node scripts/admin.mjs create you@example.com "Your Name"` (in the kit: `docker compose exec app node scripts/admin.mjs …`). It prints a one-time password: log in and change it in Settings. Production has **no** demo admin |

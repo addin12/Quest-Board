@@ -12,6 +12,9 @@ import type { RegularIcon } from "@/lib/icons";
 import { EmptyState, GameCard } from "@/components/ui";
 import { GmCard } from "@/components/gm-card";
 import { Icon } from "@/components/icon";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbJsonLd, collectionJsonLd } from "@/lib/seo";
+import { siteOrigin } from "@/lib/site";
 
 type Resolved = { title: string; desc: string; icon: RegularIcon; filter: GameFilters; gmFilter: { system?: string; genre?: string; style?: string; mechanic?: string }; gamesHref: string; systems?: readonly string[] };
 
@@ -63,9 +66,15 @@ export default async function CategoryPage(props: PageProps<"/browse/[type]/[val
     : type === "style" ? STYLES.filter((s) => s.key !== value).map((s) => ({ href: `/browse/style/${s.key}`, label: t(styleLabelKey(s.key)), icon: styleIcon(s.key) }))
     : type === "mechanic" ? MECHANICS.filter((m) => m.key !== value).map((m) => ({ href: `/browse/mechanic/${m.key}`, label: m.name, icon: m.icon as RegularIcon }))
     : [];
+  const origin = await siteOrigin();
+  const here = `${origin}/browse/${type}/${value}`;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
+      <JsonLd data={[
+        collectionJsonLd({ name: r.title, description: r.desc, url: here }, games, origin),
+        breadcrumbJsonLd([{ name: "Quest Board", url: origin }, { name: t("browse.hubTitle"), url: `${origin}/browse` }, { name: r.title, url: here }]),
+      ]} />
       <nav className="flex items-center gap-1.5 text-sm text-muted" aria-label={t("common.breadcrumb")}>
         <Link href="/browse" className="hover:text-text">{t("browse.hubTitle")}</Link>
         <Icon name="arrow-right" className="text-xs" />

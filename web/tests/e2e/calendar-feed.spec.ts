@@ -13,7 +13,7 @@ test("personal calendar feed: booked sessions, cancellations marked, and a reset
     await page.goto("/settings");
     await page.getByRole("button", { name: "Create my calendar link" }).click();
     const url = await page.getByLabel("Your private link").inputValue();
-    expect(url).toMatch(/\/api\/calendar\/[A-Za-z0-9_-]{20,}\.ics$/);
+    expect(url).toMatch(/\/api\/calendar\/\d+\.[A-Za-z0-9_-]{20,}\.ics$/); // <account>.<secret> (round 38)
     await expect(page.getByRole("link", { name: "Add to Google Calendar" })).toHaveAttribute("href", /calendar\.google\.com\/calendar\/r\?cid=webcal/);
 
     const path = new URL(url).pathname;

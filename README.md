@@ -100,6 +100,40 @@ Run these in `web/`:
 | `npm run db:backup` / `npm run db:restore -- <file> --yes` | A consistent backup while the app runs, and a restore that keeps the current database |
 | `npm run db:reset` | Delete the local database so it's recreated with demo data |
 | `npm run icons` · `npm run placeholders` · `npm run tavern-art` · `npm run app-icons` | Regenerate the icon subset, demo art, tavern illustrations and app icons |
+| `npm run docs:api` | Regenerate [docs/api-reference.md](docs/api-reference.md) from the API routes (a unit test fails while it's stale) |
+| `npm run i18n:client-keys` | Regenerate the list of strings the browser needs, after adding text to client code |
+| `npm run analyze` | See what's inside the browser bundles |
+
+## Usage examples
+
+The public, read-only JSON API (no key; 300 requests a minute per address):
+
+```bash
+# Upcoming beginner-friendly D&D games in Indonesian, cheapest first
+curl "http://localhost:3000/api/games?q=dnd&level=beginner&language=id&sort=price_asc&limit=10"
+
+# One game with its sessions and seats left (never the GM's payment details)
+curl http://localhost:3000/api/games/mercusuar-di-pulau-kabut
+```
+
+A person's private calendar feed (Settings → Calendar) subscribes in Google Calendar, Apple Calendar or Outlook:
+`/api/calendar/<account>.<secret>.ics`. Every endpoint is listed in [docs/api-reference.md](docs/api-reference.md);
+parameters and responses of the games API are in [docs/06-api-spec.md](docs/06-api-spec.md).
+
+## Configuration
+
+Development needs no settings. On a server every setting lives in `deploy/.env`, copied from
+[deploy/.env.example](deploy/.env.example), where each one is explained (a unit test keeps that file complete).
+The ones you must set:
+
+| Setting | What it's for |
+|---|---|
+| `QUESTBOARD_DOMAIN`, `QUESTBOARD_BASE_URL`, `QUESTBOARD_ACME_EMAIL` | Your address and its HTTPS certificate |
+| `RESEND_API_KEY` and/or `BREVO_API_KEY`, `QUESTBOARD_MAIL_FROM` | Sign-up, password and reminder emails |
+| `QUESTBOARD_CRON_SECRET` | Lets the scheduler run reminders, retries and clean-up |
+| `QUESTBOARD_OFFSITE_*` | The off-site copy of the nightly backups (strongly recommended) |
+
+Admin → Setup checks them on the running server and says what's missing.
 
 ## Tech stack
 
@@ -153,7 +187,7 @@ The steps before going live are in the [launch checklist](docs/12-launch-checkli
 
 ## Status
 
-A feature-complete **pre-launch MVP**. What's left before launch are the owner's decisions and accounts (legal review, domain, hosting, email), listed in the [launch checklist](docs/12-launch-checklist.md). Each pre-launch round (37 so far) is recorded in [IMPROVEMENTS.md](IMPROVEMENTS.md), with the ideas for later (Postgres, WhatsApp reminders, a Discord bot).
+A feature-complete **pre-launch MVP**. What's left before launch are the owner's decisions and accounts (legal review, domain, hosting, email), listed in the [launch checklist](docs/12-launch-checklist.md). Each pre-launch round (38 so far) is recorded in [IMPROVEMENTS.md](IMPROVEMENTS.md), with the ideas for later (Postgres, WhatsApp reminders, a Discord bot).
 
 ## Contributing
 

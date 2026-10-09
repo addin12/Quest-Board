@@ -6,6 +6,9 @@ import { categorySummary, idleKnownSystems } from "@/lib/queries";
 import { GENRES, MECHANICS, STYLES, genreDescKey, genreIcon, genreLabelKey, mechanicDescKey, styleDescKey, styleIcon, styleLabelKey, systemDescKey, systemSlug } from "@/lib/categories";
 import type { RegularIcon } from "@/lib/icons";
 import { Icon } from "@/components/icon";
+import { JsonLd } from "@/components/json-ld";
+import { webPageJsonLd } from "@/lib/seo";
+import { siteOrigin } from "@/lib/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -17,9 +20,11 @@ export default async function BrowseHubPage() {
   const { t } = await getI18n();
   const { systems, genres, styles, mechanics } = categorySummary();
   const idle = idleKnownSystems();
+  const origin = await siteOrigin();
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
+      <JsonLd data={webPageJsonLd({ name: t("browse.hubTitle"), description: t("browse.hubLead"), url: `${origin}/browse` })} />
       <h1 className="flex items-center gap-2 text-3xl font-bold"><Icon name="map" className="text-accent" /> {t("browse.hubTitle")}</h1>
       <p className="mt-1 max-w-2xl text-muted">{t("browse.hubLead")}</p>
       <nav className="mt-5 flex flex-wrap gap-2" aria-label={t("browse.hubTitle")}>

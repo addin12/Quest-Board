@@ -80,7 +80,7 @@ The signed-in GM's booked seats as CSV (`session_start_wib, game, player, price_
 `GET /api/gms/{id}` · `GET /api/systems`.
 
 ### Rate limit
-`/api/games` and `/api/games/{slug}` allow **120 requests per minute per IP**. Beyond that they answer `429 Too Many Requests` with `{ "error": "rate_limited" }` and `Retry-After: 60`.
+`/api/games` and `/api/games/{slug}` allow **300 requests per minute per IP** (`LIMITS.api` in `web/src/lib/limits.ts`). Beyond that they answer `429 Too Many Requests` with `{ "error": "rate_limited" }` and `Retry-After: 60`.
 
 ---
 

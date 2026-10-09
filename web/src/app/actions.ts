@@ -39,6 +39,7 @@ import { saveUpload, ownsUpload, discardUpload } from "@/lib/uploads";
 import * as twoStep from "@/lib/two-step";
 import { endLogin } from "@/lib/login-devices";
 import { formatMoment, isValidTimeZone, timeZoneOr } from "@/lib/time-zones";
+import { logSecurityEvent } from "@/lib/security-log";
 
 /**
  * Errors are translation keys; client forms render them with t().
@@ -147,7 +148,10 @@ async function loginActionImpl(_: FormState, form: FormData): Promise<FormState>
     | { id: number; password_hash: string; suspended_at: string | null }
     | undefined;
   // Same message for unknown email and wrong password to avoid account enumeration.
-  if (!user || !verifyPassword(password, user.password_hash)) return { error: "err.badLogin" };
+  if (!user || !verifyPassword(password, user.password_hash)) {
+    logSecurityEvent("login_failed", user?.id ?? null, user ? "wrong password" : "unknown account");
+    return { error: "err.badLogin" };
+  }
   if (user.suspended_at) return { error: "err.suspended" };
   purgeExpiredSessions();
   purgeOldWindows();
@@ -166,8 +170,14 @@ async function loginCodeActionImpl(_: FormState, form: FormData): Promise<FormSt
   if (!c) redirect("/login?step=expired");
   if (!hit("twoStep", await clientIp())) return { error: "err.rateLimited" };
   const result = await twoStep.answerChallenge(c, String(form.get("code") ?? ""));
-  if (result === "locked") redirect("/login?step=locked");
-  if (result === "wrong") return { fieldErrors: { code: "v.totpCode" } };
+  if (result === "locked") {
+    logSecurityEvent("two_step_failed", c.user_id, "locked");
+    redirect("/login?step=locked");
+  }
+  if (result === "wrong") {
+    logSecurityEvent("two_step_failed", c.user_id);
+    return { fieldErrors: { code: "v.totpCode" } };
+  }
   const suspended = db().prepare("SELECT 1 FROM users WHERE id = ? AND (suspended_at IS NOT NULL OR deleted_at IS NOT NULL)").get(c.user_id);
   await twoStep.endChallenge(c);
   if (suspended) return { error: "err.suspended" };
@@ -206,6 +216,7 @@ async function confirmTwoStepActionImpl(_: FormState, form: FormData): Promise<F
   if (!twoStep.confirmSetup(user.id, String(form.get("code") ?? ""))) return { fieldErrors: { code: "v.totpCode" } };
   await destroyAllSessions(user.id); // other devices only passed the password: they log in again…
   await createSession(user.id);      // …this one just proved the code
+  logSecurityEvent("two_step_on", user.id);
   await sendTwoStepEmail(user.email, user.name, "on");
   await toast("toast.twoStepOn");
   revalidatePath("/settings");
@@ -222,6 +233,8 @@ async function disableTwoStepActionImpl(_: FormState, form: FormData): Promise<F
   const user = await requireUser("/settings");
   if (!hit("password", String(user.id))) return { error: "err.rateLimited" };
   if (!twoStep.disable(user.id, String(form.get("code") ?? ""))) return { fieldErrors: { code: "v.totpCode" } };
+  await rotateSession(user.id); // a security change: this device gets a fresh session token
+  logSecurityEvent("two_step_off", user.id);
   await sendTwoStepEmail(user.email, user.name, "off");
   await toast("toast.twoStepOff");
   revalidatePath("/settings");
@@ -263,6 +276,7 @@ export async function logoutDeviceAction(form: FormData) {
 export async function logoutEverywhereAction() {
   const user = await requireUser();
   await destroyAllSessions(user.id);
+  logSecurityEvent("logout_everywhere", user.id);
   redirect("/login");
 }
 
@@ -796,6 +810,7 @@ async function changePasswordActionImpl(_: FormState, form: FormData): Promise<F
   db().prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hashPassword(next), user.id);
   await destroyAllSessions(user.id); // other devices must log in again…
   await createSession(user.id);      // …but this one stays signed in
+  logSecurityEvent("password_changed", user.id);
   await sendPasswordChangedEmail(user.email, user.name);
   return { ok: true };
 }
@@ -846,6 +861,7 @@ export async function confirmEmailChangeAction(form: FormData) {
     if (isUniqueViolation(err)) redirect("/change-email?taken=1"); // someone signed up with it in the meantime
     throw err;
   }
+  logSecurityEvent("email_changed", change.userId, `from …@${u.email.split("@")[1] ?? ""}`); // the old address's domain only
   const { t, lang } = await getI18n();
   await sendEmail({
     to: u.email,
@@ -1087,6 +1103,7 @@ async function resetPasswordActionImpl(_: FormState, form: FormData): Promise<Fo
   db().prepare("UPDATE users SET password_hash = ?, email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?").run(hashPassword(next), new Date().toISOString(), userId);
   await destroyAllSessions(userId); // anyone holding an old session is signed out
   cancelEmailChanges(userId); // …and a login-email change they started doesn't go through
+  logSecurityEvent("password_reset", userId);
   const who = db().prepare("SELECT email, name FROM users WHERE id = ?").get(userId) as { email: string; name: string };
   await sendPasswordChangedEmail(who.email, who.name);
   if (twoStep.twoStepEnabled(userId)) {

@@ -13,6 +13,8 @@ import { FollowGmButton } from "@/components/social-buttons";
 import { followerCount, isFollowing } from "@/lib/community";
 import { getCurrentUser } from "@/lib/auth";
 import { siteOrigin } from "@/lib/site";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbJsonLd, gmProfileJsonLd } from "@/lib/seo";
 
 export async function generateMetadata(props: PageProps<"/gms/[id]">): Promise<Metadata> {
   const { id } = await props.params;
@@ -32,8 +34,13 @@ export default async function GmProfilePage(props: PageProps<"/gms/[id]">) {
   const reviews = listGmReviews(gm.id);
 
   const viewer = await getCurrentUser();
+  const origin = await siteOrigin();
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
+      <JsonLd data={[
+        gmProfileJsonLd(gm, origin),
+        breadcrumbJsonLd([{ name: "Quest Board", url: origin }, { name: gm.name, url: `${origin}/gms/${gm.id}` }]),
+      ]} />
       <header className="card flex flex-col gap-6 p-6 sm:flex-row sm:items-center">
         <Avatar name={gm.name} hue={gm.avatar_hue} image={gm.avatar_image} size={112} />
         <div className="flex-1">

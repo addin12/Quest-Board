@@ -19,6 +19,7 @@ import { isPrelaunch } from "@/lib/prelaunch";
 import { clientMessages, isMsgKey, type T } from "@/lib/i18n/dict";
 import { Toaster } from "@/components/toaster";
 import { I18nProvider } from "@/components/i18n-provider";
+import { WebVitals } from "@/components/web-vitals";
 import { AccountMenu } from "@/components/account-menu";
 import type { RegularIcon } from "@/lib/icons";
 import { Icon } from "@/components/icon";
@@ -69,6 +70,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang={lang} data-theme={theme === "system" ? undefined : theme} className={`${cinzel.variable} ${alegreya.variable} ${alegreyaSans.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans max-xl:pb-16">
+        <WebVitals />
         <I18nProvider lang={lang} messages={clientMessages(lang)}>
           <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 btn-primary">
             {t("nav.skip")}

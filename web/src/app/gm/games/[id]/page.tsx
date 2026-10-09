@@ -9,7 +9,7 @@ import { Avatar, Notice, priceLabel } from "@/components/ui";
 import { LocalTime } from "@/components/local-time";
 import { Icon } from "@/components/icon";
 import { AddSessionForm, RescheduleSessionForm } from "@/components/forms";
-import { ConfirmButton, SubmitButton } from "@/components/submit-button";
+import { ConfirmButton, SubmitButton, ToggleSubmit } from "@/components/submit-button";
 import { archiveGameAction, cancelSessionAction, completeSessionAction, duplicateGameAction, markPaidAction, removePlayerAction } from "@/app/actions";
 import { waitingCounts } from "@/lib/waitlist";
 
@@ -182,13 +182,13 @@ function SessionCard({
                 <form action={markPaidAction}>
                   <input type="hidden" name="bookingId" value={p.booking_id} />
                   <input type="hidden" name="paid" value={p.paid_marked_at ? "0" : "1"} />
-                  <button
-                    className={`rounded-full px-2 py-0.5 text-xs font-bold ${p.paid_marked_at ? "text-success hover:underline" : "bg-surface-2 text-muted hover:text-text"}`}
-                    aria-label={t(p.paid_marked_at ? "paid.unmarkNamed" : "paid.markNamed", { name: p.name })}
-                    aria-pressed={!!p.paid_marked_at}
-                  >
-                    {p.paid_marked_at ? <><Icon name="check" /> {t("paid.paid")}</> : t("paid.mark")}
-                  </button>
+                  <ToggleSubmit
+                    field="paid" pressed={!!p.paid_marked_at}
+                    onClass="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-xs font-bold text-success hover:underline"
+                    offClass="inline-flex min-h-11 items-center rounded-full bg-surface-2 px-3 text-xs font-bold text-muted hover:text-text"
+                    onLabel={t("paid.unmarkNamed", { name: p.name })} offLabel={t("paid.markNamed", { name: p.name })}
+                    on={<><Icon name="check" /> {t("paid.paid")}</>} off={t("paid.mark")}
+                  />
                 </form>
               ) : <span className="pr-1.5" />}
             </li>
