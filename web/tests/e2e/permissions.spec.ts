@@ -124,8 +124,11 @@ test("hidden-field tampering can't touch other people's bookings, sessions, revi
     await login(p, "citra@questboard.test");
     await p.goto("/dashboard");
     const sent = p.getByTestId("player-paid").filter({ has: p.locator(`input[name="bookingId"][value="${citraBooking}"]`) });
+    // Hold on to the button first: a hidden input's value is its attribute, so after tampering the
+    // locator above (which finds the form by that attribute) no longer matches anything.
+    const sentButton = await sent.getByRole("button", { name: "I've sent the payment" }).elementHandle();
     await tamper(sent.locator('input[name="bookingId"]'), victimBooking);
-    await sent.getByRole("button", { name: "I've sent the payment" }).click();
+    await sentButton!.click();
     await settle(p);
 
     await p.goto(`/games/${tag}-dewi`);
@@ -161,7 +164,8 @@ test("hidden-field tampering can't touch other people's bookings, sessions, revi
 
     await p.goto("/dashboard");
     const row = p.locator(".card", { has: p.getByRole("link", { name: `Dewi Table ${tag}` }) }).first();
-    await tamper(row.locator('input[name="bookingId"]'), victimBooking);
+    // The row has two booking forms since round 37 ("I've sent the payment" and Cancel): aim at Cancel's.
+    await tamper(row.locator("form", { has: p.getByRole("button", { name: "Cancel" }) }).locator('input[name="bookingId"]'), victimBooking);
     accept(p);
     await row.getByRole("button", { name: "Cancel" }).click();
     await settle(p);

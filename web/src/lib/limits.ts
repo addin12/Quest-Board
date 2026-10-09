@@ -36,7 +36,10 @@ export const LIMITS = {
   launchNotify: { limit: 100, windowMs: 60 * 60_000 }, // "tell me when it opens" per IP (pre-launch)
   cspReport: { limit: 100, windowMs: 60 * 60_000 },
   webhookAuth: { limit: 100, windowMs: 60 * 60_000 }, // failed email-webhook authentications per IP // script-policy reports per IP (a broken page sends one per view)
-  vitals: { limit: 300, windowMs: 10 * 60_000 }, // page-speed beacons per IP (about 4 per page view)
+  // Page-speed beacons per IP, about 4 per page view. Sized for a carrier IP shared by many phones (CGNAT):
+  // 300 was hit by one busy evening's worth of players (and by the e2e run). Storage has its own caps
+  // (lib/vitals-store.ts: 500 a page a day, 10,000 a day), so this only stops hammering.
+  vitals: { limit: 3000, windowMs: 10 * 60_000 },
   changes: { limit: 2000, windowMs: 60_000 }, // /api/changes polls per IP (one per open page every 15 s; stops hammering only)
 } as const;
 

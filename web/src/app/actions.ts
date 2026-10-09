@@ -1200,6 +1200,9 @@ export async function playerPaidAction(form: FormData) {
   if (sent === !!b.player_paid_at) return; // nothing to change (a double tap)
   db().prepare("UPDATE bookings SET player_paid_at = ? WHERE id = ?").run(sent ? new Date().toISOString() : null, b.id);
   if (sent) notify({ userId: b.gm_id, kind: "payment_sent", actorId: user.id, sessionId: b.session_id });
+  // Taken back: the GM's unread "says they've paid" goes too (and with it any email still queued), so a
+  // send → undo → send doesn't leave the GM two notices, one of them no longer true.
+  else db().prepare("DELETE FROM notifications WHERE user_id = ? AND kind = 'payment_sent' AND actor_id = ? AND session_id = ? AND read_at IS NULL").run(b.gm_id, user.id, b.session_id);
   await toast(sent ? "toast.paymentSent" : "toast.paymentSentUndone");
   revalidatePath("/", "layout");
 }
