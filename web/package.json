@@ -29,7 +29,7 @@
     "analyze": "next experimental-analyze"
   },
   "dependencies": {
-    "next": "16.3.8",
+    "next": "16.4.0",
     "qrcode": "^1.5.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -39,14 +39,14 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@flaticon/flaticon-uicons": "^3.3.1",
-    "@playwright/test": "^1.63.0",
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^24.19.0",
+    "@types/node": "^24.19.1",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.8",
+    "eslint-config-next": "16.4.0",
     "subset-font": "^2.9.0",
     "tailwindcss": "^4",
     "typescript": "^5"
