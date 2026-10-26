@@ -1,3 +1,7 @@
+> **Archived version.** This is Quest Board **v1**, with accounts, seat booking and payment tracking (tag `v1.0-booking`).
+> The community edition for The Pandemonium Kollektive is a separate project without booking:
+> **[quest-board-tpk](https://github.com/addin12/quest-board-tpk)**. v1 stays here as it is.
+
 <div align="center">
 
 # ⚔ Quest Board
